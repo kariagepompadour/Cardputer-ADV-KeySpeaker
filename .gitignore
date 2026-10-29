@@ -10,11 +10,6 @@ build/
 *.bootloader.bin
 *.partitions.bin
 
-# Python (sender)
-.venv/
-__pycache__/
-*.pyc
-
 # OS / editor clutter
 .DS_Store
 Thumbs.db

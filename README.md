@@ -1,6 +1,6 @@
 # Cardputer ADV KeySpeaker
 
-**Turn your Cardputer ADV into a small external keyboard and speaker for your computer.**
+**A pocket speaker and keyboard for your computer, phone or console. Keep it in your bag.**
 
 [日本語版 README](README_JA.md)
 
@@ -9,31 +9,56 @@
 
 ## The idea
 
-While building [RADIO DAYS SDR](https://github.com/kariagepompadour/RADIODAYS-SDR), I noticed that the Cardputer ADV's built-in
-speaker sounds better than expected: good enough for background music, news, internet radio, podcasts and the
-sound of videos. The Cardputer ADV also has a physical keyboard. So why not use both at the same time?
+While building [RADIO DAYS SDR](https://github.com/kariagepompadour/RADIODAYS-SDR), I noticed that the Cardputer
+ADV's built-in speaker sounds better than expected: good enough for background music, news, internet radio,
+podcasts and the sound of videos. The Cardputer ADV also has a physical keyboard. So why not use both at the same
+time?
 
-## Goals
+## What it will do
 
-| Connection | Speaker | Keyboard | Computer side |
-| --- | --- | --- | --- |
-| **USB cable** | USB Audio Class 1 speaker (48 kHz stereo in, played mono) | USB HID keyboard + media keys | Nothing to install (macOS, Windows, ChromeOS) |
-| **Wireless** | Wi-Fi audio stream | Bluetooth LE HID keyboard + media keys | Keyboard: nothing to install. Audio: a small sender app is needed (see below) |
+- **Plug in a USB-C cable:** the Cardputer ADV becomes a speaker and a keyboard, over one cable.
+- **Unplug it:** it becomes a Bluetooth LE keyboard.
+- **Nothing to install on the other device.** Only the app-only `.ino.bin` goes onto the Cardputer, through a
+  launcher. It switches between USB and Bluetooth LE by itself: there is nothing to set up.
 
-- Shift, Ctrl, Alt, Command/Windows, cursor keys, F-keys, volume, mute, play/pause through an `Fn` layer.
-- The screen shows the connection, volume, mute, buffer health, battery and warnings.
-- Installed as an app-only `.ino.bin` through an app launcher, like the author's other Cardputer ADV projects.
+Ways to use it:
 
-### Known limit: wireless audio
+- On a computer without speakers (a desktop PC, a Mac mini, a monitor).
+- On a device that can send audio out of its USB-C port: a phone, a tablet, a digital audio player, a game console.
+- For typing on a console's text-entry screen, such as a PS5, as a Bluetooth LE keyboard.
+- As a **USB-C earphone adapter**: plug earphones into the Cardputer's jack (mono: both ears get the same sound).
 
-Wireless audio without any software on the computer is **not possible on this hardware**:
+Shift, Ctrl, Alt, Command/Windows, cursor keys, F-keys, volume, mute and play/pause work through an `Fn` layer. The
+keyboard is small: it is meant for short entries, not long texts. The screen shows the connection, volume, mute,
+buffer health, battery and warnings.
+
+## Scope
+
+| | Devices |
+| --- | --- |
+| **Main targets** | macOS and Windows over USB (speaker + keyboard); Bluetooth LE keyboard |
+| **To be checked one by one** | iPhone 15 or later and USB-C iPads, Android, digital audio players with USB audio out, PS5, Nintendo Switch; the Bluetooth LE keyboard on a PS5 |
+| **Not planned** | ChromeOS, wireless audio, internet radio, audio input through the 3.5 mm jack |
+
+### Why there is no wireless audio
+
+The Cardputer ADV cannot be a wireless speaker without software on the other device:
 
 - The ESP32-S3 has no Classic Bluetooth, so Bluetooth audio (A2DP) is not available.
 - The Cardputer ADV has no PSRAM; the known AirPlay receivers for the ESP32 need it.
-- Windows and ChromeOS have no built-in way to send system audio to a generic Wi-Fi speaker.
+- Sending audio over Wi-Fi would need a sender app on the other device.
 
-Wireless audio will therefore use a small sender app on the computer (Windows first, then macOS).
-USB audio and both keyboard connections need nothing installed.
+### One app, one job
+
+The Cardputer ADV already has other jobs: internet radio is [RADIO DAYS](https://github.com/kariagepompadour/RADIODAYS),
+a jog dial is [Media Jog](https://github.com/kariagepompadour/Cardputer-ADV-Media-Jog). Each is its own app, and
+you switch between them with the launcher. KeySpeaker has no modes to pick.
+
+## Power
+
+Works best with a device that is plugged into power (a PC, a Mac mini, a console): the Cardputer is charged at the
+same time. A phone or tablet with a single USB-C port powers the Cardputer from its own battery; a USB-C hub with
+power pass-through (USB PD) lets it charge while in use. The Cardputer's power switch must be **on**.
 
 ## Repository layout
 
@@ -41,7 +66,6 @@ USB audio and both keyboard connections need nothing installed.
 | --- | --- |
 | [`docs/`](docs/) | Design and, later, verification notes |
 | [`firmware/`](firmware/) | Cardputer ADV firmware (Arduino, `m5stack:esp32` 3.3.10) |
-| [`sender/`](sender/) | Computer-side sender for wireless audio |
 
 ## Hardware
 
