@@ -13,6 +13,9 @@
     - (S0-3) A second screen, the flight visualizer (FlightViz.h): the level history as scrolling terrain, with a
       small fighter flying over it. It measures the level of what the computer sends, before its volume, and does
       not touch the audio path. The measurement screen stays the default.
+    - (S0-4..6) Targets that shoot back, a laser, and now and then a graphic equalizer in front of the terrain.
+      For the equalizer the receive callback also copies the mono samples into a 1024-sample ring; the FFT runs
+      at drawing time.
     - No keyboard to the computer, no Bluetooth, no Wi-Fi.
 
   Keys on the Cardputer (local only, never sent to the computer):
@@ -37,7 +40,7 @@
 #include <freertos/stream_buffer.h>
 #include "FlightViz.h"
 
-#define BUILD_TAG "S0-4"
+#define BUILD_TAG "S0-6"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -91,6 +94,9 @@ static std::atomic<float> limitDbMax{0};       // deepest limiter gain reduction
 static std::atomic<int16_t> outPeak{0};        // largest |sample| sent to the speaker since the last screen update
 static std::atomic<uint32_t> vizSum{0}, vizCount{0};  // 10 ms RMS levels from the computer (before its volume) since
                                                        // the last visualizer column, summed and counted; 0 while muted
+static constexpr uint32_t VIZ_PCM_N = 1024;     // newest mono samples (before the host volume; 0 while muted) for the
+static int16_t vizPcm[VIZ_PCM_N];               // visualizer's spectrum, written only by onSpkData; read without a lock,
+static std::atomic<uint32_t> vizPcmPos{0};      // so a frame may mix two packets, which no one can see
 
 // High-pass biquad (RBJ cookbook, Q = 0.7071) and the limiter's state; touched only by playTask.
 struct Biquad {
@@ -162,10 +168,14 @@ static void onSpkData(void* data, uint16_t len) {
   {
     const int16_t* r = static_cast<const int16_t*>(data);
     size_t n = len / 4;
+    bool muted = uac.mute(UAC_CHAN_MASTER);
+    uint32_t pos = vizPcmPos.load(std::memory_order_relaxed);
     for (size_t i = 0; i < n; i++) {
       float m = ((int32_t)r[2 * i] + r[2 * i + 1]) * 0.5f;
       vizAcc += m * m;
+      vizPcm[pos++ & (VIZ_PCM_N - 1)] = muted ? 0 : (int16_t)m;
     }
+    vizPcmPos.store(pos, std::memory_order_release);
     vizN += n;
     if (vizN >= CHUNK) {
       uint32_t rms = uac.mute(UAC_CHAN_MASTER) ? 0 : (uint32_t)sqrtf(vizAcc / vizN);
@@ -418,6 +428,7 @@ static void drawViz(uint32_t now) {
     uint32_t n = vizCount.exchange(0), sum = vizSum.exchange(0);
     flightviz::push(viz, n ? (float)sum / n : 0);
   }
+  if (viz.eq) flightviz::analyze(viz, vizPcm, VIZ_PCM_N - 1, vizPcmPos.load(std::memory_order_acquire));
   flightviz::update(viz, now);
   flightviz::render(viz, static_cast<uint16_t*>(canvas.getBuffer()), now);
 

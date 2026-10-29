@@ -14,6 +14,14 @@
   now and then with slow bullets aimed at the fighter; the fighter weaves out of the way, and a bullet that still
   hits only lights up its shield for a moment. No score, nothing to lose.
 
+  Now and then a graphic equalizer like an old hi-fi's joins in front of the terrain, which keeps flowing behind
+  it: 30 bars for 30 frequency bands, bass on the left, up to half the terrain's height, jumping with the music at
+  the frame rate, with white peak dots that hold and fall slowly. Three patterns take turns every minute, and when
+  the music comes back after a gap between songs: the terrain alone, the equalizer in the aqua of an old hi-fi's
+  fluorescent display, and the equalizer in KariPom's colors (each bar its own color, bass to treble). The
+  equalizer rises from, and sinks into, the ground. The spectrum comes from a 512-point FFT of the last samples, done here at drawing time; the audio side only
+  copies samples into a small ring.
+
   Plain C++ on a 240 x 135 RGB565 frame buffer laid out like M5Canvas's (16-bit pixels, high byte first), so the same
   code also runs on a computer for previews.
 */
@@ -62,6 +70,22 @@ constexpr float POP_S = 1.1f;           // a target's pop lasts longer: its spar
 constexpr int POP_SPARKS = 16;
 constexpr int NSTARS = 40;
 constexpr float STAR_FAR_PX_S = 5.0f, STAR_NEAR_PX_S = 11.0f;  // small far stars and bigger near ones
+// Graphic-equalizer terrain. 512-point FFT at 48 kHz: 93.75 Hz per bin; bands log spaced from bin 1 to bin 170
+// (about 94 Hz to 16 kHz). Each band is drawn against its own average of the last few seconds, like the terrain
+// against the music's: the average sits a little below the middle, EQ_SPAN_DB above or below it fills or empties
+// the bar. So every band dances, whatever the music's tone balance.
+constexpr int FFT_N = 512, FFT_LOG2 = 9;
+constexpr int EQ_BANDS = W / PITCH;     // 30
+constexpr int EQ_BIN_LO = 1, EQ_BIN_HI = 170;
+constexpr float EQ_SPAN_DB = 12.0f, EQ_MID = 0.4f, EQ_AVG_S = 2.5f;
+constexpr int EQ_NSEG = NSEG / 2;       // equalizer bars reach half the terrain's full height
+constexpr int EQ_AQUA_R = 60, EQ_AQUA_G = 255, EQ_AQUA_B = 210;  // a fluorescent display's aqua
+constexpr float EQ_FALL_SEG_S = 28.0f;  // bars jump up at once and fall at this speed
+constexpr float PEAK_HOLD_S = 0.5f, PEAK_FALL_SEG_S = 9.0f;
+constexpr float EQ_SILENT_RMS = 33.0f;  // below about -60 dBFS the bars rest on the ground
+constexpr uint32_t MODE_MS = 60000, MODE_MIN_MS = 15000;  // turns: every minute, or after a gap if 15 s have passed
+constexpr uint32_t GAP_MS = 1500;       // silence at least this long counts as a gap between songs
+constexpr float FADE_S = 0.45f;         // the equalizer rises from, or sinks into, the ground in this long
 constexpr int CRATER_SEG = 3;           // a bomb knocks this many segments off the bar it hits (1 off each neighbor)
 // Targets: a column well above the running average and clearly louder than the one before is a beat, and a beat
 // brings in a target from the right (not more often than SPAWN_MS_MIN). Music with few clear beats still brings one
@@ -185,7 +209,20 @@ struct State {
   Bomb b[MAX_BOMBS];
   Burst x[MAX_BURSTS];
   Star star[NSTARS];
+  bool eq = false;           // the graphic equalizer is showing (or rising or sinking)
+  float scale = 1;           // equalizer height share while it rises or sinks
+  int8_t fade = 0;           // -1 sinking, +1 rising, 0 steady
+  uint32_t modeSinceMs = 0, silentSinceMs = 0;
+  bool wasSilent = false;
+  float eqDb[EQ_BANDS] = {};  // latest band levels from analyze()
+  bool eqFresh = false, eqSilent = true;
+  float eqH[EQ_BANDS] = {}, eqPeak[EQ_BANDS] = {}, eqHold[EQ_BANDS] = {};  // in segments (0 .. EQ_NSEG)
+  float eqAvg[EQ_BANDS] = {};
+  bool eqAvgSet = false;
   uint16_t lit[MAX_BAR];     // segment colors by height from the bottom (swapped for the buffer); 0 in the gaps
+  uint16_t eqCol[2][EQ_BANDS];  // equalizer bar colors, bass to treble: aqua, KariPom
+  uint8_t pattern = 0;       // 0 terrain alone, 1 aqua equalizer, 2 KariPom equalizer
+  uint8_t next = 0;          // the pattern a sinking equalizer gives way to
   bool ready = false;
 };
 
@@ -223,6 +260,18 @@ static void init(State& s, uint32_t nowMs) {
     bool gap = y % SEG_PITCH >= SEG_H;
     s.lit[y] = gap ? 0 : swap(rgb(r, g, b));
   }
+  // Each equalizer bar has its own color, bass to treble, as in KariPom's EQ Classic: blue, cyan, green,
+  // yellow-green, yellow, orange, red, magenta, blended across the 30 bars.
+  static const uint8_t KP[8][3] = {{0, 0, 255},   {0, 255, 255}, {0, 255, 0}, {173, 255, 41},
+                                   {255, 255, 0}, {255, 165, 0}, {255, 0, 0}, {255, 0, 255}};
+  for (int j = 0; j < EQ_BANDS; j++) {
+    float t = (float)j * 7 / (EQ_BANDS - 1);
+    int a = t >= 7 ? 6 : (int)t;
+    float u = t - a;
+    s.eqCol[0][j] = swap(rgb(EQ_AQUA_R, EQ_AQUA_G, EQ_AQUA_B));
+    s.eqCol[1][j] = swap(rgb((int)(KP[a][0] + (KP[a + 1][0] - KP[a][0]) * u), (int)(KP[a][1] + (KP[a + 1][1] - KP[a][1]) * u),
+                          (int)(KP[a][2] + (KP[a + 1][2] - KP[a][2]) * u)));
+  }
   for (auto& v : s.h) v = GROUND;
   s.lastColMs = s.lastFrameMs = nowMs;
   s.rng = nowMs | 1;
@@ -240,6 +289,15 @@ static void init(State& s, uint32_t nowMs) {
   s.beat = false;
   s.lunge = 0;
   s.nextSpawnMs = s.nextAimMs = nowMs;
+  s.eq = false;
+  s.pattern = s.next = 0;
+  s.scale = 0;
+  s.fade = 0;
+  s.modeSinceMs = s.silentSinceMs = nowMs;
+  s.wasSilent = false;
+  s.eqFresh = false;
+  s.eqAvgSet = false;
+  for (int j = 0; j < EQ_BANDS; j++) s.eqH[j] = s.eqPeak[j] = 0, s.eqHold[j] = 0;
   for (auto& st : s.star) placeStar(s, st, (float)(nextRandom(s) % W));
   s.ready = true;
 }
@@ -279,17 +337,141 @@ static inline int colAt(int x, int offset) {
   int d = W - offset - x;
   return d < 0 ? -1 : (d + PITCH - 1) / PITCH;
 }
-// Terrain height under screen column x.
+// Graphic-equalizer bar j in px (0 while it is not showing), scaled while it rises or sinks.
+static inline int eqHeight(const State& s, int j) {
+  return s.eq ? (int)lrintf(s.eqH[j] * s.scale) * SEG_PITCH : 0;
+}
+// Height of the ground under screen column x: the terrain, or the equalizer where it stands taller.
 static inline int heightAt(const State& s, int x, int offset) {
   int i = colAt(x, offset);
-  if (i < 0) return 0;
-  return i < COLS ? s.h[i] : GROUND;
+  int h = i < 0 ? 0 : i < COLS ? s.h[i] : GROUND;
+  if (s.eq && x >= 0 && x < EQ_BANDS * PITCH) {
+    int e = eqHeight(s, x / PITCH);
+    if (e > h) h = e;
+  }
+  return h;
 }
 // Knocks n segments off column i, keeping the ground row.
 static inline void carve(State& s, int i, int n) {
   if (i < 0 || i >= COLS) return;
   int h = s.h[i] - n * SEG_PITCH;
   s.h[i] = (uint8_t)(h < GROUND ? GROUND : h);
+}
+
+// The spectrum for the graphic-equalizer terrain: a 512-point FFT of the newest samples in ring (mono, mask + 1
+// long, pos is the next write position), summed into the bands. Only needed while s.eq is set.
+static float fftRe[FFT_N], fftIm[FFT_N], hann[FFT_N], twC[FFT_N / 2], twS[FFT_N / 2];
+static uint16_t bandBin[EQ_BANDS + 1];
+static bool fftReady = false;
+static void analyze(State& s, const int16_t* ring, uint32_t mask, uint32_t pos) {
+  if (!fftReady) {
+    for (int i = 0; i < FFT_N; i++) hann[i] = 0.5f - 0.5f * cosf(2.0f * (float)M_PI * i / FFT_N);
+    for (int i = 0; i < FFT_N / 2; i++) twC[i] = cosf(2.0f * (float)M_PI * i / FFT_N), twS[i] = -sinf(2.0f * (float)M_PI * i / FFT_N);
+    int last = EQ_BIN_LO - 1;
+    for (int j = 0; j <= EQ_BANDS; j++) {  // log spaced edges, each band at least one bin wide
+      int b = (int)lrintf(EQ_BIN_LO * powf((float)EQ_BIN_HI / EQ_BIN_LO, (float)j / EQ_BANDS));
+      if (b <= last) b = last + 1;
+      bandBin[j] = (uint16_t)b;
+      last = b;
+    }
+    fftReady = true;
+  }
+  float sq = 0;
+  for (int i = 0; i < FFT_N; i++) {  // windowed, in bit-reversed order
+    float v = ring[(pos - FFT_N + i) & mask];
+    sq += v * v;
+    int r = 0;
+    for (int b = 0; b < FFT_LOG2; b++) r |= ((i >> b) & 1) << (FFT_LOG2 - 1 - b);
+    fftRe[r] = v * hann[i];
+    fftIm[r] = 0;
+  }
+  s.eqSilent = sqrtf(sq / FFT_N) < EQ_SILENT_RMS;
+  for (int len = 2; len <= FFT_N; len <<= 1) {
+    int half = len / 2, step = FFT_N / len;
+    for (int i = 0; i < FFT_N; i += len)
+      for (int k = 0; k < half; k++) {
+        float c = twC[k * step], sn = twS[k * step];
+        int a = i + k, b = a + half;
+        float xr = fftRe[b] * c - fftIm[b] * sn, xi = fftRe[b] * sn + fftIm[b] * c;
+        fftRe[b] = fftRe[a] - xr, fftIm[b] = fftIm[a] - xi;
+        fftRe[a] += xr, fftIm[a] += xi;
+      }
+  }
+  for (int j = 0; j < EQ_BANDS; j++) {
+    float p = 1e-3f;
+    for (int k = bandBin[j]; k < bandBin[j + 1]; k++) p += fftRe[k] * fftRe[k] + fftIm[k] * fftIm[k];
+    s.eqDb[j] = 10.0f * log10f(p);
+  }
+  s.eqFresh = true;
+}
+
+// Graphic-equalizer bars and peak dots, from the latest spectrum.
+static void updateEq(State& s, float dt) {
+  if (s.eqFresh) {
+    s.eqFresh = false;
+    if (!s.eqSilent && !s.eqAvgSet) {
+      for (int j = 0; j < EQ_BANDS; j++) s.eqAvg[j] = s.eqDb[j];
+      s.eqAvgSet = true;
+    }
+    float k = 1.0f - expf(-dt / EQ_AVG_S);
+    for (int j = 0; j < EQ_BANDS; j++) {
+      float t = 0;
+      if (!s.eqSilent) {
+        t = EQ_MID + (s.eqDb[j] - s.eqAvg[j]) / EQ_SPAN_DB;
+        s.eqAvg[j] += (s.eqDb[j] - s.eqAvg[j]) * k;
+      }
+      if (t < 0) t = 0;
+      if (t > 1) t = 1;
+      float n = t * EQ_NSEG;
+      if (n > s.eqH[j]) s.eqH[j] = n;
+    }
+  }
+  for (int j = 0; j < EQ_BANDS; j++) {
+    s.eqH[j] -= EQ_FALL_SEG_S * dt;
+    if (s.eqH[j] < 0) s.eqH[j] = 0;
+    if (s.eqH[j] >= s.eqPeak[j]) {
+      s.eqPeak[j] = s.eqH[j];
+      s.eqHold[j] = PEAK_HOLD_S;
+    } else if ((s.eqHold[j] -= dt) < 0) {
+      s.eqPeak[j] -= PEAK_FALL_SEG_S * dt;
+      if (s.eqPeak[j] < s.eqH[j]) s.eqPeak[j] = s.eqH[j];
+    }
+  }
+}
+
+// The equalizer comes and goes: every MODE_MS, or when the music comes back after a gap between songs.
+static void updateTurns(State& s, uint32_t nowMs, float dt) {
+  bool silent = s.prevDb <= DB_SILENT;
+  bool turn = nowMs - s.modeSinceMs >= MODE_MS;
+  if (silent && !s.wasSilent) s.silentSinceMs = nowMs;
+  if (!silent && s.wasSilent && nowMs - s.silentSinceMs >= GAP_MS && nowMs - s.modeSinceMs >= MODE_MIN_MS) turn = true;
+  s.wasSilent = silent;
+  bool rise = false;
+  if (turn && s.fade == 0) {  // on to the next pattern: none, aqua, KariPom
+    s.modeSinceMs = nowMs;
+    s.next = (uint8_t)((s.pattern + 1) % 3);
+    if (s.eq) s.fade = -1;  // sink first; the next equalizer, if any, rises after
+    else rise = true;
+  }
+  if (s.fade < 0 && (s.scale -= dt / FADE_S) <= 0) {
+    s.scale = 0;
+    s.eq = false;
+    s.fade = 0;
+    rise = true;
+  }
+  if (rise) {
+    s.pattern = s.next;
+    if (s.pattern) {
+      s.eq = true;
+      s.fade = 1;
+      s.scale = 0;
+      s.eqAvgSet = false;  // the band averages start over from the music now playing
+      for (int j = 0; j < EQ_BANDS; j++) s.eqH[j] = s.eqPeak[j] = 0, s.eqHold[j] = 0;
+    }
+  } else if (s.fade > 0 && (s.scale += dt / FADE_S) >= 1) {
+    s.scale = 1;
+    s.fade = 0;
+  }
 }
 
 // A random interval between lo and hi ms.
@@ -329,11 +511,14 @@ static void update(State& s, uint32_t nowMs) {
   s.lunge += ((aim ? LUNGE_PX : 0.0f) - s.lunge) * (1.0f - expf(-dt / LUNGE_EASE_S));
   int sx = baseX + (int)lrintf(s.lunge);
 
+  updateTurns(s, nowMs, dt);
+  if (s.eq) updateEq(s, dt);
+
   // Look at the terrain from the fighter to 60 px ahead, so it rises before a loud passage reaches it.
   int tallest = GROUND;
-  for (int i = 0; i < COLS; i++) {
-    int x = colX(i, off);
-    if (x + BAR_W > sx && x < sx + SHIP_W + 60 && s.h[i] > tallest) tallest = s.h[i];
+  for (int x = sx; x < sx + SHIP_W + 60; x += 2) {
+    int h = heightAt(s, x, off);
+    if (h > tallest) tallest = h;
   }
   float target = H - tallest - SHIP_H - SHIP_CLEAR;
   if (target > H - GROUND - SHIP_H - SHIP_CLEAR) target = H - GROUND - SHIP_H - SHIP_CLEAR;
@@ -631,6 +816,20 @@ static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
       int x = x0 + dx;
       if ((unsigned)x >= (unsigned)W) continue;
       for (int k = 0; k < h; k++) fb[(H - 1 - k) * W + x] = s.lit[k];  // the sky above stays black
+    }
+  }
+  if (s.eq) {  // the equalizer in front: its own gap rows black, so it reads as LEDs over the terrain
+    static const uint16_t PEAK = swap(rgb(255, 255, 255));
+    for (int j = 0; j < EQ_BANDS; j++) {
+      int x0 = j * PITCH + (PITCH - BAR_W) / 2, h = eqHeight(s, j);
+      int peak = s.scale >= 1 ? ((int)lrintf(s.eqPeak[j]) - 1) * SEG_PITCH : -1;  // peak dot: its top segment
+      if (peak < h) peak = -1;
+      for (int dx = 0; dx < BAR_W; dx++) {
+        int x = x0 + dx;
+        for (int k = 0; k < h; k++) fb[(H - 1 - k) * W + x] = k % SEG_PITCH < SEG_H ? s.eqCol[s.pattern - 1][j] : 0;
+        if (peak >= 0)
+          for (int k = peak; k < peak + SEG_H; k++) fb[(H - 1 - k) * W + x] = PEAK;
+      }
     }
   }
 
