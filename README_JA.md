@@ -4,8 +4,8 @@
 
 [English README](README.md)
 
-> **状態: 設計段階です。** ファームウェアはまだ書いていません。設計は
-> [`docs/DESIGN_JA.md`](docs/DESIGN_JA.md) にあります。このリポジトリの内容は、まだ実機で確認していません。
+> **状態: 開発の初期段階です。** 設計は [`docs/DESIGN_JA.md`](docs/DESIGN_JA.md) にあります。最初の試作機（USBスピーカーだけ、
+> [`firmware/KeySpeaker_S0/`](firmware/KeySpeaker_S0/)）は、Macで音が出て、音量も十分なことを確認しました。長時間の再生など、そのほかの確認はこれからです。
 
 ## 発案のきっかけ
 

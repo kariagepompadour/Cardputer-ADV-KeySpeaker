@@ -4,8 +4,9 @@
 
 [日本語版 README](README_JA.md)
 
-> **Status: design stage.** No firmware has been written yet. The design is in
-> [`docs/DESIGN_JA.md`](docs/DESIGN_JA.md) (Japanese). Nothing in this repository has been tested on hardware.
+> **Status: early development.** The design is in [`docs/DESIGN_JA.md`](docs/DESIGN_JA.md) (Japanese). The first
+> probe, a USB speaker only ([`firmware/KeySpeaker_S0/`](firmware/KeySpeaker_S0/)), plays on a Mac at a good
+> level. Long playback and the other checks are still to do.
 
 ## The idea
 
