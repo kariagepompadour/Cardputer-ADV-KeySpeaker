@@ -10,12 +10,16 @@
     - Does NOT correct the clock difference between the computer and the Cardputer yet (that is S1). Instead it
       measures it: once a second it reports the buffer fill, underruns, overruns and the rates in ppm, on the screen
       and on the USB serial port.
+    - (S0-3) A second screen, the flight visualizer (FlightViz.h): the level history as scrolling terrain, with a
+      small fighter flying over it. It measures the level of what the computer sends, before its volume, and does
+      not touch the audio path. The measurement screen stays the default.
     - No keyboard to the computer, no Bluetooth, no Wi-Fi.
 
   Keys on the Cardputer (local only, never sent to the computer):
     -  /  =   boost down / up (0 .. +18 dB in 3 dB steps)
     b         bass cut on / off (to compare)
     r         reset the counters
+    v         measurement screen / flight visualizer
 
   Required Arduino IDE settings (Tools menu), enforced by #error below:
     Board: M5Cardputer (m5stack:esp32 3.3.10)
@@ -31,8 +35,9 @@
 #include "esp32-hal-tinyusb.h"
 #include "soc/usb_struct.h"
 #include <freertos/stream_buffer.h>
+#include "FlightViz.h"
 
-#define BUILD_TAG "S0-2"
+#define BUILD_TAG "S0-3"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -83,6 +88,8 @@ static std::atomic<int> boostDb{BOOST_DEFAULT_DB};
 static std::atomic<bool> bassCut{true};
 static std::atomic<float> limitDbMax{0};       // deepest limiter gain reduction (dB, <= 0) since the last report
 static std::atomic<int16_t> outPeak{0};        // largest |sample| sent to the speaker since the last screen update
+static std::atomic<int16_t> vizLevel{0};       // loudest 10 ms RMS from the computer (before its volume) since the last
+                                               // visualizer column; 0 while muted
 
 // High-pass biquad (RBJ cookbook, Q = 0.7071) and the limiter's state; touched only by playTask.
 struct Biquad {
@@ -148,6 +155,24 @@ static int16_t monoBuf[256];
 static bool ringWasFull = false;
 
 static void onSpkData(void* data, uint16_t len) {
+  // Visualizer level (S0-3): measured before the host volume, so the bars follow the music, not the volume knob.
+  static float vizSum = 0;
+  static size_t vizN = 0;
+  {
+    const int16_t* r = static_cast<const int16_t*>(data);
+    size_t n = len / 4;
+    for (size_t i = 0; i < n; i++) {
+      float m = ((int32_t)r[2 * i] + r[2 * i + 1]) * 0.5f;
+      vizSum += m * m;
+    }
+    vizN += n;
+    if (vizN >= CHUNK) {
+      int16_t rms = uac.mute(UAC_CHAN_MASTER) ? 0 : (int16_t)sqrtf(vizSum / vizN);
+      if (rms > vizLevel) vizLevel = rms;
+      vizSum = 0;
+      vizN = 0;
+    }
+  }
   uac.applyVolume(data, len);
   const int16_t* s = static_cast<const int16_t*>(data);
   size_t frames = len / 4;  // 2 channels x 2 bytes
@@ -331,8 +356,42 @@ static void drawScreen(float rxPpm, float playPpm, uint32_t fillNow, uint32_t el
   canvas.drawString(l, 134, 112);
 
   canvas.setTextColor(COL_DIM);
-  canvas.drawString("-/= boost  b bass  r reset", 4, 125);
+  canvas.drawString("-/= boost  b bass  r reset  v view", 4, 125);
   canvas.pushSprite(0, 0);
+}
+
+// ---- Flight visualizer screen (S0-3): about 30 frames a second, drawn straight into the canvas buffer.
+// It runs in loop(), below the audio tasks' priority, so a slow frame only lowers the frame rate.
+static constexpr uint32_t FRAME_MS = 33;
+static bool vizView = false;
+static flightviz::State viz;
+static std::atomic<uint32_t> drawMaxUs{0};     // slowest visualizer frame (draw + push) since the last report
+
+static void drawViz(uint32_t now) {
+  uint32_t t0 = micros();
+  if (!viz.ready || now - viz.lastColMs > 1000) flightviz::init(viz, now);  // first time, or back from the other screen
+  while (now - viz.lastColMs >= flightviz::COL_MS) {
+    viz.lastColMs += flightviz::COL_MS;
+    flightviz::push(viz, vizLevel.exchange(0));
+  }
+  flightviz::update(viz, now);
+  flightviz::render(viz, static_cast<uint16_t*>(canvas.getBuffer()), now);
+
+  // Status line, kept small and dim so the terrain stays the main thing.
+  char l[48];
+  bool mounted = (bool)USB, st = streaming;
+  uint32_t u = underruns, o = overruns;
+  canvas.setTextSize(1);
+  canvas.setTextColor(st ? COL_DIM : mounted ? COL_WARN : COL_BAD);
+  snprintf(l, sizeof l, "%s  +%ddB %s", st ? "USB" : mounted ? "USB no stream" : "not connected", boostDb.load(), bassCut ? "cut" : "full");
+  canvas.drawString(l, 4, 2);
+  canvas.setTextColor(u || o ? COL_BAD : COL_DIM);
+  snprintf(l, sizeof l, "%sU%lu O%lu", uac.mute(UAC_CHAN_MASTER) ? "MUTE " : "", (unsigned long)u, (unsigned long)o);
+  canvas.drawRightString(l, 236, 2);
+  canvas.pushSprite(0, 0);
+
+  uint32_t us = micros() - t0;
+  if (us > drawMaxUs) drawMaxUs = us;
 }
 
 // ---- Local keys
@@ -353,6 +412,9 @@ static void keyService() {
       resetCounters();
       rw.active = false;
       Serial.println("[KEY] counters reset");
+    } else if (c == 'v') {
+      vizView = !vizView;
+      Serial.printf("[KEY] view %s\n", vizView ? "flight" : "measure");
     }
   }
 }
@@ -400,7 +462,7 @@ void loop() {
   usbLinkService();
   keyService();
 
-  static uint32_t lastScreen = 0, lastLog = 0;
+  static uint32_t lastScreen = 0, lastFrame = 0, lastLog = 0;
   uint32_t now = millis();
 
   // The rate window starts with the first data of a stream and ends when the stream stops.
@@ -418,7 +480,12 @@ void loop() {
   float playPpm = rw.active ? ppm(playedSamples - rw.played0, elapsedMs) : 0;
   uint32_t fillNow = (uint32_t)(xStreamBufferBytesAvailable(ring) / 2);
 
-  if (now - lastScreen >= 250) {
+  if (vizView) {
+    if (now - lastFrame >= FRAME_MS) {
+      lastFrame = now;
+      drawViz(now);
+    }
+  } else if (now - lastScreen >= 250) {
     lastScreen = now;
     drawScreen(rxPpm, playPpm, fillNow, elapsedMs / 1000);
   }
@@ -426,11 +493,12 @@ void loop() {
     lastLog = now;
     uint32_t fmin = fillMin.exchange(RING_SAMPLES), fmax = fillMax.exchange(0);
     float lim = limitDbMax.exchange(0);
-    Serial.printf("[S0] t=%lu stream=%d sof=%d fill=%lu ms min=%lu max=%lu under=%lu over=%lu drop=%lu rx_ppm=%+.1f spk_ppm=%+.1f vol=%d mute=%d boost=%d cut=%d lim=%.1f dB heap=%u\n",
+    Serial.printf("[S0] t=%lu stream=%d sof=%d fill=%lu ms min=%lu max=%lu under=%lu over=%lu drop=%lu rx_ppm=%+.1f spk_ppm=%+.1f vol=%d mute=%d boost=%d cut=%d lim=%.1f dB heap=%u view=%s draw_max=%.1f ms\n",
                   (unsigned long)(elapsedMs / 1000), (int)streaming.load(), (int)sofMoving, (unsigned long)(fillNow * 1000 / RATE),
                   (unsigned long)(fmin == RING_SAMPLES ? 0 : fmin * 1000 / RATE), (unsigned long)(fmax * 1000 / RATE), (unsigned long)underruns.load(),
                   (unsigned long)overruns.load(), (unsigned long)droppedSamples.load(), rxPpm, playPpm, (int)uac.volume(UAC_CHAN_MASTER),
-                  (int)uac.mute(UAC_CHAN_MASTER), boostDb.load(), (int)bassCut.load(), lim, (unsigned)ESP.getFreeHeap());
+                  (int)uac.mute(UAC_CHAN_MASTER), boostDb.load(), (int)bassCut.load(), lim, (unsigned)ESP.getFreeHeap(),
+                  vizView ? "flight" : "measure", drawMaxUs.exchange(0) / 1000.0f);
   }
   delay(5);
 }
