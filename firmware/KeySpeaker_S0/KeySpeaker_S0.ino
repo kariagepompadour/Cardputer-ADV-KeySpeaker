@@ -37,7 +37,7 @@
 #include <freertos/stream_buffer.h>
 #include "FlightViz.h"
 
-#define BUILD_TAG "S0-3"
+#define BUILD_TAG "S0-4"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
