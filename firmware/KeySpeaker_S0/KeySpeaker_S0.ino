@@ -80,6 +80,7 @@ static std::atomic<uint32_t> playedSamples{0}; // mono samples handed to M5.Spea
 static std::atomic<uint32_t> droppedSamples{0};// samples thrown away because the ring was full
 static std::atomic<uint32_t> overruns{0};      // times the ring became full
 static std::atomic<uint32_t> underruns{0};     // times the ring ran dry while the computer was streaming
+static std::atomic<uint32_t> playStarts{0};    // times playTask (re)started playing after buffering
 static std::atomic<uint32_t> fillMin{RING_SAMPLES}, fillMax{0};  // ring fill (samples) since the last report
 static std::atomic<uint32_t> lastRxMs{0};      // millis() of the last USB audio data
 static std::atomic<int16_t> rxPeak{0};         // largest |sample| since the last screen update
@@ -221,6 +222,7 @@ static void playTask(void*) {
         continue;
       }
       playing = true;
+      playStarts++;
     }
     if (M5.Speaker.isPlaying(SPK_CH) >= 2) {  // both slots taken: wait for one to be played
       vTaskDelay(1);
@@ -287,12 +289,47 @@ static void usbLinkService() {
 
 // ---- Rates since streaming started, measured against the Cardputer's own clock (millis)
 // rxPpm: how much faster (+) or slower (-) than 48000 Hz the computer sends.
-// playPpm: the same for what the speaker consumes. The difference is the drift S1 has to correct.
+// playPpm: the same for what the speaker consumes. Both include the start-up buffering, so for the first minutes they
+// are far off; they are only logged. The screen shows the drift from the buffer trend below.
 struct RateWindow {
   bool active = false;
   uint32_t startMs = 0, rx0 = 0, played0 = 0;
 };
 static RateWindow rw;
+
+// ---- Drift from the buffer trend (S0-3)
+// The rates above include the start-up buffering, which dominates for minutes. The buffer level itself shows the
+// drift: it rises when the computer sends faster than the speaker plays and falls when slower. Once a second the
+// change of the buffer's mid level is added up, but only between two seconds of uninterrupted play (no stream gap, no
+// restart), so pauses between songs simply leave a gap in the sum. Positive: the computer is faster.
+struct BufTrend {
+  bool have = false;
+  uint32_t lastStarts = 0, lastMs = 0;
+  float lastMid = 0;
+  double sumDelta = 0, sumMs = 0;  // samples, ms of uninterrupted play
+};
+static BufTrend bt;
+static constexpr double TREND_MIN_MS = 60000;  // show a value after one minute of play
+
+static void bufTrendSample(uint32_t now, bool live, uint32_t fmin, uint32_t fmax) {
+  bool valid = live && fmin != RING_SAMPLES && fmax > 0;  // played during the whole last second
+  uint32_t starts = playStarts;
+  float mid = (fmin + fmax) * 0.5f;
+  if (valid && bt.have && starts == bt.lastStarts) {
+    bt.sumDelta += mid - bt.lastMid;
+    bt.sumMs += now - bt.lastMs;
+  }
+  bt.have = valid;
+  bt.lastStarts = starts;
+  bt.lastMs = now;
+  bt.lastMid = mid;
+}
+
+static bool bufTrendPpm(float* out) {
+  if (bt.sumMs < TREND_MIN_MS) return false;
+  *out = (float)(bt.sumDelta / (bt.sumMs / 1000.0) / RATE * 1e6);
+  return true;
+}
 
 static float ppm(uint32_t samples, uint32_t ms) {
   if (ms < 1000) return 0;
@@ -305,7 +342,7 @@ static M5Canvas canvas(&M5Cardputer.Display);
 static constexpr uint16_t COL_BG = 0x0000, COL_FG = 0xFFFF, COL_DIM = 0x8410, COL_OK = 0x07E0, COL_WARN = 0xFFE0,
                           COL_BAD = 0xF800, COL_AMBER = 0xFD20;
 
-static void drawScreen(float rxPpm, float playPpm, uint32_t fillNow, uint32_t elapsedS) {
+static void drawScreen(uint32_t fillNow, uint32_t elapsedS) {
   char l[48];
   canvas.fillSprite(COL_BG);
   canvas.setTextSize(2);
@@ -338,7 +375,12 @@ static void drawScreen(float rxPpm, float playPpm, uint32_t fillNow, uint32_t el
   canvas.drawString(l, 4, 64);
 
   canvas.setTextColor(COL_FG);
-  snprintf(l, sizeof l, "drift PC %+.0f  SPK %+.0f ppm", rxPpm, playPpm);
+  float drift;
+  uint32_t playS = (uint32_t)(bt.sumMs / 1000);
+  if (bufTrendPpm(&drift))
+    snprintf(l, sizeof l, "drift %+.0f ppm  (%lu:%02lu played)", drift, (unsigned long)(playS / 60), (unsigned long)(playS % 60));
+  else
+    snprintf(l, sizeof l, "drift --  (%lu:%02lu played, needs 1:00)", (unsigned long)(playS / 60), (unsigned long)(playS % 60));
   canvas.drawString(l, 4, 76);
   snprintf(l, sizeof l, "since %lu:%02lu:%02lu", (unsigned long)(elapsedS / 3600), (unsigned long)(elapsedS / 60 % 60), (unsigned long)(elapsedS % 60));
   canvas.drawString(l, 4, 88);
@@ -413,6 +455,7 @@ static void keyService() {
     } else if (c == 'r') {
       resetCounters();
       rw.active = false;
+      bt = BufTrend();
       Serial.println("[KEY] counters reset");
     } else if (c == 'v') {
       vizView = !vizView;
@@ -489,18 +532,22 @@ void loop() {
     }
   } else if (now - lastScreen >= 250) {
     lastScreen = now;
-    drawScreen(rxPpm, playPpm, fillNow, elapsedMs / 1000);
+    drawScreen(fillNow, elapsedMs / 1000);
   }
   if (now - lastLog >= 1000) {
     lastLog = now;
     uint32_t fmin = fillMin.exchange(RING_SAMPLES), fmax = fillMax.exchange(0);
     float lim = limitDbMax.exchange(0);
-    Serial.printf("[S0] t=%lu stream=%d sof=%d fill=%lu ms min=%lu max=%lu under=%lu over=%lu drop=%lu rx_ppm=%+.1f spk_ppm=%+.1f vol=%d mute=%d boost=%d cut=%d lim=%.1f dB heap=%u view=%s draw_max=%.1f ms\n",
+    bufTrendSample(now, live, fmin, fmax);
+    float drift = 0;
+    bool driftOk = bufTrendPpm(&drift);
+    Serial.printf("[S0] t=%lu stream=%d sof=%d fill=%lu ms min=%lu max=%lu under=%lu over=%lu drop=%lu rx_ppm=%+.1f spk_ppm=%+.1f vol=%d mute=%d boost=%d cut=%d lim=%.1f dB heap=%u view=%s draw_max=%.1f ms buf_ppm=%s%.1f buf_s=%lu\n",
                   (unsigned long)(elapsedMs / 1000), (int)streaming.load(), (int)sofMoving, (unsigned long)(fillNow * 1000 / RATE),
                   (unsigned long)(fmin == RING_SAMPLES ? 0 : fmin * 1000 / RATE), (unsigned long)(fmax * 1000 / RATE), (unsigned long)underruns.load(),
                   (unsigned long)overruns.load(), (unsigned long)droppedSamples.load(), rxPpm, playPpm, (int)uac.volume(UAC_CHAN_MASTER),
                   (int)uac.mute(UAC_CHAN_MASTER), boostDb.load(), (int)bassCut.load(), lim, (unsigned)ESP.getFreeHeap(),
-                  vizView ? "flight" : "measure", drawMaxUs.exchange(0) / 1000.0f);
+                  vizView ? "flight" : "measure", drawMaxUs.exchange(0) / 1000.0f, driftOk ? "" : "~", drift,
+                  (unsigned long)(bt.sumMs / 1000));
   }
   delay(5);
 }
