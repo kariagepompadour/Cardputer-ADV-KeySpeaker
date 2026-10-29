@@ -88,8 +88,8 @@ static std::atomic<int> boostDb{BOOST_DEFAULT_DB};
 static std::atomic<bool> bassCut{true};
 static std::atomic<float> limitDbMax{0};       // deepest limiter gain reduction (dB, <= 0) since the last report
 static std::atomic<int16_t> outPeak{0};        // largest |sample| sent to the speaker since the last screen update
-static std::atomic<int16_t> vizLevel{0};       // loudest 10 ms RMS from the computer (before its volume) since the last
-                                               // visualizer column; 0 while muted
+static std::atomic<uint32_t> vizSum{0}, vizCount{0};  // 10 ms RMS levels from the computer (before its volume) since
+                                                       // the last visualizer column, summed and counted; 0 while muted
 
 // High-pass biquad (RBJ cookbook, Q = 0.7071) and the limiter's state; touched only by playTask.
 struct Biquad {
@@ -156,20 +156,21 @@ static bool ringWasFull = false;
 
 static void onSpkData(void* data, uint16_t len) {
   // Visualizer level (S0-3): measured before the host volume, so the bars follow the music, not the volume knob.
-  static float vizSum = 0;
+  static float vizAcc = 0;
   static size_t vizN = 0;
   {
     const int16_t* r = static_cast<const int16_t*>(data);
     size_t n = len / 4;
     for (size_t i = 0; i < n; i++) {
       float m = ((int32_t)r[2 * i] + r[2 * i + 1]) * 0.5f;
-      vizSum += m * m;
+      vizAcc += m * m;
     }
     vizN += n;
     if (vizN >= CHUNK) {
-      int16_t rms = uac.mute(UAC_CHAN_MASTER) ? 0 : (int16_t)sqrtf(vizSum / vizN);
-      if (rms > vizLevel) vizLevel = rms;
-      vizSum = 0;
+      uint32_t rms = uac.mute(UAC_CHAN_MASTER) ? 0 : (uint32_t)sqrtf(vizAcc / vizN);
+      vizSum += rms;
+      vizCount++;
+      vizAcc = 0;
       vizN = 0;
     }
   }
@@ -372,7 +373,8 @@ static void drawViz(uint32_t now) {
   if (!viz.ready || now - viz.lastColMs > 1000) flightviz::init(viz, now);  // first time, or back from the other screen
   while (now - viz.lastColMs >= flightviz::COL_MS) {
     viz.lastColMs += flightviz::COL_MS;
-    flightviz::push(viz, vizLevel.exchange(0));
+    uint32_t n = vizCount.exchange(0), sum = vizSum.exchange(0);
+    flightviz::push(viz, n ? (float)sum / n : 0);
   }
   flightviz::update(viz, now);
   flightviz::render(viz, static_cast<uint16_t*>(canvas.getBuffer()), now);
