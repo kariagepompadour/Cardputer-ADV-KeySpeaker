@@ -6,11 +6,11 @@
 
 [日本語版 README](README_JA.md)
 
-> **Status: early development.** The design is in [`docs/DESIGN_JA.md`](docs/DESIGN_JA.md) (Japanese). The USB
-> speaker ([`firmware/KeySpeaker_S0/`](firmware/KeySpeaker_S0/), now with the clock-drift correction) plays on a
-> Mac at a good level: 3 hours without a dropout, and pausing and resuming playback works. The keyboard is next.
-> Windows and the other devices are not tested yet. Test notes: [`docs/S0_TEST_JA.md`](docs/S0_TEST_JA.md)
-> (Japanese).
+> **Status: early development.** On a Mac, one USB-C cable now gives you both: the speaker plays at a good level
+> (3 hours without a dropout, pause and resume work) and the keyboard types, with volume and playback keys. Bluetooth,
+> the tilt mouse and Windows are still to come or to test. Firmware: [`firmware/KeySpeaker_S0/`](firmware/KeySpeaker_S0/).
+> The detailed design and test notes are in Japanese for now: [`docs/DESIGN_JA.md`](docs/DESIGN_JA.md),
+> [`docs/S0_TEST_JA.md`](docs/S0_TEST_JA.md).
 
 ## The idea
 
@@ -33,10 +33,45 @@ Ways to use it:
 - As a Bluetooth LE keyboard for a Mac, an iPhone or an iPad, and with luck a console or a TV.
 - As a **USB-C earphone adapter**: plug earphones into the Cardputer's jack (mono: both ears get the same sound).
 
-`Fn+M` switches the screen between a data view, a visualizer and the keyboard. Keys go to the other device only on
-the keyboard screen, where Shift, Ctrl, Alt, Command/Windows, cursor keys and F-keys work through an `Fn` layer. On
-the other two screens, a few keys control the volume, mute and play/pause. The keyboard is small: it is meant for
-short entries, not long texts.
+The keyboard is small: it is meant for short entries (a search box, a password field, a console's text screen), not
+long texts.
+
+## Modes and keys
+
+It starts with the KariPom emblem on a speaker grille. `Fn+M` then cycles through three modes; the last one is
+remembered.
+
+| Mode | Screen | Keys |
+| --- | --- | --- |
+| **Data** | Buffer, clock drift, volume and level meters | Speaker and playback keys (below) |
+| **Game** | A flight over the music: the volume as terrain, a little fighter, a Showa-era graphic equalizer | Speaker and playback keys (below) |
+| **Keyboard** | A key cheat sheet (a slowly spinning Earth is coming) | Every key goes to the computer |
+
+Speaker and playback keys (Data and Game modes):
+
+| Key | Does |
+| --- | --- |
+| `[` / `]` / `\` | Volume down / up / mute on the computer |
+| `Space` | Play / pause |
+| `,` / `/` | Previous / next track |
+| `v` | Data ↔ Game |
+| any other key | Shows the emblem with a hint: `Fn+M  KEYBOARD` |
+
+Keyboard mode (letters, Shift, Ctrl, Tab, Enter and Del go straight through):
+
+| Key | Does |
+| --- | --- |
+| `Fn+;` `Fn+,` `Fn+.` `Fn+/` | ↑ ← ↓ → |
+| `Fn+Shift+` the same | Page Up / Home / Page Down / End |
+| `` Fn+` `` | Esc |
+| `Fn+1` … `Fn+=` | F1 … F12 |
+| `Fn+Del` | Forward delete |
+| `Fn+[` / `Fn+]` | Japanese input: A / あ (the 英数 / かな keys, LANG2 / LANG1). The screen shows the last one, like the Mac's menu bar |
+| `alt` / `opt` | Mac: Command / Option. Windows: Alt / Win |
+| `Fn+O` | Mac ↔ Windows profile (remembered) |
+
+Coming next: a **tilt mouse** for when there is no mouse at hand: hold the side button (G0) and tilt to move the
+pointer, tap G0 to click, `Fn+G0` to right-click, G0 with `;` / `.` to scroll.
 
 ## Scope
 

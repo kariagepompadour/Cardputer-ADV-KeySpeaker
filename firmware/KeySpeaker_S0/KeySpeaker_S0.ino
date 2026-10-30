@@ -30,6 +30,13 @@
     - (S1-9) The emblem at 80 % of its size on the startup screen.
     - (S1-10) The startup screen with the speaker's rubber bumper, white around it and a white base. (S1-11) Back to
       the grille filling the screen: the LCD's white never matches the Cardputer's white body.
+    - (S2-1) A USB keyboard and media keys next to the speaker, and three modes on Fn+M (design 8.3): the measurement
+      screen and the flight visualizer use the keys for the volume and playback on the computer and for local
+      settings; the keyboard mode sends every key to the computer, with an Fn layer and a Mac / Windows profile
+      (Fn+O). The mode and the profile are remembered. Without USB only the keyboard mode is shown.
+    - (S2-2) The keyboard screen shows a cheat sheet of its keys, keys and meanings in two colors. (S2-3) It also
+      shows the last input switch, A or あ (Fn+[ / Fn+]), like the Mac's menu bar.
+    - (S2-4) Keys still held from the launcher are ignored at start, and the startup screen never shows the hint.
     - (S0-3) A second screen, the flight visualizer (FlightViz.h): the level history as scrolling terrain, with a
       small fighter flying over it. It measures the level of what the computer sends, before its volume, and does
       not touch the audio path. The measurement screen stays the default.
@@ -56,6 +63,9 @@
 #include <M5Cardputer.h>
 #include "USB.h"
 #include "USBAudioCard.h"
+#include "USBHIDKeyboard.h"
+#include "USBHIDConsumerControl.h"
+#include <Preferences.h>
 #include "esp32-hal-tinyusb.h"
 #include "soc/usb_struct.h"
 #include <freertos/stream_buffer.h>
@@ -65,7 +75,7 @@
 #include "UsbIsoFix.h"
 #include "Splash.h"
 
-#define BUILD_TAG "S1-11"
+#define BUILD_TAG "S2-4"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -101,6 +111,10 @@ static constexpr int BOOST_MAX_DB = 18, BOOST_STEP_DB = 3, BOOST_DEFAULT_DB = 9;
 // The descriptor is registered by this constructor. It runs before the core starts USB (CDC On Boot), so the
 // computer sees the speaker from the first enumeration. Speaker only: no microphone interface.
 USBAudioCard uac(RATE, UAC_BPS_16, UAC_SPK_STEREO, UAC_MIC_NONE);
+// (S2-1) The keyboard must be the first HID object: the first one sets the HID interface's protocol, and a boot
+// keyboard gets endpoint 1. Both register with TinyUSB in their constructors, before USB starts.
+USBHIDKeyboard kbd;
+USBHIDConsumerControl media;
 
 static StreamBufferHandle_t ring = nullptr;   // writer: uacReceiveTask (onSpkData), reader: playTask
 
@@ -572,7 +586,7 @@ static void drawScreen(uint32_t fillNow, uint32_t elapsedS) {
   canvas.drawString(l, 134, 112);
 
   canvas.setTextColor(COL_DIM);
-  canvas.drawString("-/= boost  b bass  r reset  v view", 4, 125);
+  canvas.drawString("[ ]\\ vol  spc play  v view  Fn+M mode", 4, 125);
   canvas.pushSprite(0, 0);
 }
 
@@ -612,48 +626,294 @@ static void drawViz(uint32_t now) {
   if (us > drawMaxUs) drawMaxUs = us;
 }
 
-// ---- Emblem screen (S1-7, S1-8, design 8.3): shown at start and on a key with no job, for SPLASH_MS. A key with a
-// job does it and closes the screen; v closes it to the measurement screen; another key with no job starts the
-// 2 seconds again.
+// ---- Modes (S2-1, design 8.3): Fn+M cycles measurement -> visualizer -> keyboard. Only the keyboard mode sends keys
+// to the computer; the other two use them for the computer's volume and playback and for local settings. Without USB
+// there is nothing to measure or show, so only the keyboard mode is shown (Bluetooth comes in S5).
+enum Mode : uint8_t { MODE_DATA, MODE_GAME, MODE_KEYS, MODE_COUNT };
+static const char* const MODE_NAME[MODE_COUNT] = {"measure", "flight", "keyboard"};
+static uint8_t mode = MODE_DATA;  // chosen with Fn+M, remembered
+static bool osWin = false;        // modifier profile (design 8.2), Fn+O, remembered
+static int8_t inputKana = -1;     // the last input switch sent with Fn+[ / Fn+]: 0 A, 1 あ, -1 not yet. The computer
+                                  // does not report its input mode (a Mac starts in whichever it used last), so this
+                                  // is only what was asked for, and nothing is saved.
+static Preferences prefs;
+
+static uint8_t viewMode() { return (bool)USB ? mode : (uint8_t)MODE_KEYS; }
+
+// ---- Emblem screen (S1-7, S1-8, design 8.3): shown at start and, in the measurement and visualizer modes, on a key
+// with no job, for SPLASH_MS. A key with a job does it and closes the screen; v closes it to the measurement screen;
+// Fn+M closes it and changes the mode; another key with no job starts the 2 seconds again. On a key it also shows
+// how to get to the keyboard mode (splashHint).
 static constexpr uint32_t SPLASH_MS = 2000;
-static bool splashOn = false, splashDrawn = false;
+static bool splashOn = false, splashDrawn = false, splashHint = false, splashAtStart = false;
 static uint32_t splashStartMs = 0;
 
-static void showSplash() {
+static void showSplash(bool hint) {
+  if (!(splashOn && splashAtStart)) splashAtStart = false;
+  hint = hint && !splashAtStart;  // the startup screen never shows the hint; a key only starts its 2 seconds again
+  splashDrawn = splashOn && splashHint == hint;  // loop() draws it when it changes
   splashOn = true;
-  splashDrawn = false;  // loop() draws it
+  splashHint = hint;
   splashStartMs = millis();
 }
 
-// ---- Local keys
+static void drawSplash() {
+  uint16_t* buf = static_cast<uint16_t*>(canvas.getBuffer());
+  memcpy(buf, SPLASH, sizeof SPLASH);
+  if (splashHint) {
+    // Darken the bottom of the grille to about 40 % and write the hint on it.
+    for (int i = SPLASH_W * 121; i < SPLASH_W * SPLASH_H; i++) {
+      uint16_t c = (uint16_t)((buf[i] << 8) | (buf[i] >> 8));
+      uint16_t r = (c >> 11) * 2 / 5, g = ((c >> 5) & 63) * 2 / 5, b = (c & 31) * 2 / 5;
+      c = (uint16_t)((r << 11) | (g << 5) | b);
+      buf[i] = (uint16_t)((c << 8) | (c >> 8));
+    }
+    canvas.setTextColor(0xD69A);  // light gray
+    canvas.drawCenterString("Fn+M  KEYBOARD", 120, 125);
+  }
+  canvas.pushSprite(0, 0);
+}
+
+// ---- Keyboard to the computer (keyboard mode)
+// HID usage IDs of the Fn layer and the modifier bits of a boot keyboard report.
+static constexpr uint8_t HID_ENTER = 0x28, HID_ESC = 0x29, HID_BACKSPACE = 0x2A, HID_TAB = 0x2B, HID_F1 = 0x3A,
+                         HID_HOME = 0x4A, HID_PGUP = 0x4B, HID_DELETE = 0x4C, HID_END = 0x4D, HID_PGDN = 0x4E,
+                         HID_RIGHT = 0x4F, HID_LEFT = 0x50, HID_DOWN = 0x51, HID_UP = 0x52, HID_LANG1 = 0x90,
+                         HID_LANG2 = 0x91;
+static constexpr uint8_t MOD_CTRL = 0x01, MOD_SHIFT = 0x02, MOD_ALT = 0x04, MOD_GUI = 0x08;
+static KeyReport sentReport = {};
+
+static void sendReport(const KeyReport& r) {
+  if (!(bool)USB) {  // nobody to send to (and the send would wait for a timeout)
+    sentReport = KeyReport{};
+    return;
+  }
+  if (memcmp(&r, &sentReport, sizeof r) == 0) return;
+  sentReport = r;
+  KeyReport copy = r;
+  kbd.sendReport(&copy);
+}
+
+static void releaseAllKeys() { sendReport(KeyReport{}); }
+
+// The Fn layer (design 8.3) for one key, given by its unshifted label; 0 when Fn gives it no meaning here.
+// *noShift tells the caller to drop Shift (Fn+Shift+arrows are PgUp, Home, PgDn, End).
+static uint8_t fnKey(uint8_t label, bool shift, bool* noShift) {
+  *noShift = false;
+  switch (label) {
+    case ';': *noShift = shift; return shift ? HID_PGUP : HID_UP;
+    case ',': *noShift = shift; return shift ? HID_HOME : HID_LEFT;
+    case '.': *noShift = shift; return shift ? HID_PGDN : HID_DOWN;
+    case '/': *noShift = shift; return shift ? HID_END : HID_RIGHT;
+    case '`': return HID_ESC;
+    case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+      return (uint8_t)(HID_F1 + (label - '1'));
+    case '0': return HID_F1 + 9;
+    case '-': return HID_F1 + 10;
+    case '=': return HID_F1 + 11;
+    case KEY_BACKSPACE: return HID_DELETE;
+    case '[': return HID_LANG2;  // A (英数 on a Japanese Mac keyboard)
+    case ']': return HID_LANG1;  // あ (かな)
+    default: return 0;           // Fn+M, Fn+O and the rest stay on the Cardputer
+  }
+}
+
+// Sends the whole current key state, so a missed change can never leave a key stuck.
+static void sendKeys(const Keyboard_Class::KeysState& ks, const uint8_t* labels, int n) {
+  KeyReport r = {};
+  if (ks.ctrl) r.modifiers |= MOD_CTRL;
+  if (ks.shift) r.modifiers |= MOD_SHIFT;
+  if (ks.alt) r.modifiers |= osWin ? MOD_ALT : MOD_GUI;  // Mac: Command, Windows: Alt
+  if (ks.opt) r.modifiers |= osWin ? MOD_GUI : MOD_ALT;  // Mac: Option, Windows: Win
+  int k = 0;
+  if (!ks.fn) {
+    for (uint8_t code : ks.hid_keys)
+      if (k < 6) r.keys[k++] = code;
+  } else {
+    bool dropShift = false;
+    for (int i = 0; i < n && k < 6; i++) {
+      bool ns;
+      uint8_t code = fnKey(labels[i], ks.shift, &ns);
+      if (code) r.keys[k++] = code;
+      dropShift = dropShift || ns;
+    }
+    if (dropShift) r.modifiers &= (uint8_t)~MOD_SHIFT;
+  }
+  sendReport(r);
+}
+
+static void setMode(uint8_t m) {
+  if (mode == MODE_KEYS && m != MODE_KEYS) releaseAllKeys();
+  mode = m;
+  prefs.putUChar("mode", mode);
+  splashOn = false;
+  Serial.printf("[KEY] mode %s\n", MODE_NAME[mode]);
+}
+
+// ---- Keys
+static uint8_t heldLabels[16];  // unshifted labels of the keys held at the last change
+static int heldCount = 0;
+static bool keysLockedAtStart = true;  // keys still held from the launcher (its Enter) are ignored until all are up
+
 static void keyService() {
-  if (!M5Cardputer.Keyboard.isChange() || !M5Cardputer.Keyboard.isPressed()) return;
+  if (!M5Cardputer.Keyboard.isChange()) return;
   auto ks = M5Cardputer.Keyboard.keysState();
-  bool acted = false, noJob = ks.enter || ks.del || ks.tab || ks.space;
-  for (char c : ks.word) {
-    acted = acted || c == '-' || c == '=' || c == 'b' || c == 'r' || c == 'v';
-    noJob = noJob || !(c == '-' || c == '=' || c == 'b' || c == 'r' || c == 'v' || c == ' ');
-    if (c == '-' || c == '=') {
-      int v = boostDb + (c == '=' ? BOOST_STEP_DB : -BOOST_STEP_DB);
-      if (v < 0) v = 0;
-      if (v > BOOST_MAX_DB) v = BOOST_MAX_DB;
-      boostDb = v;
-      Serial.printf("[KEY] boost +%d dB\n", v);
-    } else if (c == 'b') {
-      bassCut = !bassCut;
-      Serial.printf("[KEY] bass cut %s\n", bassCut ? "on" : "off");
-    } else if (c == 'r') {
-      resetCounters();
-      rw.active = false;
-      bt = BufTrend();
-      Serial.println("[KEY] counters reset");
-    } else if (c == 'v') {
-      vizView = splashOn ? false : !vizView;
-      Serial.printf("[KEY] view %s\n", vizView ? "flight" : "measure");
+  uint8_t labels[16];
+  int n = 0;
+  for (const auto& pos : M5Cardputer.Keyboard.keyList())
+    if (n < 16) labels[n++] = M5Cardputer.Keyboard.getKeyValue(pos).value_first;
+  if (keysLockedAtStart) {
+    if (n > 0) return;
+    keysLockedAtStart = false;
+  }
+  auto isNew = [&](uint8_t c) {
+    for (int i = 0; i < heldCount; i++)
+      if (heldLabels[i] == c) return false;
+    return true;
+  };
+  bool keysMode = viewMode() == MODE_KEYS;
+  bool acted = false, noJob = false;
+
+  for (int i = 0; i < n; i++) {
+    uint8_t c = labels[i];
+    if (!isNew(c)) continue;
+    if (ks.fn) {  // the Cardputer's own Fn keys, in every mode
+      if (c == 'm') {
+        if ((bool)USB) setMode((uint8_t)((mode + 1) % MODE_COUNT));
+        acted = true;
+      } else if (keysMode && (c == '[' || c == ']')) {
+        inputKana = c == ']';
+      } else if (c == 'o') {
+        osWin = !osWin;
+        prefs.putBool("osWin", osWin);
+        Serial.printf("[KEY] profile %s\n", osWin ? "Windows" : "Mac");
+        acted = true;
+      }
+      continue;
+    }
+    if (keysMode) {  // the computer gets them below; nothing is logged, so what is typed stays private
+      acted = true;
+      continue;
+    }
+    switch (c) {
+      case '[': media.press(CONSUMER_CONTROL_VOLUME_DECREMENT); media.release(); acted = true; break;
+      case ']': media.press(CONSUMER_CONTROL_VOLUME_INCREMENT); media.release(); acted = true; break;
+      case '\\': media.press(CONSUMER_CONTROL_MUTE); media.release(); acted = true; break;
+      case ' ': media.press(CONSUMER_CONTROL_PLAY_PAUSE); media.release(); acted = true; break;
+      case ',': media.press(CONSUMER_CONTROL_SCAN_PREVIOUS); media.release(); acted = true; break;
+      case '/': media.press(CONSUMER_CONTROL_SCAN_NEXT); media.release(); acted = true; break;
+      case '-':
+      case '=': {
+        int v = boostDb + (c == '=' ? BOOST_STEP_DB : -BOOST_STEP_DB);
+        if (v < 0) v = 0;
+        if (v > BOOST_MAX_DB) v = BOOST_MAX_DB;
+        boostDb = v;
+        Serial.printf("[KEY] boost +%d dB\n", v);
+        acted = true;
+        break;
+      }
+      case 'b':
+        bassCut = !bassCut;
+        Serial.printf("[KEY] bass cut %s\n", bassCut ? "on" : "off");
+        acted = true;
+        break;
+      case 'r':
+        resetCounters();
+        rw.active = false;
+        bt = BufTrend();
+        Serial.println("[KEY] counters reset");
+        acted = true;
+        break;
+      case 'v':
+        setMode(splashOn || mode == MODE_GAME ? MODE_DATA : MODE_GAME);
+        acted = true;
+        break;
+      case KEY_LEFT_CTRL:
+      case KEY_LEFT_SHIFT:
+      case KEY_LEFT_ALT:
+      case KEY_OPT:
+      case KEY_FN:
+        break;  // modifiers alone do nothing here
+      default:
+        noJob = true;  // letters, Enter, Del, Tab, ...
+        break;
     }
   }
+  if (keysMode) sendKeys(ks, labels, n);
   if (acted) splashOn = false;
-  else if (noJob) showSplash();
+  else if (noJob) showSplash(true);
+  memcpy(heldLabels, labels, n);
+  heldCount = n;
+}
+
+// ---- Keyboard mode screen (S2-1: text only; the spinning Earth of design 8.3 comes next). S2-2: a cheat sheet of the
+// keys only this mode has, always on the right, keys in amber and their meaning in white; the last three lines follow
+// the Mac / Windows profile.
+// あ (Kana), 9 x 8 pixels, the bit for the left pixel first; Font0 has no kana. Drawn from Hiragino Sans W4 at 11 px
+// and cleaned up by hand.
+static const uint16_t KANA_A[8] = {0x020, 0x0FC, 0x024, 0x07E, 0x0A9, 0x131, 0x121, 0x0C6};
+
+static void drawKanaA(int x, int y, int scale, uint16_t color) {
+  for (int r = 0; r < 8; r++)
+    for (int c = 0; c < 9; c++)
+      if (KANA_A[r] & (0x100 >> c)) canvas.fillRect(x + c * scale, y + r * scale, scale, scale, color);
+}
+
+struct KeyHelp {
+  const char* key;
+  const char* meaning;
+};
+
+static void drawHelp(const char* key, const char* meaning, int x, int y, int meaningX) {
+  canvas.setTextColor(COL_AMBER);
+  canvas.drawString(key, x, y);
+  canvas.setTextColor(COL_FG);
+  canvas.drawString(meaning, meaningX, y);
+}
+
+static void drawKeys() {
+  bool mounted = (bool)USB;
+  canvas.fillSprite(COL_BG);
+  canvas.setTextSize(2);
+  canvas.setTextColor(COL_AMBER);
+  canvas.drawString("KEY", 6, 10);
+  canvas.drawString("BOARD", 6, 28);
+  canvas.setTextSize(1);
+  canvas.setTextColor(mounted ? COL_OK : COL_WARN);
+  canvas.drawString(mounted ? "USB" : "NO USB", 6, 56);
+  canvas.setTextColor(COL_FG);
+  canvas.drawString(osWin ? "Win" : "Mac", 6, 70);
+  // The input switch, beside the USB and Mac lines: always "A/あ", the last one chosen in amber (both white before).
+  const int ix = 36, iy = 58;
+  canvas.setTextSize(2);
+  canvas.setTextColor(inputKana == 0 ? COL_AMBER : COL_FG);
+  canvas.drawString("A", ix, iy);
+  canvas.setTextColor(COL_FG);
+  canvas.drawString("/", ix + 12, iy);
+  canvas.setTextSize(1);
+  drawKanaA(ix + 24, iy, 2, inputKana == 1 ? COL_AMBER : COL_FG);
+  if (mounted) drawHelp("Fn+M", "mode", 6, 104, 36);
+  drawHelp("Fn+O", "Mac/Win", 6, 118, 36);
+
+  static const KeyHelp SHEET[] = {{"Fn+;,./", "Arrows"}, {"Fn+Sh+", "PgUp/End"}, {"Fn+`", "Esc"},
+                                  {"Fn+1..=", "F1-F12"}, {"Fn+Del", "Delete"},  {"Fn+[ ]", "A /"}};
+  static const KeyHelp MAC[] = {{"alt", "Command"}, {"opt", "Option"}, {"alt+C/V", "copy/paste"}};
+  static const KeyHelp WIN[] = {{"alt", "Alt"}, {"opt", "Win"}, {"ctrl+C/V", "copy/paste"}};
+  const int x = 116, mx = 166;  // "copy/paste" must end inside the visible area
+  int y = 4;
+  for (const KeyHelp& h : SHEET) {
+    drawHelp(h.key, h.meaning, x, y, mx);
+    if (h.meaning[0] == 'A' && h.meaning[1] == ' ') drawKanaA(mx + 24, y, 1, COL_FG);  // "A / あ"
+    y += 13;
+  }
+  y += 3;
+  for (const KeyHelp& h : osWin ? WIN : MAC) {
+    drawHelp(h.key, h.meaning, x, y, mx);
+    y += 13;
+  }
+  canvas.setTextColor(COL_DIM);
+  canvas.drawRightString(BUILD_TAG, 236, 125);
+  canvas.pushSprite(0, 0);
 }
 
 void setup() {
@@ -673,7 +933,12 @@ void setup() {
   M5Cardputer.Display.setBrightness(128);
   canvas.createSprite(240, 135);
   canvas.setFont(&fonts::Font0);
-  showSplash();
+  showSplash(false);
+  splashAtStart = true;
+  prefs.begin("keyspeaker", false);
+  mode = prefs.getUChar("mode", MODE_DATA);
+  if (mode >= MODE_COUNT) mode = MODE_DATA;
+  osWin = prefs.getBool("osWin", false);
 
   ring = xStreamBufferCreate(RING_SAMPLES * 2, 1);
   if (!ring) {
@@ -694,6 +959,8 @@ void setup() {
   uac.onEvent(onUsbEvent);
   uac.onData(onSpkData);
   if (!uac.begin()) Serial.println("[BOOT] USB audio failed to start");
+  kbd.begin();
+  media.begin();
   Serial.printf("[BOOT] ready, heap %u\n", (unsigned)ESP.getFreeHeap());
 }
 
@@ -725,12 +992,24 @@ void loop() {
 
   diagUptimeS = now / 1000;
   diagMark(diagLoop, 3);
+  static uint8_t lastView = MODE_COUNT;
+  uint8_t view = viewMode();
+  if (view != lastView) {
+    if (lastView == MODE_KEYS) releaseAllKeys();
+    lastView = view;
+    lastScreen = 0;  // draw the new screen at once
+  }
+  vizView = view == MODE_GAME;
   if (splashOn && now - splashStartMs >= SPLASH_MS) splashOn = false;
   if (splashOn) {
     if (!splashDrawn) {
-      memcpy(canvas.getBuffer(), SPLASH, sizeof SPLASH);
-      canvas.pushSprite(0, 0);
+      drawSplash();
       splashDrawn = true;
+    }
+  } else if (view == MODE_KEYS) {
+    if (now - lastScreen >= 250) {
+      lastScreen = now;
+      drawKeys();
     }
   } else if (vizView) {
     if (now - lastFrame >= FRAME_MS) {
@@ -755,7 +1034,7 @@ void loop() {
                   (unsigned long)(fmin == RING_SAMPLES ? 0 : fmin * 1000 / RATE), (unsigned long)(fmax * 1000 / RATE), (unsigned long)underruns.load(),
                   (unsigned long)overruns.load(), (unsigned long)droppedSamples.load(), rxPpm, playPpm, (int)uac.volume(UAC_CHAN_MASTER),
                   (int)uac.mute(UAC_CHAN_MASTER), boostDb.load(), (int)bassCut.load(), lim, (unsigned)ESP.getFreeHeap(),
-                  vizView ? "flight" : "measure", drawMaxUs.exchange(0) / 1000.0f, driftOk ? "" : "~", drift,
+                  MODE_NAME[view], drawMaxUs.exchange(0) / 1000.0f, driftOk ? "" : "~", drift,
                   (unsigned long)(bt.sumMs / 1000), adjPpm.load(), (unsigned long)diagBoots, diagReset, (unsigned long)diagPrevPlay,
                   (unsigned long)diagPrevRx, (unsigned long)diagPrevLoop, (unsigned long)diagPrevUptimeS, (unsigned long)diagOns,
                   (unsigned long)diagOffs, (unsigned long)diagSuspends, (unsigned long)diagPulses,
