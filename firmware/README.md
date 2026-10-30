@@ -16,7 +16,9 @@ Needs `arduino-cli`, the `m5stack:esp32` core 3.3.10 and the libraries M5Cardput
 used: board M5Cardputer, USB Mode = USB-OTG (TinyUSB), USB CDC On Boot = Enabled, Flash 8MB, Partition
 `default_8MB`. `build.sh` also passes the linker option `-Wl,--wrap=dcd_edpt_iso_activate`, which puts a guard
 (`KeySpeaker_S0/UsbIsoFix.h`) in front of a TinyUSB function that can hang when the computer resumes playback. A build
-without it (for example from the Arduino IDE) still works, but restarts the Cardputer on such a resume.
+without it (for example from the Arduino IDE) still works, but restarts the Cardputer on such a resume. It also passes
+`-Wl,--wrap=tinyusb_add_string_descriptor`, so the computer lists the speaker as "KeySpeaker"
+(`KeySpeaker_S0/UsbNames.h`) instead of the core's "TinyUSB UAC1".
 
 The startup screen `KeySpeaker_S0/Splash.h` is made from `assets/splash.png` (the author's KariPom emblem from
 `assets/splash_original.webp`: the grille fills the screen, the emblem at 80 %) with

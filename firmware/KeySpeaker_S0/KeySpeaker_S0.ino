@@ -37,6 +37,7 @@
     - (S2-2) The keyboard screen shows a cheat sheet of its keys, keys and meanings in two colors. (S2-3) It also
       shows the last input switch, A or あ (Fn+[ / Fn+]), like the Mac's menu bar.
     - (S2-4) Keys still held from the launcher are ignored at start, and the startup screen never shows the hint.
+    - (S2-5) The computer lists the speaker as "KeySpeaker", not "TinyUSB UAC1" (UsbNames.h).
     - (S0-3) A second screen, the flight visualizer (FlightViz.h): the level history as scrolling terrain, with a
       small fighter flying over it. It measures the level of what the computer sends, before its volume, and does
       not touch the audio path. The measurement screen stays the default.
@@ -73,9 +74,10 @@
 #include "RateAdjust.h"
 #include "esp_core_dump.h"
 #include "UsbIsoFix.h"
+#include "UsbNames.h"
 #include "Splash.h"
 
-#define BUILD_TAG "S2-4"
+#define BUILD_TAG "S2-5"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
