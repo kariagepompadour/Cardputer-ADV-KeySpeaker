@@ -6,8 +6,9 @@
 
 [English README](README.md)
 
-> **状態: 開発の初期段階です。** 設計は [`docs/DESIGN_JA.md`](docs/DESIGN_JA.md) にあります。最初の試作機（USBスピーカーだけ、
-> [`firmware/KeySpeaker_S0/`](firmware/KeySpeaker_S0/)）は、Macで音が出て、音量も十分なことを確認しました。長時間の再生など、そのほかの確認はこれからです。
+> **状態: 開発の初期段階です。** 設計は [`docs/DESIGN_JA.md`](docs/DESIGN_JA.md) にあります。USBスピーカー（[`firmware/KeySpeaker_S0/`](firmware/KeySpeaker_S0/)、時計のずれの補正入り）は、
+> Macで十分な音量で鳴り、3時間続けて音切れなし、一時停止と再開も問題ないことを確認しました。次はキーボードです。
+> Windowsやそのほかの機器は、まだ確認していません。検証記録は [`docs/S0_TEST_JA.md`](docs/S0_TEST_JA.md) にあります。
 
 ## 発案のきっかけ
 
@@ -25,18 +26,19 @@
 
 - スピーカーのないPC（デスクトップPC、Mac mini、モニターなど）につなぐ。
 - USB-Cから音声を出せる機器（スマホ、タブレット、デジタルオーディオプレーヤー、ゲーム機）につなぐ。
-- PS5などの文字入力画面で、Bluetooth LEキーボードとして使う。
+- Mac、iPhone、iPadなどで、Bluetooth LEキーボードとして使う（ゲーム機やテレビは、使えたらおまけ）。
 - **USB-Cイヤホンアダプター**として使う：Cardputerのイヤホン端子にイヤホンを挿します（モノラルなので、両耳から同じ音が出ます）。
 
-Fnレイヤーで、Shift、Ctrl、Alt、Command／Windows、カーソル、Fキー、音量、ミュート、再生／一時停止を使えるようにします。
-キーが小さいので、長文ではなく、ちょっとした入力向けです。画面には、接続状態、音量、ミュート、バッファーの状態、電池残量、警告を表示します。
+`Fn+M` で、画面を「データ表示」「ゲーム画面」「キーボード」と切り替えます。キーが相手の機器へ送られるのはキーボードの画面のときだけで、
+Fnレイヤーで、Shift、Ctrl、Alt、Command／Windows、カーソル、Fキーを使えます。ほかの2つの画面では、いくつかのキーで音量、ミュート、再生／一時停止を操作します。
+キーが小さいので、長文ではなく、ちょっとした入力向けです。
 
 ## 対象範囲
 
 | 区分 | 機器 |
 | --- | --- |
 | **基本の対象** | macOS、WindowsとのUSB接続（スピーカー＋キーボード）、Bluetooth LEキーボード |
-| **確認しながら広げる対象** | iPhone 15以降・USB-CのiPad、Android、USB音声出力のあるデジタルオーディオプレーヤー、PS5、Nintendo Switch、PS5でのBluetooth LEキーボード |
+| **確認しながら広げる対象** | iPhone 15以降・USB-CのiPad、Android、USB音声出力のあるデジタルオーディオプレーヤー、ゲーム機、ほかの機器でのBluetooth LEキーボード |
 | **対象外** | ChromeOS、ワイヤレス音声、インターネットラジオ、3.5mm端子からの音声入力 |
 
 ### ワイヤレス音声がない理由
@@ -51,7 +53,7 @@ Fnレイヤーで、Shift、Ctrl、Alt、Command／Windows、カーソル、Fキ
 
 Cardputer ADVには、すでに別の仕事があります。インターネットラジオは[RADIO DAYS](https://github.com/kariagepompadour/RADIODAYS)、
 ジョグダイヤルは[Media Jog](https://github.com/kariagepompadour/Cardputer-ADV-Media-Jog)です。それぞれが別のアプリで、Launcherで切り替えます。
-KeySpeakerには、選ぶモードがありません。
+KeySpeakerには、設定がいりません。USBとBluetooth LEは自動で切り替わります。
 
 ## 給電
 
@@ -63,7 +65,7 @@ Cardputerの電源スイッチは**ON**にしてください。
 
 | フォルダー | 内容 |
 | --- | --- |
-| [`docs/`](docs/) | 設計書。のちに検証記録も置きます |
+| [`docs/`](docs/) | 設計書と検証記録 |
 | [`firmware/`](firmware/) | Cardputer ADVのファームウェア（Arduino、`m5stack:esp32` 3.3.10） |
 
 ## ハードウェア

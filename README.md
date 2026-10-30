@@ -6,9 +6,11 @@
 
 [日本語版 README](README_JA.md)
 
-> **Status: early development.** The design is in [`docs/DESIGN_JA.md`](docs/DESIGN_JA.md) (Japanese). The first
-> probe, a USB speaker only ([`firmware/KeySpeaker_S0/`](firmware/KeySpeaker_S0/)), plays on a Mac at a good
-> level. Long playback and the other checks are still to do.
+> **Status: early development.** The design is in [`docs/DESIGN_JA.md`](docs/DESIGN_JA.md) (Japanese). The USB
+> speaker ([`firmware/KeySpeaker_S0/`](firmware/KeySpeaker_S0/), now with the clock-drift correction) plays on a
+> Mac at a good level: 3 hours without a dropout, and pausing and resuming playback works. The keyboard is next.
+> Windows and the other devices are not tested yet. Test notes: [`docs/S0_TEST_JA.md`](docs/S0_TEST_JA.md)
+> (Japanese).
 
 ## The idea
 
@@ -28,19 +30,20 @@ Ways to use it:
 
 - On a computer without speakers (a desktop PC, a Mac mini, a monitor).
 - On a device that can send audio out of its USB-C port: a phone, a tablet, a digital audio player, a game console.
-- For typing on a console's text-entry screen, such as a PS5, as a Bluetooth LE keyboard.
+- As a Bluetooth LE keyboard for a Mac, an iPhone or an iPad, and with luck a console or a TV.
 - As a **USB-C earphone adapter**: plug earphones into the Cardputer's jack (mono: both ears get the same sound).
 
-Shift, Ctrl, Alt, Command/Windows, cursor keys, F-keys, volume, mute and play/pause work through an `Fn` layer. The
-keyboard is small: it is meant for short entries, not long texts. The screen shows the connection, volume, mute,
-buffer health, battery and warnings.
+`Fn+M` switches the screen between a data view, a visualizer and the keyboard. Keys go to the other device only on
+the keyboard screen, where Shift, Ctrl, Alt, Command/Windows, cursor keys and F-keys work through an `Fn` layer. On
+the other two screens, a few keys control the volume, mute and play/pause. The keyboard is small: it is meant for
+short entries, not long texts.
 
 ## Scope
 
 | | Devices |
 | --- | --- |
 | **Main targets** | macOS and Windows over USB (speaker + keyboard); Bluetooth LE keyboard |
-| **To be checked one by one** | iPhone 15 or later and USB-C iPads, Android, digital audio players with USB audio out, PS5, Nintendo Switch; the Bluetooth LE keyboard on a PS5 |
+| **To be checked one by one** | iPhone 15 or later and USB-C iPads, Android, digital audio players with USB audio out, game consoles; the Bluetooth LE keyboard on other devices |
 | **Not planned** | ChromeOS, wireless audio, internet radio, audio input through the 3.5 mm jack |
 
 ### Why there is no wireless audio
@@ -55,7 +58,7 @@ The Cardputer ADV cannot be a wireless speaker without software on the other dev
 
 The Cardputer ADV already has other jobs: internet radio is [RADIO DAYS](https://github.com/kariagepompadour/RADIODAYS),
 a jog dial is [Media Jog](https://github.com/kariagepompadour/Cardputer-ADV-Media-Jog). Each is its own app, and
-you switch between them with the launcher. KeySpeaker has no modes to pick.
+you switch between them with the launcher. KeySpeaker needs no setup: it picks USB or Bluetooth LE by itself.
 
 ## Power
 
@@ -67,7 +70,7 @@ power pass-through (USB PD) lets it charge while in use. The Cardputer's power s
 
 | Folder | Contents |
 | --- | --- |
-| [`docs/`](docs/) | Design and, later, verification notes |
+| [`docs/`](docs/) | Design and test notes |
 | [`firmware/`](firmware/) | Cardputer ADV firmware (Arduino, `m5stack:esp32` 3.3.10) |
 
 ## Hardware
