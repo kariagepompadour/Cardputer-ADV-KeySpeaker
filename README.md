@@ -1,4 +1,6 @@
-# Cardputer ADV KeySpeaker
+# KeySpeaker
+
+### USB Speaker & BLE Keyboard for M5Stack Cardputer ADV
 
 **A pocket speaker and keyboard for your computer, phone or console. Keep it in your bag.**
 

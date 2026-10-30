@@ -1,4 +1,6 @@
-# Cardputer ADV KeySpeaker
+# KeySpeaker
+
+### USB Speaker & BLE Keyboard for M5Stack Cardputer ADV
 
 **PCにも、スマホにも、ゲーム機にも。カバンに入れておける、小さなスピーカー＆キーボード。**
 

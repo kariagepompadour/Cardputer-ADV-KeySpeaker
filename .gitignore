@@ -1,4 +1,4 @@
-# Cardputer ADV KeySpeaker — files that should not be published.
+# KeySpeaker (USB Speaker & BLE Keyboard) — files that should not be published.
 # This only affects what `git add` picks up. Before publishing, check
 # `git status` and `git diff --cached --name-only`.
 
