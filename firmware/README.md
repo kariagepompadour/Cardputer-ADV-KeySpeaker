@@ -18,5 +18,9 @@ used: board M5Cardputer, USB Mode = USB-OTG (TinyUSB), USB CDC On Boot = Enabled
 (`KeySpeaker_S0/UsbIsoFix.h`) in front of a TinyUSB function that can hang when the computer resumes playback. A build
 without it (for example from the Arduino IDE) still works, but restarts the Cardputer on such a resume.
 
+The startup screen `KeySpeaker_S0/Splash.h` is made from `assets/splash.png` (the author's KariPom emblem from
+`assets/splash_original.webp`: the grille fills the screen, the emblem at 80 %) with
+`python3 tools/make_splash.py assets/splash.png KeySpeaker_S0/Splash.h` (macOS, uses `sips`).
+
 Install the app-only `.ino.bin` through a launcher. Do not use the Arduino IDE's **Upload**: it also writes the
 bootloader and the partition table, which can replace your launcher.

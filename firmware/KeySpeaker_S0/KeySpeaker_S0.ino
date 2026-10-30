@@ -24,6 +24,12 @@
       switches the audio endpoint back on. UsbIsoFix.h guards that switch; firmware/build.sh links it in.
     - (S1-6) The guard's time-limited switch-off did not work either, so it now keeps the endpoint on when its
       settings are unchanged (UsbIsoFix.h).
+    - (S1-7) A startup screen: the KariPom emblem on a speaker grille (Splash.h) for 2 seconds, or until a key.
+      USB and the audio start behind it as before.
+    - (S1-8) A key with no job here (letters, Enter, ...) shows that screen again for 2 seconds (design 8.3).
+    - (S1-9) The emblem at 80 % of its size on the startup screen.
+    - (S1-10) The startup screen with the speaker's rubber bumper, white around it and a white base. (S1-11) Back to
+      the grille filling the screen: the LCD's white never matches the Cardputer's white body.
     - (S0-3) A second screen, the flight visualizer (FlightViz.h): the level history as scrolling terrain, with a
       small fighter flying over it. It measures the level of what the computer sends, before its volume, and does
       not touch the audio path. The measurement screen stays the default.
@@ -36,7 +42,8 @@
     -  /  =   boost down / up (0 .. +18 dB in 3 dB steps)
     b         bass cut on / off (to compare)
     r         reset the counters
-    v         measurement screen / flight visualizer
+    v         measurement screen / flight visualizer (on the emblem screen: back to the measurement screen)
+    others    the emblem screen for 2 seconds
 
   Required Arduino IDE settings (Tools menu), enforced by #error below:
     Board: M5Cardputer (m5stack:esp32 3.3.10)
@@ -56,8 +63,9 @@
 #include "RateAdjust.h"
 #include "esp_core_dump.h"
 #include "UsbIsoFix.h"
+#include "Splash.h"
 
-#define BUILD_TAG "S1-6"
+#define BUILD_TAG "S1-11"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -604,11 +612,27 @@ static void drawViz(uint32_t now) {
   if (us > drawMaxUs) drawMaxUs = us;
 }
 
+// ---- Emblem screen (S1-7, S1-8, design 8.3): shown at start and on a key with no job, for SPLASH_MS. A key with a
+// job does it and closes the screen; v closes it to the measurement screen; another key with no job starts the
+// 2 seconds again.
+static constexpr uint32_t SPLASH_MS = 2000;
+static bool splashOn = false, splashDrawn = false;
+static uint32_t splashStartMs = 0;
+
+static void showSplash() {
+  splashOn = true;
+  splashDrawn = false;  // loop() draws it
+  splashStartMs = millis();
+}
+
 // ---- Local keys
 static void keyService() {
   if (!M5Cardputer.Keyboard.isChange() || !M5Cardputer.Keyboard.isPressed()) return;
   auto ks = M5Cardputer.Keyboard.keysState();
+  bool acted = false, noJob = ks.enter || ks.del || ks.tab || ks.space;
   for (char c : ks.word) {
+    acted = acted || c == '-' || c == '=' || c == 'b' || c == 'r' || c == 'v';
+    noJob = noJob || !(c == '-' || c == '=' || c == 'b' || c == 'r' || c == 'v' || c == ' ');
     if (c == '-' || c == '=') {
       int v = boostDb + (c == '=' ? BOOST_STEP_DB : -BOOST_STEP_DB);
       if (v < 0) v = 0;
@@ -624,10 +648,12 @@ static void keyService() {
       bt = BufTrend();
       Serial.println("[KEY] counters reset");
     } else if (c == 'v') {
-      vizView = !vizView;
+      vizView = splashOn ? false : !vizView;
       Serial.printf("[KEY] view %s\n", vizView ? "flight" : "measure");
     }
   }
+  if (acted) splashOn = false;
+  else if (noJob) showSplash();
 }
 
 void setup() {
@@ -647,6 +673,7 @@ void setup() {
   M5Cardputer.Display.setBrightness(128);
   canvas.createSprite(240, 135);
   canvas.setFont(&fonts::Font0);
+  showSplash();
 
   ring = xStreamBufferCreate(RING_SAMPLES * 2, 1);
   if (!ring) {
@@ -698,7 +725,14 @@ void loop() {
 
   diagUptimeS = now / 1000;
   diagMark(diagLoop, 3);
-  if (vizView) {
+  if (splashOn && now - splashStartMs >= SPLASH_MS) splashOn = false;
+  if (splashOn) {
+    if (!splashDrawn) {
+      memcpy(canvas.getBuffer(), SPLASH, sizeof SPLASH);
+      canvas.pushSprite(0, 0);
+      splashDrawn = true;
+    }
+  } else if (vizView) {
     if (now - lastFrame >= FRAME_MS) {
       lastFrame = now;
       diagMark(diagLoop, 4);
