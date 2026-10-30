@@ -1,5 +1,6 @@
 /*
-  KeySpeaker_S0 — Cardputer ADV as a USB Audio Class 1 speaker (stage S0 probe)
+  KeySpeaker — USB Speaker & BLE Keyboard for M5Stack Cardputer ADV
+  KeySpeaker_S0: Cardputer ADV as a USB Audio Class 1 speaker (stage S0 probe, with the S1 drift correction)
 
   What this probe does (docs/DESIGN_JA.md, section 12):
     - Shows up on the computer as a USB speaker (UAC1, 48 kHz, 16 bit, stereo) next to the USB serial port (CDC).
@@ -7,9 +8,22 @@
     - (S0-2) Makes it louder the way small speakers do: a bass cut (the 1 W speaker cannot play deep bass, which
       only wastes headroom), a boost, and a peak limiter so the boost never clips. M5.Speaker itself is set to a
       gain of 1: at its old level 192 the signal was already at full scale, so raising that level only distorted.
-    - Does NOT correct the clock difference between the computer and the Cardputer yet (that is S1). Instead it
-      measures it: once a second it reports the buffer fill, underruns, overruns and the rates in ppm, on the screen
-      and on the USB serial port.
+    - Measures the clock difference between the computer and the Cardputer: once a second it reports the buffer fill,
+      underruns, overruns and the rates in ppm, on the screen and on the USB serial port.
+    - (S1-1) Corrects that difference (RateAdjust.h): playTask plays a little faster or slower, at most +-200 ppm,
+      to keep the buffer at its starting level, so long listening no longer runs the buffer dry or full.
+    - (S1-2) Restart diagnosis: the Cardputer restarted by itself when music started again after a pause. It now
+      keeps a few notes in memory that survive a restart (not a power cut) and reports, after a restart, why it
+      restarted and what each task was doing just before.
+    - (S1-3) The first start after installing S1-2 crashed (PANIC) within a second. The core saves a crash record
+      (core dump) to flash; this version reads its summary (task, program address, backtrace) at start and logs it.
+    - (S1-4) The record showed the crash in the core's USB event task (2 KB stack), where onUsbEvent printed to the
+      serial port: a stack overflow when events came in, at enumeration or when the computer started the stream.
+      The handler now only queues the events; loop() prints them.
+    - (S1-5) With that fixed, every resume after a pause still restarted it (task watchdog): TinyUSB hangs while it
+      switches the audio endpoint back on. UsbIsoFix.h guards that switch; firmware/build.sh links it in.
+    - (S1-6) The guard's time-limited switch-off did not work either, so it now keeps the endpoint on when its
+      settings are unchanged (UsbIsoFix.h).
     - (S0-3) A second screen, the flight visualizer (FlightViz.h): the level history as scrolling terrain, with a
       small fighter flying over it. It measures the level of what the computer sends, before its volume, and does
       not touch the audio path. The measurement screen stays the default.
@@ -39,8 +53,11 @@
 #include "soc/usb_struct.h"
 #include <freertos/stream_buffer.h>
 #include "FlightViz.h"
+#include "RateAdjust.h"
+#include "esp_core_dump.h"
+#include "UsbIsoFix.h"
 
-#define BUILD_TAG "S0-6"
+#define BUILD_TAG "S1-6"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -59,6 +76,8 @@ static constexpr uint32_t RATE = 48000;          // USB and speaker sample rate 
 static constexpr size_t CHUNK = 480;             // samples handed to M5.Speaker at a time (10 ms)
 static constexpr size_t RING_SAMPLES = 24000;    // mono ring buffer: 500 ms
 static constexpr size_t START_FILL = 4800;       // (re)start playing when 100 ms are buffered
+static constexpr float TARGET_FILL = START_FILL - 2 * CHUNK;  // the level right after starting, when both of
+                                                              // M5.Speaker's slots are filled; S1 holds it there
 static constexpr int SPK_CH = 0;                 // M5.Speaker virtual channel
 // M5.Speaker's gain for a mono 16-bit sound at channel volume 255 is 2 * 16 * master^2 * 255^2 / 2^36
 // (Speaker_Class.inl, magnification 16 on the Cardputer). Master 181 gives 0.996: the samples reach the codec as
@@ -85,6 +104,7 @@ static std::atomic<uint32_t> overruns{0};      // times the ring became full
 static std::atomic<uint32_t> underruns{0};     // times the ring ran dry while the computer was streaming
 static std::atomic<uint32_t> playStarts{0};    // times playTask (re)started playing after buffering
 static std::atomic<uint32_t> fillMin{RING_SAMPLES}, fillMax{0};  // ring fill (samples) since the last report
+static std::atomic<float> adjPpm{0};           // S1 correction playTask applies now (+: the computer is faster)
 static std::atomic<uint32_t> lastRxMs{0};      // millis() of the last USB audio data
 static std::atomic<int16_t> rxPeak{0};         // largest |sample| since the last screen update
 static std::atomic<bool> streaming{false};     // the computer selected the speaker's streaming alternate setting
@@ -97,6 +117,69 @@ static std::atomic<uint32_t> vizSum{0}, vizCount{0};  // 10 ms RMS levels from t
 static constexpr uint32_t VIZ_PCM_N = 1024;     // newest mono samples (before the host volume; 0 while muted) for the
 static int16_t vizPcm[VIZ_PCM_N];               // visualizer's spectrum, written only by onSpkData; read without a lock,
 static std::atomic<uint32_t> vizPcmPos{0};      // so a frame may mix two packets, which no one can see
+
+// ---- Restart diagnosis (S1-2)
+// RTC memory keeps its contents through a software or crash restart, so after one the log shows the reset reason
+// and, for each task, the last step it reached ("stages", see diagMark calls) and the uptime then. The counters add
+// up across restarts until the next power-on.
+static constexpr uint32_t DIAG_MAGIC = 0x4B535032;
+RTC_NOINIT_ATTR static uint32_t diagMagic, diagBoots, diagPlay, diagRx, diagLoop, diagUptimeS, diagOns, diagOffs,
+    diagSuspends, diagPulses;
+static uint32_t diagPrevPlay, diagPrevRx, diagPrevLoop, diagPrevUptimeS;  // the notes from before this start
+static const char* diagReset = "?";
+static inline void diagMark(volatile uint32_t& stage, uint32_t v) { stage = v; }
+static const char* resetName(esp_reset_reason_t r) {
+  switch (r) {
+    case ESP_RST_POWERON: return "POWERON";
+    case ESP_RST_EXT: return "EXT";
+    case ESP_RST_SW: return "SW";
+    case ESP_RST_PANIC: return "PANIC";
+    case ESP_RST_INT_WDT: return "INT_WDT";
+    case ESP_RST_TASK_WDT: return "TASK_WDT";
+    case ESP_RST_WDT: return "WDT";
+    case ESP_RST_DEEPSLEEP: return "SLEEP";
+    case ESP_RST_BROWNOUT: return "BROWNOUT";
+    case ESP_RST_USB: return "USB";
+    default: return "OTHER";
+  }
+}
+static void diagBegin() {
+  esp_reset_reason_t r = esp_reset_reason();
+  diagReset = resetName(r);
+  if (diagMagic != DIAG_MAGIC || r == ESP_RST_POWERON) {
+    diagMagic = DIAG_MAGIC;
+    diagBoots = diagPlay = diagRx = diagLoop = diagUptimeS = diagOns = diagOffs = diagSuspends = diagPulses = 0;
+  }
+  diagBoots++;
+  diagPrevPlay = diagPlay;
+  diagPrevRx = diagRx;
+  diagPrevLoop = diagLoop;
+  diagPrevUptimeS = diagUptimeS;
+  diagPlay = diagRx = diagLoop = diagUptimeS = 0;
+}
+
+// The crash record (core dump) the core writes to flash on a PANIC, read once at start. It stays in flash until the
+// next crash overwrites it, so compare with rst=PANIC to tell a new one from an old one. The addresses can be turned
+// into source lines with the build's .elf (xtensa-esp32s3-elf-addr2line).
+static char crashInfo[240] = "";
+static void crashBegin() {
+  esp_err_t e = esp_core_dump_image_check();
+  if (e != ESP_OK) {
+    snprintf(crashInfo, sizeof crashInfo, "none (%s)", esp_err_to_name(e));
+    return;
+  }
+  static esp_core_dump_summary_t sum;
+  e = esp_core_dump_get_summary(&sum);
+  if (e != ESP_OK) {
+    snprintf(crashInfo, sizeof crashInfo, "unreadable (%s)", esp_err_to_name(e));
+    return;
+  }
+  int n = snprintf(crashInfo, sizeof crashInfo, "task=%s pc=0x%08lx cause=%lu vaddr=0x%08lx bt%s=", sum.exc_task,
+                   (unsigned long)sum.exc_pc, (unsigned long)sum.ex_info.exc_cause, (unsigned long)sum.ex_info.exc_vaddr,
+                   sum.exc_bt_info.corrupted ? "(corrupted)" : "");
+  for (uint32_t i = 0; i < sum.exc_bt_info.depth && i < 16 && n > 0 && n < (int)sizeof crashInfo - 12; i++)
+    n += snprintf(crashInfo + n, sizeof crashInfo - n, " 0x%08lx", (unsigned long)sum.exc_bt_info.bt[i]);
+}
 
 // High-pass biquad (RBJ cookbook, Q = 0.7071) and the limiter's state; touched only by playTask.
 struct Biquad {
@@ -162,6 +245,7 @@ static int16_t monoBuf[256];
 static bool ringWasFull = false;
 
 static void onSpkData(void* data, uint16_t len) {
+  diagMark(diagRx, 1);
   // Visualizer level (S0-3): measured before the host volume, so the bars follow the music, not the volume knob.
   static float vizAcc = 0;
   static size_t vizN = 0;
@@ -185,7 +269,9 @@ static void onSpkData(void* data, uint16_t len) {
       vizN = 0;
     }
   }
+  diagMark(diagRx, 2);
   uac.applyVolume(data, len);
+  diagMark(diagRx, 3);
   const int16_t* s = static_cast<const int16_t*>(data);
   size_t frames = len / 4;  // 2 channels x 2 bytes
   int16_t peak = 0;
@@ -211,13 +297,17 @@ static void onSpkData(void* data, uint16_t len) {
   }
   if (peak > rxPeak) rxPeak = peak;
   lastRxMs = millis();
+  diagMark(diagRx, 0);
 }
 
 // ---- ring -> M5.Speaker (core 1)
 // Waits until START_FILL samples are buffered, then keeps M5.Speaker's two queue slots filled with 10 ms chunks.
 // Three chunk buffers in rotation: M5.Speaker reads a buffer until it has played it.
+// (S1) Each chunk is resampled from slightly more or fewer samples than CHUNK, as the controller asks (RateAdjust.h).
 static void playTask(void*) {
   static int16_t buf[3][CHUNK];
+  static rateadj::Resampler<CHUNK> rs;
+  static rateadj::Controller ctl;
   int idx = 0;
   bool playing = false;
   for (;;) {
@@ -228,48 +318,109 @@ static void playTask(void*) {
     }
     if (!playing) {
       if (fill < START_FILL) {
+        diagMark(diagPlay, 1);
         vTaskDelay(2 / portTICK_PERIOD_MS);
         continue;
       }
       playing = true;
       playStarts++;
+      rs.reset();
+      ctl.reset();
     }
+    diagMark(diagPlay, 2);
     if (M5.Speaker.isPlaying(SPK_CH) >= 2) {  // both slots taken: wait for one to be played
+      diagMark(diagPlay, 3);
       vTaskDelay(1);
       continue;
     }
-    if (fill < CHUNK) {
+    float ppm = ctl.update((float)fill, TARGET_FILL);
+    size_t need = rs.need(ppm);
+    if (fill < need) {
       // Only a real underrun when the computer is still sending; the end of a stream just drains the ring.
       if (streaming && millis() - lastRxMs < 50) underruns++;
       playing = false;
+      adjPpm = 0;
       continue;
     }
-    xStreamBufferReceive(ring, buf[idx], CHUNK * 2, 0);
+    diagMark(diagPlay, 4);
+    xStreamBufferReceive(ring, rs.writePtr(), need * 2, 0);
+    rs.wrote(need);
+    diagMark(diagPlay, 5);
+    rs.run(buf[idx], ppm);
+    adjPpm = ppm;
+    diagMark(diagPlay, 6);
     loudness(buf[idx], CHUNK);
+    diagMark(diagPlay, 7);
     M5.Speaker.playRaw(buf[idx], CHUNK, RATE, false, 1, SPK_CH, false);
     playedSamples += CHUNK;
     idx = (idx + 1) % 3;
   }
 }
 
-// ---- USB events: streaming on/off, host volume and mute (logged as they happen)
+// ---- USB events: streaming on/off, host volume and mute
+// The handler runs in the core's USB event task, whose stack is only 2 KB: printing there overflowed it (S1-3's crash
+// record). So it only notes each event in a small queue, and loop() prints them (usbEventLog).
+enum UsbEv : uint8_t { EV_MOUNTED, EV_UNMOUNTED, EV_SUSPENDED, EV_RESUMED, EV_STREAM, EV_VOLUME, EV_MUTE };
+struct UsbEvRec {
+  UsbEv kind;
+  int8_t ch;
+  int16_t value;
+};
+static constexpr uint32_t USB_EV_N = 16;  // events beyond this between two loop() passes are counted, not kept
+static UsbEvRec usbEvQ[USB_EV_N];
+static std::atomic<uint32_t> usbEvHead{0}, usbEvLost{0};  // written by the event task
+static uint32_t usbEvTail = 0;                             // read by loop()
+
+static void usbEvPush(uint8_t kind, int ch, int value) {  // kind: a UsbEv (a plain type, for the IDE's prototypes)
+  uint32_t h = usbEvHead.load(std::memory_order_relaxed);
+  if (h - usbEvTail >= USB_EV_N) {  // loop() reads usbEvTail; a stale value only makes this more careful
+    usbEvLost++;
+    return;
+  }
+  usbEvQ[h % USB_EV_N] = {(UsbEv)kind, (int8_t)ch, (int16_t)value};
+  usbEvHead.store(h + 1, std::memory_order_release);
+}
+
 static void onUsbEvent(void*, esp_event_base_t base, int32_t id, void* event_data) {
   if (base == ARDUINO_USB_EVENTS) {
-    if (id == ARDUINO_USB_STARTED_EVENT) Serial.println("[USB] mounted");
-    else if (id == ARDUINO_USB_STOPPED_EVENT) Serial.println("[USB] unmounted");
-    else if (id == ARDUINO_USB_SUSPEND_EVENT) Serial.println("[USB] suspended");
-    else if (id == ARDUINO_USB_RESUME_EVENT) Serial.println("[USB] resumed");
+    if (id == ARDUINO_USB_STARTED_EVENT) usbEvPush(EV_MOUNTED, 0, 0);
+    else if (id == ARDUINO_USB_STOPPED_EVENT) usbEvPush(EV_UNMOUNTED, 0, 0);
+    else if (id == ARDUINO_USB_SUSPEND_EVENT) {
+      diagSuspends++;
+      usbEvPush(EV_SUSPENDED, 0, 0);
+    } else if (id == ARDUINO_USB_RESUME_EVENT) usbEvPush(EV_RESUMED, 0, 0);
   } else if (base == ARDUINO_USB_AUDIO_CARD_EVENTS) {
     auto* d = static_cast<arduino_usb_audio_card_event_data_t*>(event_data);
     if (id == ARDUINO_USB_AUDIO_CARD_INTERFACE_ENABLE_EVENT && d->interface_enable.interface == UAC_INTERFACE_SPK) {
       streaming = d->interface_enable.enable;
-      Serial.printf("[UAC] speaker stream %s\n", d->interface_enable.enable ? "ON" : "OFF");
+      if (d->interface_enable.enable) diagOns++;
+      else diagOffs++;
+      usbEvPush(EV_STREAM, 0, d->interface_enable.enable);
     } else if (id == ARDUINO_USB_AUDIO_CARD_VOLUME_EVENT) {
-      Serial.printf("[UAC] volume ch%d %d dB\n", (int)d->volume.channel, (int)d->volume.db);
+      usbEvPush(EV_VOLUME, d->volume.channel, d->volume.db);
     } else if (id == ARDUINO_USB_AUDIO_CARD_MUTE_EVENT) {
-      Serial.printf("[UAC] mute ch%d %d\n", (int)d->mute.channel, (int)d->mute.muted);
+      usbEvPush(EV_MUTE, d->mute.channel, d->mute.muted);
     }
   }
+}
+
+// Prints the queued USB events, in loop().
+static void usbEventLog() {
+  uint32_t h = usbEvHead.load(std::memory_order_acquire);
+  for (; usbEvTail != h; usbEvTail++) {
+    const UsbEvRec& e = usbEvQ[usbEvTail % USB_EV_N];
+    switch (e.kind) {
+      case EV_MOUNTED: Serial.println("[USB] mounted"); break;
+      case EV_UNMOUNTED: Serial.println("[USB] unmounted"); break;
+      case EV_SUSPENDED: Serial.println("[USB] suspended"); break;
+      case EV_RESUMED: Serial.println("[USB] resumed"); break;
+      case EV_STREAM: Serial.printf("[UAC] speaker stream %s\n", e.value ? "ON" : "OFF"); break;
+      case EV_VOLUME: Serial.printf("[UAC] volume ch%d %d dB\n", (int)e.ch, (int)e.value); break;
+      case EV_MUTE: Serial.printf("[UAC] mute ch%d %d\n", (int)e.ch, (int)e.value); break;
+    }
+  }
+  uint32_t lost = usbEvLost.exchange(0);
+  if (lost) Serial.printf("[USB] %lu events not logged (queue full)\n", (unsigned long)lost);
 }
 
 // ---- USB link watch (from RADIO DAYS SDR)
@@ -292,6 +443,7 @@ static void usbLinkService() {
   if (!usbSawHost || now - usbLastSofMs < 1200) return;
   if (now - usbLastReconnectMs < 2000) return;
   usbLastReconnectMs = now;
+  diagPulses++;
   tud_disconnect();
   delay(120);
   tud_connect();
@@ -300,7 +452,7 @@ static void usbLinkService() {
 // ---- Rates since streaming started, measured against the Cardputer's own clock (millis)
 // rxPpm: how much faster (+) or slower (-) than 48000 Hz the computer sends.
 // playPpm: the same for what the speaker consumes. Both include the start-up buffering, so for the first minutes they
-// are far off; they are only logged. The screen shows the drift from the buffer trend below.
+// are far off; they are only logged. The screen shows the S1 correction and the buffer trend below.
 struct RateWindow {
   bool active = false;
   uint32_t startMs = 0, rx0 = 0, played0 = 0;
@@ -387,12 +539,15 @@ static void drawScreen(uint32_t fillNow, uint32_t elapsedS) {
   canvas.setTextColor(COL_FG);
   float drift;
   uint32_t playS = (uint32_t)(bt.sumMs / 1000);
+  // S1: "adj" is the correction applied now; "trend" is what is left over in the buffer (near 0 once it works).
   if (bufTrendPpm(&drift))
-    snprintf(l, sizeof l, "drift %+.0f ppm  (%lu:%02lu played)", drift, (unsigned long)(playS / 60), (unsigned long)(playS % 60));
+    snprintf(l, sizeof l, "adj %+.0f ppm  trend %+.0f  (%lu:%02lu)", adjPpm.load(), drift, (unsigned long)(playS / 60),
+             (unsigned long)(playS % 60));
   else
-    snprintf(l, sizeof l, "drift --  (%lu:%02lu played, needs 1:00)", (unsigned long)(playS / 60), (unsigned long)(playS % 60));
+    snprintf(l, sizeof l, "adj %+.0f ppm  trend --  (%lu:%02lu)", adjPpm.load(), (unsigned long)(playS / 60), (unsigned long)(playS % 60));
   canvas.drawString(l, 4, 76);
-  snprintf(l, sizeof l, "since %lu:%02lu:%02lu", (unsigned long)(elapsedS / 3600), (unsigned long)(elapsedS / 60 % 60), (unsigned long)(elapsedS % 60));
+  snprintf(l, sizeof l, "since %lu:%02lu:%02lu  boot %lu %s", (unsigned long)(elapsedS / 3600), (unsigned long)(elapsedS / 60 % 60),
+           (unsigned long)(elapsedS % 60), (unsigned long)diagBoots, diagReset);
   canvas.drawString(l, 4, 88);
 
   snprintf(l, sizeof l, "PC vol %d dB%s  L%d R%d", (int)uac.volume(UAC_CHAN_MASTER), uac.mute(UAC_CHAN_MASTER) ? " MUTE" : "",
@@ -478,6 +633,8 @@ static void keyService() {
 void setup() {
   USB.onEvent(onUsbEvent);
   Serial.begin(115200);
+  diagBegin();
+  crashBegin();
   Serial.printf("[BOOT] KeySpeaker %s\n", BUILD_TAG);
 
   auto cfg = M5.config();
@@ -514,8 +671,11 @@ void setup() {
 }
 
 void loop() {
+  diagMark(diagLoop, 1);
   M5Cardputer.update();
+  diagMark(diagLoop, 2);
   usbLinkService();
+  usbEventLog();
   keyService();
 
   static uint32_t lastScreen = 0, lastFrame = 0, lastLog = 0;
@@ -536,13 +696,17 @@ void loop() {
   float playPpm = rw.active ? ppm(playedSamples - rw.played0, elapsedMs) : 0;
   uint32_t fillNow = (uint32_t)(xStreamBufferBytesAvailable(ring) / 2);
 
+  diagUptimeS = now / 1000;
+  diagMark(diagLoop, 3);
   if (vizView) {
     if (now - lastFrame >= FRAME_MS) {
       lastFrame = now;
+      diagMark(diagLoop, 4);
       drawViz(now);
     }
   } else if (now - lastScreen >= 250) {
     lastScreen = now;
+    diagMark(diagLoop, 5);
     drawScreen(fillNow, elapsedMs / 1000);
   }
   if (now - lastLog >= 1000) {
@@ -552,13 +716,19 @@ void loop() {
     bufTrendSample(now, live, fmin, fmax);
     float drift = 0;
     bool driftOk = bufTrendPpm(&drift);
-    Serial.printf("[S0] t=%lu stream=%d sof=%d fill=%lu ms min=%lu max=%lu under=%lu over=%lu drop=%lu rx_ppm=%+.1f spk_ppm=%+.1f vol=%d mute=%d boost=%d cut=%d lim=%.1f dB heap=%u view=%s draw_max=%.1f ms buf_ppm=%s%.1f buf_s=%lu\n",
+    Serial.printf("[S0] t=%lu stream=%d sof=%d fill=%lu ms min=%lu max=%lu under=%lu over=%lu drop=%lu rx_ppm=%+.1f spk_ppm=%+.1f vol=%d mute=%d boost=%d cut=%d lim=%.1f dB heap=%u view=%s draw_max=%.1f ms buf_ppm=%s%.1f buf_s=%lu adj_ppm=%+.1f boot=%lu rst=%s prev=p%lu/r%lu/l%lu@%lus on=%lu off=%lu susp=%lu pulse=%lu iso=kept%lu/passed%lu\n",
                   (unsigned long)(elapsedMs / 1000), (int)streaming.load(), (int)sofMoving, (unsigned long)(fillNow * 1000 / RATE),
                   (unsigned long)(fmin == RING_SAMPLES ? 0 : fmin * 1000 / RATE), (unsigned long)(fmax * 1000 / RATE), (unsigned long)underruns.load(),
                   (unsigned long)overruns.load(), (unsigned long)droppedSamples.load(), rxPpm, playPpm, (int)uac.volume(UAC_CHAN_MASTER),
                   (int)uac.mute(UAC_CHAN_MASTER), boostDb.load(), (int)bassCut.load(), lim, (unsigned)ESP.getFreeHeap(),
                   vizView ? "flight" : "measure", drawMaxUs.exchange(0) / 1000.0f, driftOk ? "" : "~", drift,
-                  (unsigned long)(bt.sumMs / 1000));
+                  (unsigned long)(bt.sumMs / 1000), adjPpm.load(), (unsigned long)diagBoots, diagReset, (unsigned long)diagPrevPlay,
+                  (unsigned long)diagPrevRx, (unsigned long)diagPrevLoop, (unsigned long)diagPrevUptimeS, (unsigned long)diagOns,
+                  (unsigned long)diagOffs, (unsigned long)diagSuspends, (unsigned long)diagPulses,
+                  (unsigned long)isoKeptCount.load(), (unsigned long)isoPassedCount.load());
+    static uint32_t crashLogs = 0;
+    if (crashLogs++ % 10 == 0) Serial.printf("[CRASH] saved dump: %s\n", crashInfo);
   }
+  diagMark(diagLoop, 0);
   delay(5);
 }
