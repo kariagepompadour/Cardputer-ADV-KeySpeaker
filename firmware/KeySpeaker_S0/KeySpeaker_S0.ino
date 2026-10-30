@@ -38,6 +38,9 @@
       shows the last input switch, A or あ (Fn+[ / Fn+]), like the Mac's menu bar.
     - (S2-4) Keys still held from the launcher are ignored at start, and the startup screen never shows the hint.
     - (S2-5) The computer lists the speaker as "KeySpeaker", not "TinyUSB UAC1" (UsbNames.h).
+    - (S2-6) A help screen of the keys of the measurement and visualizer modes: h or a key with no job opens and
+      closes it. After a minute with no key and no sound the emblem screen comes back and stays until a
+      key, which only closes it. The emblem screen shows "h HELP  Fn+M KEYBOARD", at start too.
     - (S0-3) A second screen, the flight visualizer (FlightViz.h): the level history as scrolling terrain, with a
       small fighter flying over it. It measures the level of what the computer sends, before its volume, and does
       not touch the audio path. The measurement screen stays the default.
@@ -77,7 +80,7 @@
 #include "UsbNames.h"
 #include "Splash.h"
 
-#define BUILD_TAG "S2-5"
+#define BUILD_TAG "S2-6"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -131,6 +134,8 @@ static std::atomic<uint32_t> fillMin{RING_SAMPLES}, fillMax{0};  // ring fill (s
 static std::atomic<float> adjPpm{0};           // S1 correction playTask applies now (+: the computer is faster)
 static std::atomic<uint32_t> lastRxMs{0};      // millis() of the last USB audio data
 static std::atomic<int16_t> rxPeak{0};         // largest |sample| since the last screen update
+static std::atomic<uint32_t> lastSoundMs{0};   // millis() of the last USB audio that was not silent (after its volume)
+static constexpr int16_t SOUND_MIN = 32;       // a peak below this (about -60 dB) counts as silence
 static std::atomic<bool> streaming{false};     // the computer selected the speaker's streaming alternate setting
 static std::atomic<int> boostDb{BOOST_DEFAULT_DB};
 static std::atomic<bool> bassCut{true};
@@ -321,6 +326,7 @@ static void onSpkData(void* data, uint16_t len) {
   }
   if (peak > rxPeak) rxPeak = peak;
   lastRxMs = millis();
+  if (peak > SOUND_MIN) lastSoundMs = lastRxMs.load();
   diagMark(diagRx, 0);
 }
 
@@ -588,7 +594,7 @@ static void drawScreen(uint32_t fillNow, uint32_t elapsedS) {
   canvas.drawString(l, 134, 112);
 
   canvas.setTextColor(COL_DIM);
-  canvas.drawString("[ ]\\ vol  spc play  v view  Fn+M mode", 4, 125);
+  canvas.drawString("[ ]\\ vol  spc play  v view  h help", 4, 125);
   canvas.pushSprite(0, 0);
 }
 
@@ -642,37 +648,54 @@ static Preferences prefs;
 
 static uint8_t viewMode() { return (bool)USB ? mode : (uint8_t)MODE_KEYS; }
 
-// ---- Emblem screen (S1-7, S1-8, design 8.3): shown at start and, in the measurement and visualizer modes, on a key
-// with no job, for SPLASH_MS. A key with a job does it and closes the screen; v closes it to the measurement screen;
-// Fn+M closes it and changes the mode; another key with no job starts the 2 seconds again. On a key it also shows
-// how to get to the keyboard mode (splashHint).
-static constexpr uint32_t SPLASH_MS = 2000;
-static bool splashOn = false, splashDrawn = false, splashHint = false, splashAtStart = false;
-static uint32_t splashStartMs = 0;
+// ---- Emblem screen (S1-7, S2-6, design 8.3): shown at start for SPLASH_MS or until a key, and, in the measurement
+// and visualizer modes, after IDLE_MS with no key and no sound, until a key (splashIdle). That key only closes it.
+// At start a key does its job as usual; v closes the screen to the measurement screen.
+static constexpr uint32_t SPLASH_MS = 2000, IDLE_MS = 60000;
+static bool splashOn = false, splashDrawn = false, splashIdle = false;
+static uint32_t splashStartMs = 0, lastKeyMs = 0;
+static bool helpOn = false;  // the help screen of the measurement and visualizer modes (S2-6)
 
-static void showSplash(bool hint) {
-  if (!(splashOn && splashAtStart)) splashAtStart = false;
-  hint = hint && !splashAtStart;  // the startup screen never shows the hint; a key only starts its 2 seconds again
-  splashDrawn = splashOn && splashHint == hint;  // loop() draws it when it changes
+static void showSplash(bool idle) {
   splashOn = true;
-  splashHint = hint;
+  splashDrawn = false;
+  splashIdle = idle;
   splashStartMs = millis();
+}
+
+// One line of key/meaning pairs, keys in amber and meanings in light gray, centered.
+static constexpr uint16_t COL_HINT = 0xD69A;
+static void drawHintLine(const char* const* pairs, int count, int y) {
+  const int gap = canvas.textWidth("  ");
+  int w = -gap;
+  for (int i = 0; i < count; i += 2) w += canvas.textWidth(pairs[i]) + canvas.textWidth(" ") + canvas.textWidth(pairs[i + 1]) + gap;
+  int x = 120 - w / 2;
+  for (int i = 0; i < count; i += 2) {
+    canvas.setTextColor(COL_AMBER);
+    canvas.drawString(pairs[i], x, y);
+    x += canvas.textWidth(pairs[i]) + canvas.textWidth(" ");
+    canvas.setTextColor(COL_HINT);
+    canvas.drawString(pairs[i + 1], x, y);
+    x += canvas.textWidth(pairs[i + 1]) + gap;
+  }
 }
 
 static void drawSplash() {
   uint16_t* buf = static_cast<uint16_t*>(canvas.getBuffer());
   memcpy(buf, SPLASH, sizeof SPLASH);
-  if (splashHint) {
-    // Darken the bottom of the grille to about 40 % and write the hint on it.
-    for (int i = SPLASH_W * 121; i < SPLASH_W * SPLASH_H; i++) {
-      uint16_t c = (uint16_t)((buf[i] << 8) | (buf[i] >> 8));
-      uint16_t r = (c >> 11) * 2 / 5, g = ((c >> 5) & 63) * 2 / 5, b = (c & 31) * 2 / 5;
-      c = (uint16_t)((r << 11) | (g << 5) | b);
-      buf[i] = (uint16_t)((c << 8) | (c >> 8));
-    }
-    canvas.setTextColor(0xD69A);  // light gray
-    canvas.drawCenterString("Fn+M  KEYBOARD", 120, 125);
+  // Darken the bottom of the grille to about 40 % and write how to reach the help and the keyboard on it.
+  for (int i = SPLASH_W * 121; i < SPLASH_W * SPLASH_H; i++) {
+    uint16_t c = (uint16_t)((buf[i] << 8) | (buf[i] >> 8));
+    uint16_t r = (c >> 11) * 2 / 5, g = ((c >> 5) & 63) * 2 / 5, b = (c & 31) * 2 / 5;
+    c = (uint16_t)((r << 11) | (g << 5) | b);
+    buf[i] = (uint16_t)((c << 8) | (c >> 8));
   }
+  static const char* const SPEAKER[] = {"h", "HELP", "Fn+M", "KEYBOARD"};
+  static const char* const KEYS[] = {"Fn+M", "MODE"};
+  if (mode == MODE_KEYS)  // only at start: the keys go to the computer, so there is no help here
+    drawHintLine(KEYS, 2, 125);
+  else
+    drawHintLine(SPEAKER, 4, 125);
   canvas.pushSprite(0, 0);
 }
 
@@ -749,6 +772,7 @@ static void setMode(uint8_t m) {
   mode = m;
   prefs.putUChar("mode", mode);
   splashOn = false;
+  helpOn = false;
   Serial.printf("[KEY] mode %s\n", MODE_NAME[mode]);
 }
 
@@ -773,8 +797,16 @@ static void keyService() {
       if (heldLabels[i] == c) return false;
     return true;
   };
+  lastKeyMs = millis();
   bool keysMode = viewMode() == MODE_KEYS;
   bool acted = false, noJob = false;
+  if (splashOn && splashIdle && !keysMode) {  // the key that wakes the emblem screen only closes it
+    for (int i = 0; i < n; i++)
+      if (isNew(labels[i])) splashOn = false;
+    memcpy(heldLabels, labels, n);
+    heldCount = n;
+    return;
+  }
 
   for (int i = 0; i < n; i++) {
     uint8_t c = labels[i];
@@ -830,6 +862,10 @@ static void keyService() {
         setMode(splashOn || mode == MODE_GAME ? MODE_DATA : MODE_GAME);
         acted = true;
         break;
+      case 'h':
+        helpOn = splashOn || !helpOn;
+        acted = true;
+        break;
       case KEY_LEFT_CTRL:
       case KEY_LEFT_SHIFT:
       case KEY_LEFT_ALT:
@@ -842,8 +878,8 @@ static void keyService() {
     }
   }
   if (keysMode) sendKeys(ks, labels, n);
-  if (acted) splashOn = false;
-  else if (noJob) showSplash(true);
+  if (noJob && !keysMode) helpOn = splashOn || !helpOn;  // like h: opens the help, or closes it
+  if (acted || noJob) splashOn = false;
   memcpy(heldLabels, labels, n);
   heldCount = n;
 }
@@ -918,6 +954,38 @@ static void drawKeys() {
   canvas.pushSprite(0, 0);
 }
 
+// ---- Help screen of the measurement and visualizer modes (S2-6): h or a key with no job opens it and closes it.
+// The keys with a job still work while it is open, so they can be tried from it; v and Fn+M close it.
+static void drawSpeakerHelp() {
+  canvas.fillSprite(COL_BG);
+  canvas.setTextSize(2);
+  canvas.setTextColor(COL_AMBER);
+  canvas.drawString("HELP", 6, 4);
+  canvas.setTextSize(1);
+  canvas.setTextColor(COL_DIM);
+  canvas.drawString(mode == MODE_GAME ? "flight mode" : "measure mode", 60, 10);
+  canvas.drawRightString(BUILD_TAG, 236, 4);
+  static const KeyHelp LEFT[] = {{"[ ]", "volume"}, {"\\", "mute"}, {"space", "play/pause"},
+                                 {", /", "prev/next"}, {"- =", "boost"}, {"b", "bass cut"}};
+  static const KeyHelp RIGHT[] = {{"v", "measure/flight"}, {"r", "reset counts"}, {"h", "close help"},
+                                  {"Fn+M", "next mode"}, {"Fn+O", "Mac/Win"}};
+  int y = 30;
+  for (const KeyHelp& h : LEFT) {
+    drawHelp(h.key, h.meaning, 6, y, 44);
+    y += 15;
+  }
+  y = 30;
+  for (const KeyHelp& h : RIGHT) {
+    drawHelp(h.key, h.meaning, 124, y, 156);
+    y += 15;
+  }
+  char l[32];
+  snprintf(l, sizeof l, "+%ddB %s  %s", boostDb.load(), bassCut ? "cut" : "full", uac.mute(UAC_CHAN_MASTER) ? "MUTE" : "");
+  canvas.setTextColor(COL_DIM);
+  canvas.drawString(l, 124, 30 + 5 * 15);
+  canvas.pushSprite(0, 0);
+}
+
 void setup() {
   USB.onEvent(onUsbEvent);
   Serial.begin(115200);
@@ -936,7 +1004,6 @@ void setup() {
   canvas.createSprite(240, 135);
   canvas.setFont(&fonts::Font0);
   showSplash(false);
-  splashAtStart = true;
   prefs.begin("keyspeaker", false);
   mode = prefs.getUChar("mode", MODE_DATA);
   if (mode >= MODE_COUNT) mode = MODE_DATA;
@@ -1002,7 +1069,13 @@ void loop() {
     lastScreen = 0;  // draw the new screen at once
   }
   vizView = view == MODE_GAME;
-  if (splashOn && now - splashStartMs >= SPLASH_MS) splashOn = false;
+  if (splashOn && !splashIdle && now - splashStartMs >= SPLASH_MS) splashOn = false;
+  if (view == MODE_KEYS) helpOn = false;
+  uint32_t lastSound = lastSoundMs;
+  if (!splashOn && view != MODE_KEYS && now - (lastKeyMs > lastSound ? lastKeyMs : lastSound) >= IDLE_MS) {
+    helpOn = false;
+    showSplash(true);
+  }
   if (splashOn) {
     if (!splashDrawn) {
       drawSplash();
@@ -1012,6 +1085,11 @@ void loop() {
     if (now - lastScreen >= 250) {
       lastScreen = now;
       drawKeys();
+    }
+  } else if (helpOn) {
+    if (now - lastScreen >= 250) {
+      lastScreen = now;
+      drawSpeakerHelp();
     }
   } else if (vizView) {
     if (now - lastFrame >= FRAME_MS) {

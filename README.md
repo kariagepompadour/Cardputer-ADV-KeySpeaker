@@ -38,8 +38,9 @@ long texts.
 
 ## Modes and keys
 
-It starts with the KariPom emblem on a speaker grille. `Fn+M` then cycles through three modes; the last one is
-remembered.
+It starts with the KariPom emblem on a speaker grille, with `h HELP  Fn+M KEYBOARD` at the bottom. `Fn+M` then cycles
+through three modes; the last one is remembered. In the Data and Game modes, after a minute with no key and no sound,
+the emblem comes back and stays until you press a key (that key only wakes it).
 
 | Mode | Screen | Keys |
 | --- | --- | --- |
@@ -54,8 +55,12 @@ Speaker and playback keys (Data and Game modes):
 | `[` / `]` / `\` | Volume down / up / mute on the computer |
 | `Space` | Play / pause |
 | `,` / `/` | Previous / next track |
+| `-` / `=` | Boost down / up |
+| `b` | Bass cut on / off |
+| `r` | Reset the counters |
 | `v` | Data ↔ Game |
-| any other key | Shows the emblem with a hint: `Fn+M  KEYBOARD` |
+| `h` | Opens / closes a help screen of these keys (they keep working while it is open) |
+| any other key | Opens / closes the help screen, like `h` |
 
 Keyboard mode (letters, Shift, Ctrl, Tab, Enter and Del go straight through):
 
