@@ -433,7 +433,8 @@ choice.
 **S2.5-7, S2.5-8 (Mac, 2026-11-01):** while G0 is held, the Earth says `MOUSE` and the right side shows the mouse's
 keys; the keyboard's cheat sheet has one `G0+tilt Move` line instead of four. S2.5-8 lays the mouse's keys out as a
 cross, as `E` `Z` `A` `D` sit around `S` (both the user's ideas). Checked on the device: easy to use (the user's
-impression).
+impression). On Windows (S2.5-10, 2026-11-01), the speaker, the keyboard and the mouse all worked with the mouse added
+to the USB device.
 
 Design 8.3.1. In keyboard mode only. The log line `[BOOT] IMU on` says the tilt sensor was found; without it the
 cheat sheet has no mouse lines and G0 does nothing.
@@ -452,6 +453,8 @@ cheat sheet has no mouse lines and G0 does nothing.
 ### 5.12 The jog dial (added in S2.5-10)
 
 **S2.5-10 (Mac, 2026-11-01):** works well on the device (the user's impression: "ばっちり").
+
+**S2.5-10 on Windows (2026-11-01):** the speaker, the mouse (with G0) and the jog dial all worked with no problem.
 
 Design 8.3.2. Needs Media Jog's Unit Encoder (U135) on the Grove port; connect it while the Cardputer is off. The log
 says `[DIAL] Unit Encoder found`.

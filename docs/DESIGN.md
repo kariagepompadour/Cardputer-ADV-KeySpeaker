@@ -501,6 +501,7 @@ Expected to be kept.
 - S2: Passed. On a Mac and on Windows 11 the speaker, the keyboard (including the A/あ key) and the media keys work over
   one cable. Windows needed an IAD in front of the speaker (S2-9), and lists it as "Speakers (KeySpeaker)" (S2-10). The
   keyboard screen's Earth (8.3) is built in S2-11 and checked on the device.
+- S2.5: The air mouse (8.3.1) and Media Jog's jog dial (8.3.2) work on a Mac and on Windows (S2.5-10).
 - S6 (early): an iPhone 15 over USB plays the sound and takes the keyboard and the volume keys.
 - The device records are in `docs/S0_TEST.md`.
 
