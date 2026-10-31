@@ -164,11 +164,9 @@ first on a Mac (S5). Other devices are tried in S6, starting with the ones at ha
   - With only a charger plugged in, it goes into BLE mode as well.
 - Manual: `Fn+B` switches (the same key as Media Jog; a fallback).
 - BLE is stopped while in USB mode, so the other device does not see two keyboards.
-- To be changed in S5 (2026-11-01, the user's idea): while USB is connected, the speaker stays on USB, and the keys
-  can go to a BLE device instead, chosen on the connection screen (`Fn+B`: USB, or BLE channel 1 to 3). For example,
-  the computer plays through KeySpeaker while it types on an iPad. The keys go to one place at a time. Whether the
-  sound still plays without dropouts while BLE runs is checked on the device in S5; if it does not, the line above
-  stays.
+- Sending the keys to a BLE device while USB stays connected (or pairing one then) was considered and dropped
+  (2026-11-01, with the user): few keyboards do that, and it would make the behavior harder to follow. To use or pair
+  a BLE device, unplug USB first. Keeping it simple.
 - The USB configuration is fixed at startup and cannot change while running. So every function is always included.
 
 ## 6. Use as an earphone adapter
@@ -342,12 +340,11 @@ modes available.
     ones, in the same colors and proportions; the white stars twinkle now and then; none drawn behind the Earth).
   - While waiting for BLE pairing, the Earth is gray (with the land still faintly visible). It takes on color once
     connected.
-- Under the Earth, lines 9 px apart: the connection (`USB`, `BLE CH1` to `3`, or both while the keys go to BLE over
-  USB, 5.3), the OS profile and `A/あ` on one line, and below them `Fn+B BLE CH` (from S5), `Fn+O Mac/Win` and
-  `Fn+[ ] A/あ`. `Fn+M mode` is at the top of the right side (it works in every mode), above the cheat sheet; it is not
-  shown when USB is not connected. Decided 2026-11-01 with the user, by mockups: `Fn+[ ]` moved here from the cheat
-  sheet, next to the `A/あ` it switches; `Fn+M` went to the top right so that `Fn+B` fits under the Earth with USB and
-  BLE both in use (the user's ideas). Putting all of these over the Earth, and shrinking the Earth to about 80 px so
+- Under the Earth, lines 9 px apart: the connection (`USB`, or `BLE CH1` to `3`), the OS profile and `A/あ` on one
+  line, and below them `Fn+B BLE CH` (over BLE, from S5), `Fn+O Mac/Win` and `Fn+[ ] A/あ`. `Fn+M mode` is at the top
+  of the right side (it works in every mode), above the cheat sheet; it is shown only while USB is connected. Decided
+  2026-11-01 with the user, by mockups: `Fn+[ ]` moved here from the cheat sheet, next to the `A/あ` it switches;
+  `Fn+M` went to the top right, which leaves room under the Earth for `Fn+B` (the user's ideas). Putting all of these over the Earth, and shrinking the Earth to about 80 px so
   five lines fit under it, were tried too: the first dimmed most of the Earth, the second left little Earth around
   "KEY BOARD".
 - A cheat sheet of the keys that only keyboard mode has (the Fn combinations, the jobs of `alt` and `opt` under the
