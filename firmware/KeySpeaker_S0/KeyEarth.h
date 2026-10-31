@@ -5,7 +5,7 @@
   about 96 px square at the top left. Sea blue, land green, polar regions white, darker toward the rim, seen from 20
   degrees north. The land flows from left to right, one turn a minute. Which latitude and longitude each block falls
   on is worked out once (begin()); a frame only shifts the longitude and looks the land up. "KEY BOARD" sits in white
-  over the middle, with the Earth behind the letters at a third of its brightness. A star sky like the game screen's
+  over the middle, with the Earth just around the letters at a third of its brightness. A star sky like the game screen's
   (mostly white, some yellow and pink, a few white ones twinkling) surrounds it; none behind the Earth.
   The land map is the mockup's coarse hand-made one, in 10-degree latitude bands.
 */
@@ -21,8 +21,12 @@ constexpr int CX = 50, CY = 50;                                   // the Earth's
 constexpr float TILT_DEG = 20.0f;                                 // seen from this latitude
 constexpr uint32_t TURN_MS = 60000;                               // one turn a minute
 constexpr int16_t LON_START = 135;                                // Japan in front at start
-// The area dimmed behind the letters, and where they go (text size 2: 12 x 16 px a letter).
-constexpr int DIM_X0 = CX - 33, DIM_X1 = CX + 33, DIM_Y0 = CY - 20, DIM_Y1 = CY + 20;
+// The areas dimmed behind the letters (text size 2: 12 x 16 px a letter), 3 px around each line: a narrower one for
+// "KEY" over a wider one for "BOARD", so the corners beside "KEY" stay bright (S2-12, the user's idea).
+struct Rect {
+  int x0, y0, x1, y1;
+};
+static const Rect DIM[2] = {{CX - 21, CY - 20, CX + 21, CY}, {CX - 33, CY, CX + 33, CY + 20}};
 constexpr int NSTARS = 16;  // the corners around the disc are small
 
 // Land by latitude band (its centre, 85 to -85): longitude ranges, west to east.
@@ -134,10 +138,12 @@ static void draw(Canvas& g, uint32_t nowMs, uint16_t letters) {
       r = r * e.shade / 255, gr = gr * e.shade / 255, b = b * e.shade / 255;
       int x0 = OX + i * PX, y0 = OY + j * PY;
       g.fillRect(x0, y0, BW, BH, rgb565(r, gr, b));
-      // The part behind the letters, at a third of the brightness.
-      int dx0 = x0 > DIM_X0 ? x0 : DIM_X0, dx1 = x0 + BW < DIM_X1 ? x0 + BW : DIM_X1;
-      int dy0 = y0 > DIM_Y0 ? y0 : DIM_Y0, dy1 = y0 + BH < DIM_Y1 ? y0 + BH : DIM_Y1;
-      if (dx0 < dx1 && dy0 < dy1) g.fillRect(dx0, dy0, dx1 - dx0, dy1 - dy0, rgb565(r / 3, gr / 3, b / 3));
+      // The parts behind the letters, at a third of the brightness.
+      for (const Rect& d : DIM) {
+        int dx0 = x0 > d.x0 ? x0 : d.x0, dx1 = x0 + BW < d.x1 ? x0 + BW : d.x1;
+        int dy0 = y0 > d.y0 ? y0 : d.y0, dy1 = y0 + BH < d.y1 ? y0 + BH : d.y1;
+        if (dx0 < dx1 && dy0 < dy1) g.fillRect(dx0, dy0, dx1 - dx0, dy1 - dy0, rgb565(r / 3, gr / 3, b / 3));
+      }
     }
 
   g.setTextSize(2);

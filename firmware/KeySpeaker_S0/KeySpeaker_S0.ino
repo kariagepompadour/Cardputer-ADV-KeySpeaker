@@ -49,6 +49,9 @@
     - (S2-10) The speaker's output terminal is a speaker, not headphones, so Windows lists it as "Speakers (KeySpeaker)".
     - (S2-11) The keyboard screen of design 8.3: the spinning block Earth with "KEY BOARD" over it in a star sky
       (KeyEarth.h), the connection, OS and A/あ under it, and the cheat sheet on the right.
+    - (S2-12) Fn+M right after start sometimes did nothing. A key already down when Fn goes down now counts with Fn,
+      so Fn+M works when M is read a moment before Fn; and Fn+M before the computer has taken the USB device is logged.
+      The Earth is dimmed only around each line of "KEY BOARD", so the corners beside "KEY" stay bright.
     - (S0-3) A second screen, the flight visualizer (FlightViz.h): the level history as scrolling terrain, with a
       small fighter flying over it. It measures the level of what the computer sends, before its volume, and does
       not touch the audio path. The measurement screen stays the default.
@@ -90,7 +93,7 @@
 #include "Splash.h"
 #include "KeyEarth.h"
 
-#define BUILD_TAG "S2-11"
+#define BUILD_TAG "S2-12"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -861,6 +864,8 @@ static void keyService() {
       if (heldLabels[i] == c) return false;
     return true;
   };
+  // Fn just went down: a key already held counts with it too, for when that key was read a moment before Fn (S2-12).
+  bool fnLate = ks.fn && isNew(KEY_FN);
   lastKeyMs = millis();
   bool keysMode = viewMode() == MODE_KEYS;
   bool acted = false, noJob = false;
@@ -874,10 +879,13 @@ static void keyService() {
 
   for (int i = 0; i < n; i++) {
     uint8_t c = labels[i];
-    if (!isNew(c)) continue;
+    bool fresh = isNew(c);
+    if (!fresh && !fnLate) continue;
     if (ks.fn) {  // the Cardputer's own Fn keys, in every mode
       if (c == 'm') {
         if ((bool)USB) setMode((uint8_t)((mode + 1) % MODE_COUNT));
+        else Serial.println("[KEY] Fn+M before USB is up: no mode change");
+        if (!fresh) Serial.println("[KEY] Fn+M: Fn came after M");
         acted = true;
       } else if (keysMode && (c == '[' || c == ']')) {
         inputKana = c == ']';

@@ -330,7 +330,9 @@ modes available.
     land in green, polar regions in white, darker toward the edge.
   - A large `KEY` `BOARD` sits in white over the middle of the Earth, with the Earth behind the letters dimmed to a
     third of its brightness so they read well (2026-10-31: the letters on the Earth were the user's idea; the dimming
-    was chosen over a black outline only and over amber letters, by comparing mockups).
+    was chosen over a black outline only and over amber letters, by comparing mockups). Only 3 px around each line is
+    dimmed, a narrower area for `KEY` over a wider one for `BOARD`, so the corners beside `KEY` stay bright
+    (2026-11-01, the user's idea; S2-12).
   - The land shapes come from the same original coarse map as the mockup (10-degree steps), to fit the coarseness of
     the blocks and match the terrain and the graphic EQ (2026-10-30, the user's decision).
   - As on the real Earth, the land flows from left to right, slowly, about one turn a minute.
@@ -452,7 +454,7 @@ Expected to be kept.
   with no restart on each.
 - S2: Passed. On a Mac and on Windows 11 the speaker, the keyboard (including the A/あ key) and the media keys work over
   one cable. Windows needed an IAD in front of the speaker (S2-9), and lists it as "Speakers (KeySpeaker)" (S2-10). The
-  keyboard screen's Earth (8.3) is built in S2-11, not yet checked on the device.
+  keyboard screen's Earth (8.3) is built in S2-11 and checked on the device.
 - S6 (early): an iPhone 15 over USB plays the sound and takes the keyboard and the volume keys.
 - The device records are in `docs/S0_TEST.md`.
 
