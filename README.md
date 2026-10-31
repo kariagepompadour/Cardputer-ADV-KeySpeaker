@@ -40,7 +40,8 @@ long texts.
 
 It starts with the KariPom emblem on a speaker grille, with `h HELP  Fn+M KEYBOARD` at the bottom. `Fn+M` then cycles
 through three modes; the last one is remembered. In the Data and Game modes, after a minute with no key and no sound,
-the emblem comes back and stays until you press a key (that key only wakes it).
+the emblem comes back and stays until you press a key (that key only wakes it). When music starts again, the emblem
+shakes on the loud beats, like a speaker's cone.
 
 | Mode | Screen | Keys |
 | --- | --- | --- |

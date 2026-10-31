@@ -20,9 +20,12 @@ without it (for example from the Arduino IDE) still works, but restarts the Card
 `-Wl,--wrap=tinyusb_add_string_descriptor`, so the computer lists the speaker as "KeySpeaker"
 (`KeySpeaker_S0/UsbNames.h`) instead of the core's "TinyUSB UAC1".
 
-The startup screen `KeySpeaker_S0/Splash.h` is made from `assets/splash.png` (the author's KariPom emblem from
-`assets/splash_original.webp`: the grille fills the screen, the emblem at 80 %) with
-`python3 tools/make_splash.py assets/splash.png KeySpeaker_S0/Splash.h` (macOS, uses `sips`).
+The emblem screen `KeySpeaker_S0/Splash.h` is made from the layers of `assets/splash.png` (the author's KariPom emblem
+from `assets/splash_original.webp`: the grille fills the screen, the emblem at 80 %): `assets/splash_grille.png`, and
+`assets/splash_emblem.png` with its alpha `assets/splash_emblem_alpha.png`, kept apart so the emblem can shake on loud
+beats. Run
+`python3 tools/make_splash.py assets/splash_grille.png assets/splash_emblem.png assets/splash_emblem_alpha.png KeySpeaker_S0/Splash.h`
+(macOS, uses `sips`).
 
 Install the app-only `.ino.bin` through a launcher. Do not use the Arduino IDE's **Upload**: it also writes the
 bootloader and the partition table, which can replace your launcher.

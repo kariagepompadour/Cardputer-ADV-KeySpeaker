@@ -41,6 +41,9 @@
     - (S2-6) A help screen of the keys of the measurement and visualizer modes: h or a key with no job opens and
       closes it. After a minute with no key and no sound the emblem screen comes back and stays until a
       key, which only closes it. The emblem screen shows "h HELP  Fn+M KEYBOARD", at start too.
+    - (S2-7) The emblem on that screen shakes a pixel or two on loud beats, like a speaker's cone. Splash.h now has
+      the grille and the emblem apart. It only reads the level; the audio path is unchanged.
+    - (S2-8) The emblem is plain silver: no extra warmth, and its colors turned to grays.
     - (S0-3) A second screen, the flight visualizer (FlightViz.h): the level history as scrolling terrain, with a
       small fighter flying over it. It measures the level of what the computer sends, before its volume, and does
       not touch the audio path. The measurement screen stays the default.
@@ -80,7 +83,7 @@
 #include "UsbNames.h"
 #include "Splash.h"
 
-#define BUILD_TAG "S2-6"
+#define BUILD_TAG "S2-8"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -136,6 +139,7 @@ static std::atomic<uint32_t> lastRxMs{0};      // millis() of the last USB audio
 static std::atomic<int16_t> rxPeak{0};         // largest |sample| since the last screen update
 static std::atomic<uint32_t> lastSoundMs{0};   // millis() of the last USB audio that was not silent (after its volume)
 static constexpr int16_t SOUND_MIN = 32;       // a peak below this (about -60 dB) counts as silence
+static std::atomic<int16_t> beatPeak{0};       // largest |sample| (after the volume) since the emblem screen's last frame
 static std::atomic<bool> streaming{false};     // the computer selected the speaker's streaming alternate setting
 static std::atomic<int> boostDb{BOOST_DEFAULT_DB};
 static std::atomic<bool> bassCut{true};
@@ -327,6 +331,7 @@ static void onSpkData(void* data, uint16_t len) {
   if (peak > rxPeak) rxPeak = peak;
   lastRxMs = millis();
   if (peak > SOUND_MIN) lastSoundMs = lastRxMs.load();
+  if (peak > beatPeak) beatPeak = peak;
   diagMark(diagRx, 0);
 }
 
@@ -656,11 +661,47 @@ static bool splashOn = false, splashDrawn = false, splashIdle = false;
 static uint32_t splashStartMs = 0, lastKeyMs = 0;
 static bool helpOn = false;  // the help screen of the measurement and visualizer modes (S2-6)
 
+// The emblem shakes on loud beats (S2-7): a frame's peak well above the recent level kicks it 1 or 2 pixels one way,
+// then 1 pixel back, then home, about 0.1 second in all.
+static constexpr int16_t BEAT_MIN = 2000;  // quieter peaks never shake it
+static int8_t shakeDx = 0, shakeDy = 0, shakeStep = 0, shakeX = 0, shakeY = 0;
+static float beatLevel = 0;  // the recent peak level
+
 static void showSplash(bool idle) {
   splashOn = true;
   splashDrawn = false;
   splashIdle = idle;
   splashStartMs = millis();
+  beatPeak = 0;
+  beatLevel = 0;
+  shakeStep = shakeX = shakeY = 0;
+}
+
+// Once a frame while the emblem screen is up; true when the emblem has moved.
+static bool shakeService() {
+  float p = beatPeak.exchange(0);
+  int8_t x = 0, y = 0;
+  if (shakeStep == 0 && p >= BEAT_MIN && p > beatLevel * 1.4f) {
+    static const int8_t DIRS[8][2] = {{1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}, {0, -1}, {1, -1}};
+    const int8_t* d = DIRS[esp_random() & 7];
+    int amp = p > 8000 && p > beatLevel * 2.2f ? 2 : 1;
+    shakeDx = d[0];
+    shakeDy = d[1];
+    x = (int8_t)(shakeDx * amp);
+    y = (int8_t)(shakeDy * amp);
+    shakeStep = 1;
+  } else if (shakeStep == 1) {
+    x = (int8_t)-shakeDx;
+    y = (int8_t)-shakeDy;
+    shakeStep = 2;
+  } else {
+    shakeStep = 0;
+  }
+  beatLevel += (p - beatLevel) * 0.1f;  // about a third of a second
+  bool moved = x != shakeX || y != shakeY;
+  shakeX = x;
+  shakeY = y;
+  return moved;
 }
 
 // One line of key/meaning pairs, keys in amber and meanings in light gray, centered.
@@ -682,7 +723,23 @@ static void drawHintLine(const char* const* pairs, int count, int y) {
 
 static void drawSplash() {
   uint16_t* buf = static_cast<uint16_t*>(canvas.getBuffer());
-  memcpy(buf, SPLASH, sizeof SPLASH);
+  memcpy(buf, SPLASH_GRILLE, sizeof SPLASH_GRILLE);
+  // The emblem over the grille, where shakeService() has put it.
+  for (int y = 0; y < EMBLEM_H; y++) {
+    uint16_t* row = buf + (EMBLEM_Y + shakeY + y) * SPLASH_W + EMBLEM_X + shakeX;
+    for (int x = 0; x < EMBLEM_W; x++) {
+      uint32_t a = EMBLEM_A[y * EMBLEM_W + x];
+      if (!a) continue;
+      uint16_t e = EMBLEM_RGB[y * EMBLEM_W + x], c = e;
+      if (a < 255) {
+        uint16_t g = (uint16_t)((row[x] << 8) | (row[x] >> 8));
+        uint32_t r = ((g >> 11) * (255 - a) + (e >> 11) * a) / 255, gr = (((g >> 5) & 63) * (255 - a) + ((e >> 5) & 63) * a) / 255,
+                 b = ((g & 31) * (255 - a) + (e & 31) * a) / 255;
+        c = (uint16_t)((r << 11) | (gr << 5) | b);
+      }
+      row[x] = (uint16_t)((c << 8) | (c >> 8));
+    }
+  }
   // Darken the bottom of the grille to about 40 % and write how to reach the help and the keyboard on it.
   for (int i = SPLASH_W * 121; i < SPLASH_W * SPLASH_H; i++) {
     uint16_t c = (uint16_t)((buf[i] << 8) | (buf[i] >> 8));
@@ -1077,6 +1134,10 @@ void loop() {
     showSplash(true);
   }
   if (splashOn) {
+    if (now - lastFrame >= FRAME_MS) {
+      lastFrame = now;
+      if (shakeService()) splashDrawn = false;
+    }
     if (!splashDrawn) {
       drawSplash();
       splashDrawn = true;
