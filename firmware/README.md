@@ -4,7 +4,7 @@ Cardputer ADV firmware. Each stage is its own sketch folder with its app-only `.
 
 | Folder | Stage | Status |
 | --- | --- | --- |
-| [`KeySpeaker_S0/`](KeySpeaker_S0/) | S0: USB Audio Class 1 speaker only; measures the buffer and the clock drift. S0-3 adds a flight visualizer screen (`v`). S1 (now `S1-6`) corrects the clock drift and fixes two USB restarts | On a Mac and Windows 11: 8 hours with no dropouts (without the S1 correction, one every 1.4 hours); ten pause/resume cycles without a restart. Now `S2-10`: USB keyboard and media keys too. Test plan: [`../docs/S0_TEST.md`](../docs/S0_TEST.md) |
+| [`KeySpeaker_S0/`](KeySpeaker_S0/) | S0: USB Audio Class 1 speaker only; measures the buffer and the clock drift. S0-3 adds a flight visualizer screen (`v`). S1 (now `S1-6`) corrects the clock drift and fixes two USB restarts | On a Mac and Windows 11: 8 hours with no dropouts (without the S1 correction, one every 1.4 hours); ten pause/resume cycles without a restart. Now `S2-11`: USB keyboard and media keys too, and a spinning Earth on the keyboard screen. Test plan: [`../docs/S0_TEST.md`](../docs/S0_TEST.md) |
 
 ## Building
 

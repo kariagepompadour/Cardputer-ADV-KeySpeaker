@@ -2,11 +2,12 @@
 
 [日本語版](S0_TEST_JA.md)
 
-Target: `firmware/KeySpeaker_S0/KeySpeaker_S0.ino.bin` (`S2-10`). This is S0-6 plus the clock drift correction (S1-1),
+Target: `firmware/KeySpeaker_S0/KeySpeaker_S0.ino.bin` (`S2-11`). This is S0-6 plus the clock drift correction (S1-1),
 a record of why it restarted by itself (S1-2, S1-3) and the fix for that (S1-4 to S1-6), the startup screen (S1-7 to
 S1-11), the USB keyboard and the three modes (S2-1 to S2-5), the help screen and the emblem screen after being left
 alone (S2-6), the silver emblem that shakes with loud sounds (S2-7, S2-8), and the fix that makes it work as a
-speaker on Windows (S2-9), with the name "Speakers" (S2-10). `S2-10` is shown at the top right of the data screen. How to check S1 is in 5.8, and S2 in
+speaker on Windows (S2-9), with the name "Speakers" (S2-10), and the keyboard screen's spinning Earth (S2-11). `S2-11` is
+shown at the top right of the data screen. How to check S1 is in 5.8, and S2 in
 5.10. The results up to S0-6 are kept in this document as they were.
 
 Status: volume checked on the device (Mac, 2026-10-29). It was louder and easier to hear than S0-1; a boost of +9 to
@@ -328,6 +329,14 @@ continuous playback with no dropouts).
 speaker: typing worked with `Fn+O` set to either Mac or Windows, Japanese input worked, the sound played from
 KeySpeaker, and `[` and `]` in the data mode changed the iPhone's volume. Without the cable it is not seen at all, as
 expected: Bluetooth (S5) is not built yet. The iOS version was not noted.
+
+**S2-11 (not yet checked on the device):** the keyboard screen of design 8.3. To check: the block Earth at the top
+left turns slowly, the land moving from left to right (one turn a minute); "KEY BOARD" reads well over the dimmed
+middle; a few stars around the Earth, some white ones blinking now and then; `USB Mac A/あ` under the Earth (the last
+input switched in orange), and below it `Fn+O Mac/Win` and `Fn+[ ] A/あ`; `Fn+M mode` at the top right, and the cheat
+sheet under it, lines 9 px apart and still easy to read, with `ctrl+C/V` clear of `copy/paste` under `Fn+O` set to
+Windows. ⌘ and ⌥ beside Command and Option on a Mac, four panes beside Win on Windows. This screen no longer shows
+the version tag. Typing, sound and the other modes are unchanged from S2-10.
 
 From S2-1, the Cardputer is recognized as a USB keyboard and media keys (volume, playback) as well as a USB speaker.
 Each `Fn+M` moves to the next mode: **data screen → game screen (visualizer) → keyboard**. Keys go to the computer as

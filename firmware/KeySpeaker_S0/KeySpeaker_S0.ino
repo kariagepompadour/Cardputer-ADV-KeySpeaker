@@ -47,6 +47,8 @@
     - (S2-9) An IAD in front of the speaker's two interfaces (UsbAudioDesc.h), for Windows: without it, Windows 11 did
       not start the speaker (Code 10), though the keyboard worked.
     - (S2-10) The speaker's output terminal is a speaker, not headphones, so Windows lists it as "Speakers (KeySpeaker)".
+    - (S2-11) The keyboard screen of design 8.3: the spinning block Earth with "KEY BOARD" over it in a star sky
+      (KeyEarth.h), the connection, OS and A/あ under it, and the cheat sheet on the right.
     - (S0-3) A second screen, the flight visualizer (FlightViz.h): the level history as scrolling terrain, with a
       small fighter flying over it. It measures the level of what the computer sends, before its volume, and does
       not touch the audio path. The measurement screen stays the default.
@@ -86,8 +88,9 @@
 #include "UsbNames.h"
 #include "UsbAudioDesc.h"
 #include "Splash.h"
+#include "KeyEarth.h"
 
-#define BUILD_TAG "S2-10"
+#define BUILD_TAG "S2-11"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -945,9 +948,9 @@ static void keyService() {
   heldCount = n;
 }
 
-// ---- Keyboard mode screen (S2-1: text only; the spinning Earth of design 8.3 comes next). S2-2: a cheat sheet of the
-// keys only this mode has, always on the right, keys in amber and their meaning in white; the last three lines follow
-// the Mac / Windows profile.
+// ---- Keyboard mode screen (design 8.3). S2-2: a cheat sheet of the keys only this mode has, always on the right, keys
+// in amber and their meaning in white; the last three lines follow the Mac / Windows profile. S2-11: the spinning Earth
+// at the top left (KeyEarth.h), and the connection, OS and A/あ under it.
 // あ (Kana), 9 x 8 pixels, the bit for the left pixel first; Font0 has no kana. Drawn from Hiragino Sans W4 at 11 px
 // and cleaned up by hand.
 static const uint16_t KANA_A[8] = {0x020, 0x0FC, 0x024, 0x07E, 0x0A9, 0x131, 0x121, 0x0C6};
@@ -958,9 +961,22 @@ static void drawKanaA(int x, int y, int scale, uint16_t color) {
       if (KANA_A[r] & (0x100 >> c)) canvas.fillRect(x + c * scale, y + r * scale, scale, scale, color);
 }
 
+// The keys' marks beside their names on the cheat sheet, 7 x 7 pixels, the bit for the left pixel first (S2-11):
+// Command (⌘), Option (⌥), and four panes for the Windows key (not the logo itself).
+static const uint8_t ICON_CMD[7] = {0x22, 0x55, 0x3E, 0x14, 0x3E, 0x55, 0x22};
+static const uint8_t ICON_OPT[7] = {0x67, 0x10, 0x10, 0x08, 0x08, 0x07, 0x00};
+static const uint8_t ICON_WIN[7] = {0x77, 0x77, 0x77, 0x00, 0x77, 0x77, 0x77};
+
+static void drawIcon(const uint8_t* icon, int x, int y, uint16_t color) {
+  for (int r = 0; r < 7; r++)
+    for (int c = 0; c < 7; c++)
+      if (icon[r] & (0x40 >> c)) canvas.drawPixel(x + c, y + r, color);
+}
+
 struct KeyHelp {
   const char* key;
   const char* meaning;
+  const uint8_t* icon = nullptr;  // drawn after the meaning
 };
 
 static void drawHelp(const char* key, const char* meaning, int x, int y, int meaningX) {
@@ -972,46 +988,48 @@ static void drawHelp(const char* key, const char* meaning, int x, int y, int mea
 
 static void drawKeys() {
   bool mounted = (bool)USB;
+  uint32_t now = millis();
   canvas.fillSprite(COL_BG);
-  canvas.setTextSize(2);
-  canvas.setTextColor(COL_AMBER);
-  canvas.drawString("KEY", 6, 10);
-  canvas.drawString("BOARD", 6, 28);
-  canvas.setTextSize(1);
+  KeyEarth::draw(canvas, now, COL_FG);
+  // Under the Earth, lines 9 px apart: the connection, the OS profile and the input switch, always "A/あ" with the
+  // last one chosen in amber (both white before); then the keys of this side, Fn+[ ] next to the A/あ it switches
+  // (2026-11-01). From S5 the connection line also shows the BLE channel, and Fn+B gets the line under it.
+  int x = 4;
   canvas.setTextColor(mounted ? COL_OK : COL_WARN);
-  canvas.drawString(mounted ? "USB" : "NO USB", 6, 56);
+  canvas.drawString(mounted ? "USB" : "NO USB", x, 99);
+  x += canvas.textWidth(mounted ? "USB" : "NO USB") + 6;
   canvas.setTextColor(COL_FG);
-  canvas.drawString(osWin ? "Win" : "Mac", 6, 70);
-  // The input switch, beside the USB and Mac lines: always "A/あ", the last one chosen in amber (both white before).
-  const int ix = 36, iy = 58;
-  canvas.setTextSize(2);
+  canvas.drawString(osWin ? "Win" : "Mac", x, 99);
+  x += 24;
   canvas.setTextColor(inputKana == 0 ? COL_AMBER : COL_FG);
-  canvas.drawString("A", ix, iy);
+  canvas.drawString("A", x, 99);
   canvas.setTextColor(COL_FG);
-  canvas.drawString("/", ix + 12, iy);
-  canvas.setTextSize(1);
-  drawKanaA(ix + 24, iy, 2, inputKana == 1 ? COL_AMBER : COL_FG);
-  if (mounted) drawHelp("Fn+M", "mode", 6, 104, 36);
-  drawHelp("Fn+O", "Mac/Win", 6, 118, 36);
+  canvas.drawString("/", x + 6, 99);
+  drawKanaA(x + 12, 99, 1, inputKana == 1 ? COL_AMBER : COL_FG);
+  drawHelp("Fn+O", "Mac/Win", 4, 108, 46);
+  drawHelp("Fn+[ ]", "A/", 4, 117, 46);
+  drawKanaA(46 + 12, 117, 1, COL_FG);
 
+  // The right side, lines 9 px apart: Fn+M at the top (it works in every mode), then the cheat sheet. The air mouse's
+  // four lines (design 8.3.1) still fit below. No version tag here: the other screens show it.
   static const KeyHelp SHEET[] = {{"Fn+;,./", "Arrows"}, {"Fn+Sh+", "PgUp/End"}, {"Fn+`", "Esc"},
-                                  {"Fn+1..=", "F1-F12"}, {"Fn+Del", "Delete"},  {"Fn+[ ]", "A /"}};
-  static const KeyHelp MAC[] = {{"alt", "Command"}, {"opt", "Option"}, {"alt+C/V", "copy/paste"}};
-  static const KeyHelp WIN[] = {{"alt", "Alt"}, {"opt", "Win"}, {"ctrl+C/V", "copy/paste"}};
-  const int x = 116, mx = 166;  // "copy/paste" must end inside the visible area
-  int y = 4;
+                                  {"Fn+1..=", "F1-F12"}, {"Fn+Del", "Delete"}};
+  static const KeyHelp MAC[] = {{"alt", "Command", ICON_CMD}, {"opt", "Option", ICON_OPT}, {"alt+C/V", "copy/paste"}};
+  static const KeyHelp WIN[] = {{"alt", "Alt"}, {"opt", "Win", ICON_WIN}, {"ctrl+C/V", "copy/paste"}};
+  const int sx = 108, mx = 164;  // clear of "ctrl+C/V", and "copy/paste" still ends inside the visible area
+  int y = 2;
+  if (mounted) drawHelp("Fn+M", "mode", sx, y, mx);
+  y += 12;
   for (const KeyHelp& h : SHEET) {
-    drawHelp(h.key, h.meaning, x, y, mx);
-    if (h.meaning[0] == 'A' && h.meaning[1] == ' ') drawKanaA(mx + 24, y, 1, COL_FG);  // "A / あ"
-    y += 13;
+    drawHelp(h.key, h.meaning, sx, y, mx);
+    y += 9;
   }
   y += 3;
   for (const KeyHelp& h : osWin ? WIN : MAC) {
-    drawHelp(h.key, h.meaning, x, y, mx);
-    y += 13;
+    drawHelp(h.key, h.meaning, sx, y, mx);
+    if (h.icon) drawIcon(h.icon, mx + canvas.textWidth(h.meaning) + 4, y, COL_FG);
+    y += 9;
   }
-  canvas.setTextColor(COL_DIM);
-  canvas.drawRightString(BUILD_TAG, 236, 125);
   canvas.pushSprite(0, 0);
 }
 
@@ -1064,6 +1082,7 @@ void setup() {
   M5Cardputer.Display.setBrightness(128);
   canvas.createSprite(240, 135);
   canvas.setFont(&fonts::Font0);
+  KeyEarth::begin();
   showSplash(false);
   prefs.begin("keyspeaker", false);
   mode = prefs.getUChar("mode", MODE_DATA);

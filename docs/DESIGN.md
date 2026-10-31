@@ -164,6 +164,11 @@ first on a Mac (S5). Other devices are tried in S6, starting with the ones at ha
   - With only a charger plugged in, it goes into BLE mode as well.
 - Manual: `Fn+B` switches (the same key as Media Jog; a fallback).
 - BLE is stopped while in USB mode, so the other device does not see two keyboards.
+- To be changed in S5 (2026-11-01, the user's idea): while USB is connected, the speaker stays on USB, and the keys
+  can go to a BLE device instead, chosen on the connection screen (`Fn+B`: USB, or BLE channel 1 to 3). For example,
+  the computer plays through KeySpeaker while it types on an iPad. The keys go to one place at a time. Whether the
+  sound still plays without dropouts while BLE runs is checked on the device in S5; if it does not, the line above
+  stays.
 - The USB configuration is fixed at startup and cannot change while running. So every function is always included.
 
 ## 6. Use as an earphone adapter
@@ -318,7 +323,7 @@ modes available.
 **The keyboard mode's screen**
 
 - At the top left, a slowly spinning Earth (to tie in with "Earth Defense" on the game screen; changed from KariPom's
-  face on 2026-10-30).
+  face on 2026-10-30). Built in S2-11 (`firmware/KeySpeaker_S0/KeyEarth.h`); BLE's gray Earth comes with S5.
   - The Earth is drawn with the same rectangular blocks as the graphic EQ and the terrain (6 × 3 px, every 8 px across
     and 4 px down), 12 columns by 24 rows (about 96 px square). It was first 16 by 32 (about 128 px square), and was
     made smaller so the cheat sheet can always be shown (2026-10-31, decided with the user from mockups). Sea in blue,
@@ -335,10 +340,16 @@ modes available.
     ones, in the same colors and proportions; the white stars twinkle now and then; none drawn behind the Earth).
   - While waiting for BLE pairing, the Earth is gray (with the land still faintly visible). It takes on color once
     connected.
-- Under the Earth: the connection (`USB` or `BLE CH1` to `3`), the OS profile and `A/あ` on one line, and below them
-  `Fn+M mode` (`Fn+B CH` over BLE) and `Fn+O Mac/Win`. The right side is the cheat sheet.
-- A cheat sheet of the keys that only keyboard mode has (the Fn combinations, Eisu / Kana, the jobs of `alt` and `opt`
-  under the OS profile, and copy and paste) is always on the screen (2026-10-30, the user's idea; keys in orange,
+- Under the Earth, lines 9 px apart: the connection (`USB`, `BLE CH1` to `3`, or both while the keys go to BLE over
+  USB, 5.3), the OS profile and `A/あ` on one line, and below them `Fn+B BLE CH` (from S5), `Fn+O Mac/Win` and
+  `Fn+[ ] A/あ`. `Fn+M mode` is at the top of the right side (it works in every mode), above the cheat sheet; it is not
+  shown when USB is not connected. Decided 2026-11-01 with the user, by mockups: `Fn+[ ]` moved here from the cheat
+  sheet, next to the `A/あ` it switches; `Fn+M` went to the top right so that `Fn+B` fits under the Earth with USB and
+  BLE both in use (the user's ideas). Putting all of these over the Earth, and shrinking the Earth to about 80 px so
+  five lines fit under it, were tried too: the first dimmed most of the Earth, the second left little Earth around
+  "KEY BOARD".
+- A cheat sheet of the keys that only keyboard mode has (the Fn combinations, the jobs of `alt` and `opt` under the
+  OS profile, and copy and paste; Eisu / Kana is under the Earth) is always on the screen (2026-10-30, the user's idea; keys in orange,
   meanings in white).
   - The input last switched with `Fn+[` / `Fn+]` is shown as "A" or "あ", as in the Mac's menu bar, to the right of the
     connection and OS on the left. The Mac does not report its input state, so it only shows the one switched from the
@@ -347,8 +358,11 @@ modes available.
     restart, so at startup neither is assumed, and both are shown in white. It is not remembered (2026-10-30, decided
     with the user).
   - "あ" is not in Font0, so it is drawn as pixel art made from Hiragino.
+  - The keys' marks sit beside their names, 7 × 7 px pixel art: ⌘ beside Command and ⌥ beside Option on a Mac, and
+    four panes beside Win on Windows (not the Windows logo itself) (2026-11-01, the user's idea; built in S2-11).
   - S2-2 put it on the right of the text-only screen. The cheat sheet stays when the Earth is drawn.
-  - The cheat sheet's lines are 10 px apart, so it still fits with the air mouse's four lines (8.3.1) added.
+  - The right side's lines are 9 px apart, so `Fn+M`, the cheat sheet and the air mouse's four lines (8.3.1) all fit
+    (checked in a mockup, 2026-11-01). The version tag is not shown on this screen; the other screens show it.
 - No effects such as flashing on every key press (that would be too much). The game screen is lively, so keyboard
   mode has a quiet screen.
 
@@ -438,7 +452,7 @@ Expected to be kept.
   with no restart on each.
 - S2: Passed. On a Mac and on Windows 11 the speaker, the keyboard (including the A/あ key) and the media keys work over
   one cable. Windows needed an IAD in front of the speaker (S2-9), and lists it as "Speakers (KeySpeaker)" (S2-10). The
-  keyboard screen's Earth layout is decided (8.3) but not yet built.
+  keyboard screen's Earth (8.3) is built in S2-11, not yet checked on the device.
 - S6 (early): an iPhone 15 over USB plays the sound and takes the keyboard and the volume keys.
 - The device records are in `docs/S0_TEST.md`.
 
