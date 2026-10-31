@@ -2,13 +2,13 @@
 
 [日本語版](S0_TEST_JA.md)
 
-Target: `firmware/KeySpeaker_S0/KeySpeaker_S0.ino.bin` (`S2-12`). This is S0-6 plus the clock drift correction (S1-1),
+Target: `firmware/KeySpeaker_S0/KeySpeaker_S0.ino.bin` (`S2.5-8`). This is S0-6 plus the clock drift correction (S1-1),
 a record of why it restarted by itself (S1-2, S1-3) and the fix for that (S1-4 to S1-6), the startup screen (S1-7 to
 S1-11), the USB keyboard and the three modes (S2-1 to S2-5), the help screen and the emblem screen after being left
 alone (S2-6), the silver emblem that shakes with loud sounds (S2-7, S2-8), and the fix that makes it work as a
-speaker on Windows (S2-9), with the name "Speakers" (S2-10), the keyboard screen's spinning Earth (S2-11), and a
-surer `Fn+M` (S2-12). `S2-12` is shown at the top right of the data screen. How to check S1 is in 5.8, and S2 in
-5.10. The results up to S0-6 are kept in this document as they were.
+speaker on Windows (S2-9), with the name "Speakers" (S2-10), the keyboard screen's spinning Earth (S2-11), a surer
+`Fn+M` (S2-12), and the air mouse (S2.5-1 to S2.5-8). `S2.5-8` is shown at the top right of the data screen. How to check S1 is
+in 5.8, S2 in 5.10, and the air mouse in 5.11. The results up to S0-6 are kept in this document as they were.
 
 Status: volume checked on the device (Mac, 2026-10-29). It was louder and easier to hear than S0-1; a boost of +9 to
 +12 dB was good, and the bass cut was hard to hear either way. The defaults stay at +9 dB with the bass cut on. The
@@ -396,6 +396,48 @@ not written to the log.
    (`Fn+;` and so on), Eisu and Kana with `Fn+[` `Fn+]`, and `alt+C` / `alt+V` (copy and paste on a Mac).
 7. Turn it off and on again, and check that it starts in the last mode.
 8. If you have time, also try pausing and resuming (5.8.1) a few times, and check that it does not restart.
+
+### 5.11 The air mouse (added in S2.5-1)
+
+**S2.5-1 (Mac, 2026-11-01):** the cursor moved, but the axes were crossed: the top down moved it left, the bottom
+down right, the right side down moved it down and the left side down up. The IMU sits a quarter turn from the
+screen. S2.5-2 swaps the two tilts (top down: up; right side down: right). S2.5-3 makes the wheel one step per press
+of `;` (up) or `.` (down) with G0 held, whatever the tilt. S2.5-3 on the device: picking from a menu by tilting is
+hard. S2.5-4 keeps `Fn+;` `Fn+,` `Fn+.` `Fn+/` as the arrow keys while G0 is held, to walk a menu one item at a time.
+S2.5-5 dims whole blocks behind "KEY BOARD" and leaves out the block at each outer corner (the user's idea); to check
+that it looks softer.
+
+Noticed (2026-11-01): a click from the speaker when KeySpeaker starts, and only then (not on pausing or playing).
+M5Unified powers up the ES8311's analog circuits, its DAC and its output and sets 0 dB in one go; a gentler order
+(volume at the minimum while powering up, a short wait, then the volume raised smoothly) is to be tried after the
+air mouse is checked. How much it helps is not known until it is heard.
+
+**S2.5-5 (Mac, 2026-11-01):** the corners behind "KEY BOARD" look right ("ばっちり"). The startup click is unchanged,
+as expected (not yet worked on). With a right-click menu open, holding G0 and pressing up or down did not move it (they
+were the wheel), and pressing keys on G0's own side while holding it was hard. S2.5-6: up and down are the arrow keys,
+and `E` `Z` `A` `D` around `S` (left hand) work as well as `;` `.` `,` `/`; `S` is Enter; no wheel for now.
+
+**S2.5-6 (Mac, 2026-11-01):** easy to use (the user's impression: "これは使いやすい"); the left hand's `E` `Z` `A` `D` were the right
+choice.
+
+**S2.5-7, S2.5-8 (Mac, 2026-11-01):** while G0 is held, the Earth says `MOUSE` and the right side shows the mouse's
+keys; the keyboard's cheat sheet has one `G0+tilt Move` line instead of four. S2.5-8 lays the mouse's keys out as a
+cross, as `E` `Z` `A` `D` sit around `S` (both the user's ideas). Checked on the device: easy to use (the user's
+impression).
+
+Design 8.3.1. In keyboard mode only. The log line `[BOOT] IMU on` says the tilt sensor was found; without it the
+cheat sheet has no mouse lines and G0 does nothing.
+
+1. Hold G0 and tilt the Cardputer left, right, toward you and away. The cursor should move that way, faster the more
+   it is tilted, and not at all for a small tilt. Letting go of G0 stops it. If a direction is the wrong way round,
+   note which: the signs are one setting each. The log shows `[AIR] side … fore …` twice a second while G0 is held.
+2. Hold G0 at a slant (lying down, say): that angle is the rest position, and the cursor stays still.
+3. With G0 held, `,` or `A` clicks and `/` or `D` right-clicks. Hold G0 and `,` (or `A`) and tilt: it drags.
+4. Right-click to open a menu; with G0 held, `;` / `E` and `.` / `Z` move through it one item at a time, and `S` (or
+   Enter) picks it. On a long page, the same keys scroll it.
+5. With G0 held, `;` `,` `.` `/` and `E` `A` `S` `Z` `D` type no letters; after letting go of G0 they type again. Typing without G0 is unchanged.
+6. On Windows: the mouse is a new part of the USB device. If the keyboard or the speaker stops working there, note it
+   (as with S2-10, an old registration may need uninstalling).
 
 ## 6. Please report
 

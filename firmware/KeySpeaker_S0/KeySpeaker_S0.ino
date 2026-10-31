@@ -52,6 +52,24 @@
     - (S2-12) Fn+M right after start sometimes did nothing. A key already down when Fn goes down now counts with Fn,
       so Fn+M works when M is read a moment before Fn; and Fn+M before the computer has taken the USB device is logged.
       The Earth is dimmed only around each line of "KEY BOARD", so the corners beside "KEY" stay bright.
+    - (S2.5-1) The air mouse of design 8.3.1, in keyboard mode: hold G0 and tilt to move the cursor, measured from how
+      the Cardputer was held when G0 went down; with G0 held, , and / are the left and right buttons and ; held with a
+      tilt scrolls. A USB mouse is added after the keyboard and the media keys, and the IMU is switched on.
+    - (S2.5-2) The IMU sits turned a quarter turn from the screen: its roll is the screen's forward and back tilt and
+      its pitch the left and right one. S2.5-1 had them the other way, so the cursor went sideways for a forward tilt.
+    - (S2.5-3) The wheel is one step per press of ; (up) or . (down) with G0 held, whatever the tilt: it is mostly
+      for picking from a menu opened with a click. The tilt only moves the cursor.
+    - (S2.5-4) With G0 held, Fn+; , . / are still the arrow keys (not the mouse), so a menu opened with a click can be
+      walked one item at a time; picking one by tilting alone was hard.
+    - (S2.5-8) The mouse's keys are laid out as a cross on the right, as E Z A D sit around S: Up above, Down below,
+      Click left, R-click right, Enter in the middle.
+    - (S2.5-7) While G0 is held, the Earth says "MOUSE" and the right side lists the mouse's keys, at once; the
+      keyboard's cheat sheet keeps one line, "G0+tilt Move", instead of four.
+    - (S2.5-6) With G0 held, the left hand's E Z A D (around S) work as well as the arrow keys ; . , /, since pressing
+      keys on G0's side while holding it was hard. Up and down are the arrow keys again (a menu opened with a click
+      did not move with the wheel), the left and right ones the mouse buttons, and S is Enter. No wheel for now.
+    - (S2.5-5) The dark part behind "KEY BOARD" follows the Earth's blocks, whole blocks dimmed, with the block at each
+      outer corner (above "KEY", below "BOARD") left out, so its corners are rounded off (KeyEarth.h).
     - (S0-3) A second screen, the flight visualizer (FlightViz.h): the level history as scrolling terrain, with a
       small fighter flying over it. It measures the level of what the computer sends, before its volume, and does
       not touch the audio path. The measurement screen stays the default.
@@ -80,6 +98,7 @@
 #include "USBAudioCard.h"
 #include "USBHIDKeyboard.h"
 #include "USBHIDConsumerControl.h"
+#include "USBHIDMouse.h"
 #include <Preferences.h>
 #include "esp32-hal-tinyusb.h"
 #include "soc/usb_struct.h"
@@ -93,7 +112,7 @@
 #include "Splash.h"
 #include "KeyEarth.h"
 
-#define BUILD_TAG "S2-12"
+#define BUILD_TAG "S2.5-8"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -133,6 +152,7 @@ USBAudioCard uac(RATE, UAC_BPS_16, UAC_SPK_STEREO, UAC_MIC_NONE);
 // keyboard gets endpoint 1. Both register with TinyUSB in their constructors, before USB starts.
 USBHIDKeyboard kbd;
 USBHIDConsumerControl media;
+USBHIDMouse mouse;  // (S2.5-1) the air mouse, after the keyboard
 
 static StreamBufferHandle_t ring = nullptr;   // writer: uacReceiveTask (onSpkData), reader: playTask
 
@@ -811,6 +831,21 @@ static uint8_t fnKey(uint8_t label, bool shift, bool* noShift) {
 }
 
 // Sends the whole current key state, so a missed change can never leave a key stuck.
+// While G0 holds the air mouse on (design 8.3.1), the arrow keys ; . , / and the left hand's E Z A D (around S) are
+// the mouse's keys (S2.5-6): up and down send the arrow keys, left and right are the mouse buttons (airService), and
+// S sends Enter. With Fn the arrow keys are the Fn layer's, as always.
+static bool airOn = false;
+static bool keysRedraw = false;  // the keyboard screen changes at once when the air mouse goes on or off (S2.5-7)
+static uint8_t airHid(uint8_t code) {  // what a key sends while G0 is held; 0 for a mouse button
+  switch (code) {
+    case 0x33: case 0x08: return HID_UP;    // ; E
+    case 0x37: case 0x1D: return HID_DOWN;  // . Z
+    case 0x16: return HID_ENTER;            // S
+    case 0x36: case 0x04: case 0x38: case 0x07: return 0;  // , A / D: the buttons
+    default: return code;
+  }
+}
+
 static void sendKeys(const Keyboard_Class::KeysState& ks, const uint8_t* labels, int n) {
   KeyReport r = {};
   if (ks.ctrl) r.modifiers |= MOD_CTRL;
@@ -819,8 +854,12 @@ static void sendKeys(const Keyboard_Class::KeysState& ks, const uint8_t* labels,
   if (ks.opt) r.modifiers |= osWin ? MOD_GUI : MOD_ALT;  // Mac: Option, Windows: Win
   int k = 0;
   if (!ks.fn) {
-    for (uint8_t code : ks.hid_keys)
-      if (k < 6) r.keys[k++] = code;
+    for (uint8_t code : ks.hid_keys) {
+      if (airOn) code = airHid(code);
+      bool dup = false;
+      for (int j = 0; j < k; j++) dup = dup || r.keys[j] == code;
+      if (k < 6 && code && !dup) r.keys[k++] = code;
+    }
   } else {
     bool dropShift = false;
     for (int i = 0; i < n && k < 6; i++) {
@@ -956,6 +995,94 @@ static void keyService() {
   heldCount = n;
 }
 
+// ---- Air mouse (S2.5-1, design 8.3.1): in keyboard mode, while G0 is held, the tilt from how the Cardputer was held
+// when G0 went down moves the cursor; , or A is the left button and / or D the right one (S2.5-6; the up and down
+// keys are sent as arrow keys by sendKeys). Small tilts are ignored, bigger ones go faster. Tuned on the device.
+static constexpr uint32_t AIR_MS = 10;                  // a mouse report every 10 ms
+static constexpr float AIR_DEAD_DEG = 3.0f;             // tilts smaller than this do nothing
+static constexpr float AIR_GAIN = 0.115f;               // px per report = gain * (tilt beyond the dead zone)^1.5
+// The IMU is turned a quarter turn from the screen (found on the device, S2.5-2): its pitch is the left and right
+// tilt, its roll the forward and back one. Tilting the right side down moves the cursor right; the top down, up.
+static constexpr float AIR_X_SIGN = 1, AIR_Y_SIGN = 1;
+static constexpr float AIR_SMOOTH = 0.3f;               // share of a new IMU reading in the smoothed one
+
+static bool airHeld(uint8_t label) {
+  for (int i = 0; i < heldCount; i++)
+    if (heldLabels[i] == label) return true;
+  return false;
+}
+
+static float airSpeed(float deg, float gain) {  // signed, 0 inside the dead zone
+  float e = fabsf(deg) - AIR_DEAD_DEG;
+  if (e <= 0) return 0;
+  return copysignf(gain * e * sqrtf(e), deg);
+}
+
+static void airService(uint32_t now) {
+  static uint32_t last = 0, lastLog = 0;
+  static float ax = 0, ay = 0, az = 1, roll0 = 0, pitch0 = 0, fx = 0, fy = 0;
+  static uint8_t buttons = 0;
+  if (now - last < AIR_MS) return;
+  last = now;
+  bool on = viewMode() == MODE_KEYS && M5.BtnA.isPressed() && M5.Imu.isEnabled();
+  if (on != airOn) {
+    airOn = on;
+    keysRedraw = true;
+    if (on) {  // G0 just went down: this way of holding it is the rest position
+      M5.Imu.update();
+      M5.Imu.getAccel(&ax, &ay, &az);
+      roll0 = atan2f(ay, az) * 180.0f / (float)M_PI;
+      pitch0 = atan2f(-ax, sqrtf(ay * ay + az * az)) * 180.0f / (float)M_PI;
+      fx = fy = 0;
+      Serial.printf("[AIR] on: accel %.2f %.2f %.2f\n", ax, ay, az);
+    } else {
+      mouse.release(MOUSE_ALL);
+      buttons = 0;
+    }
+    if (viewMode() == MODE_KEYS) {  // the arrow keys type again, or stop typing
+      uint8_t labels[16];
+      int n = 0;
+      for (const auto& pos : M5Cardputer.Keyboard.keyList())
+        if (n < 16) labels[n++] = M5Cardputer.Keyboard.getKeyValue(pos).value_first;
+      sendKeys(M5Cardputer.Keyboard.keysState(), labels, n);
+    }
+  }
+  if (!airOn) return;
+
+  uint8_t b = (airHeld(',') || airHeld('a') ? MOUSE_LEFT : 0) | (airHeld('/') || airHeld('d') ? MOUSE_RIGHT : 0);
+  if (M5Cardputer.Keyboard.keysState().fn) b &= buttons;  // Fn+, and Fn+/ are arrows: no new button press
+  if (b != buttons) {
+    if (b & ~buttons) mouse.press(b & ~buttons);
+    if (buttons & ~b) mouse.release(buttons & ~b);
+    buttons = b;
+  }
+
+  float nx, ny, nz;
+  M5.Imu.update();
+  M5.Imu.getAccel(&nx, &ny, &nz);
+  ax += (nx - ax) * AIR_SMOOTH;
+  ay += (ny - ay) * AIR_SMOOTH;
+  az += (nz - az) * AIR_SMOOTH;
+  float roll = atan2f(ay, az) * 180.0f / (float)M_PI - roll0;
+  float pitch = atan2f(-ax, sqrtf(ay * ay + az * az)) * 180.0f / (float)M_PI - pitch0;
+  if (roll > 180) roll -= 360;
+  if (roll < -180) roll += 360;
+  float side = pitch, fore = roll;  // the screen's left-right and forward-back tilts
+
+  fx += airSpeed(side, AIR_GAIN) * AIR_X_SIGN;
+  fy += airSpeed(fore, AIR_GAIN) * AIR_Y_SIGN;
+  float cx = fx > 127 ? 127 : fx < -127 ? -127 : fx, cy = fy > 127 ? 127 : fy < -127 ? -127 : fy;
+  int8_t mx = (int8_t)cx, my = (int8_t)cy;
+  fx -= mx;
+  fy -= my;
+  if (mx || my) mouse.move(mx, my);
+  if (now - lastLog >= 500) {
+    lastLog = now;
+    Serial.printf("[AIR] side %+.0f fore %+.0f%s%s\n", side, fore, buttons & MOUSE_LEFT ? " L" : "",
+                  buttons & MOUSE_RIGHT ? " R" : "");
+  }
+}
+
 // ---- Keyboard mode screen (design 8.3). S2-2: a cheat sheet of the keys only this mode has, always on the right, keys
 // in amber and their meaning in white; the last three lines follow the Mac / Windows profile. S2-11: the spinning Earth
 // at the top left (KeyEarth.h), and the connection, OS and A/あ under it.
@@ -998,7 +1125,7 @@ static void drawKeys() {
   bool mounted = (bool)USB;
   uint32_t now = millis();
   canvas.fillSprite(COL_BG);
-  KeyEarth::draw(canvas, now, COL_FG);
+  KeyEarth::draw(canvas, now, COL_FG, airOn);
   // Under the Earth, lines 9 px apart: the connection, the OS profile and the input switch, always "A/あ" with the
   // last one chosen in amber (both white before); then the keys of this side, Fn+[ ] next to the A/あ it switches
   // (2026-11-01). From S5 the connection line also shows the BLE channel, and Fn+B gets the line under it.
@@ -1018,25 +1145,47 @@ static void drawKeys() {
   drawHelp("Fn+[ ]", "A/", 4, 117, 46);
   drawKanaA(46 + 12, 117, 1, COL_FG);
 
-  // The right side, lines 9 px apart: Fn+M at the top (it works in every mode), then the cheat sheet. The air mouse's
-  // four lines (design 8.3.1) still fit below. No version tag here: the other screens show it.
+  // The right side, lines 9 px apart: Fn+M at the top (it works in every mode), then the cheat sheet, and
+  // "G0+tilt Move" when the IMU is there. No version tag here: the other screens show it. While G0 is held, the mouse's
+  // keys instead (S2.5-7), as a cross like E Z A D around S (S2.5-8).
   static const KeyHelp SHEET[] = {{"Fn+;,./", "Arrows"}, {"Fn+Sh+", "PgUp/End"}, {"Fn+`", "Esc"},
                                   {"Fn+1..=", "F1-F12"}, {"Fn+Del", "Delete"}};
   static const KeyHelp MAC[] = {{"alt", "Command", ICON_CMD}, {"opt", "Option", ICON_OPT}, {"alt+C/V", "copy/paste"}};
   static const KeyHelp WIN[] = {{"alt", "Alt"}, {"opt", "Win", ICON_WIN}, {"ctrl+C/V", "copy/paste"}};
   const int sx = 108, mx = 164;  // clear of "ctrl+C/V", and "copy/paste" still ends inside the visible area
   int y = 2;
-  if (mounted) drawHelp("Fn+M", "mode", sx, y, mx);
-  y += 12;
-  for (const KeyHelp& h : SHEET) {
-    drawHelp(h.key, h.meaning, sx, y, mx);
-    y += 9;
-  }
-  y += 3;
-  for (const KeyHelp& h : osWin ? WIN : MAC) {
-    drawHelp(h.key, h.meaning, sx, y, mx);
-    if (h.icon) drawIcon(h.icon, mx + canvas.textWidth(h.meaning) + 4, y, COL_FG);
-    y += 9;
+  if (airOn) {
+    // A key and its meaning, centred on cx: the key in amber, the meaning in white under it.
+    auto cross = [](const char* key, const char* meaning, int cx, int y) {
+      canvas.setTextColor(COL_AMBER);
+      canvas.drawString(key, cx - canvas.textWidth(key) / 2, y);
+      canvas.setTextColor(COL_FG);
+      canvas.drawString(meaning, cx - canvas.textWidth(meaning) / 2, y + 10);
+    };
+    const int cl = 128, cm = 172, cr = 216;  // the cross's columns
+    drawHelp("tilt", "Move", 110, 3, 140);
+    cross("E ;", "Up", cm, 20);
+    cross("A ,", "Click", cl, 52);
+    cross("S", "Enter", cm, 52);
+    cross("D /", "R-click", cr, 52);
+    cross("Z .", "Down", cm, 84);
+    drawHelp("A+tilt", "Drag", 110, 112, 152);
+    canvas.setTextColor(COL_DIM);
+    canvas.drawString("let go of G0: keys", 110, 125);
+  } else {
+    if (mounted) drawHelp("Fn+M", "mode", sx, y, mx);
+    y += 12;
+    for (const KeyHelp& h : SHEET) {
+      drawHelp(h.key, h.meaning, sx, y, mx);
+      y += 9;
+    }
+    y += 3;
+    for (const KeyHelp& h : osWin ? WIN : MAC) {
+      drawHelp(h.key, h.meaning, sx, y, mx);
+      if (h.icon) drawIcon(h.icon, mx + canvas.textWidth(h.meaning) + 4, y, COL_FG);
+      y += 9;
+    }
+    if (M5.Imu.isEnabled()) drawHelp("G0+tilt", "Move", sx, y + 3, mx);  // the way into the air mouse (design 8.3.1)
   }
   canvas.pushSprite(0, 0);
 }
@@ -1081,7 +1230,7 @@ void setup() {
   Serial.printf("[BOOT] KeySpeaker %s\n", BUILD_TAG);
 
   auto cfg = M5.config();
-  cfg.internal_imu = false;
+  cfg.internal_imu = true;  // (S2.5-1) for the air mouse
   cfg.internal_spk = true;
   cfg.internal_mic = false;
   cfg.serial_baudrate = 0;  // Serial is USB CDC, already started
@@ -1118,6 +1267,8 @@ void setup() {
   if (!uac.begin()) Serial.println("[BOOT] USB audio failed to start");
   kbd.begin();
   media.begin();
+  mouse.begin();
+  Serial.printf("[BOOT] IMU %s\n", M5.Imu.isEnabled() ? "on" : "not found");
   Serial.printf("[BOOT] ready, heap %u\n", (unsigned)ESP.getFreeHeap());
 }
 
@@ -1128,6 +1279,7 @@ void loop() {
   usbLinkService();
   usbEventLog();
   keyService();
+  airService(millis());
 
   static uint32_t lastScreen = 0, lastFrame = 0, lastLog = 0;
   uint32_t now = millis();
@@ -1174,7 +1326,8 @@ void loop() {
       splashDrawn = true;
     }
   } else if (view == MODE_KEYS) {
-    if (now - lastScreen >= 250) {
+    if (now - lastScreen >= 250 || keysRedraw) {
+      keysRedraw = false;
       lastScreen = now;
       drawKeys();
     }

@@ -31,7 +31,10 @@ control. Basic function and stability come before looks.
 ### 1.1 Design principles
 
 - **One app, one job.** More modes make people keep track of "which mode am I in". Internet radio is RADIO DAYS's job,
-  the jog dial is Media Jog's, and switching between them is the Launcher's.
+  the jog dial is Media Jog's, and switching between them is the Launcher's. The Cardputer runs one app at a time,
+  so a jog dial left plugged in would do nothing in KeySpeaker; it is used here as arrow keys and Enter (8.3.2), and
+  the jog dial's real work, media control, stays Media Jog's (2026-11-01, the user's idea). In the speaker modes it is a
+  volume knob.
 - **No settings to make.** It works as soon as it starts, with nothing to choose. Switching between USB and BLE is
   automatic too.
 - A new, independent project, not an add-on to RADIO DAYS SDR. The existing repositories are not changed.
@@ -330,7 +333,10 @@ modes available.
     third of its brightness so they read well (2026-10-31: the letters on the Earth were the user's idea; the dimming
     was chosen over a black outline only and over amber letters, by comparing mockups). Only 3 px around each line is
     dimmed, a narrower area for `KEY` over a wider one for `BOARD`, so the corners beside `KEY` stay bright
-    (2026-11-01, the user's idea; S2-12).
+    (2026-11-01, the user's idea; S2-12). The dark part follows the blocks: whole blocks are dimmed, and the
+    block at each outer corner (above `KEY`, below `BOARD`) is left out, so it does not look like a flat box. It is 6
+    blocks wide behind `KEY` and 8 behind `BOARD`, centred on the Earth; a ninth block right of the `D`, with no
+    letter on it, was dropped (the user's ideas; S2.5-5).
   - The land shapes come from the same original coarse map as the mockup (10-degree steps), to fit the coarseness of
     the blocks and match the terrain and the graphic EQ (2026-10-30, the user's decision).
   - As on the real Earth, the land flows from left to right, slowly, about one turn a minute.
@@ -360,28 +366,69 @@ modes available.
   - The keys' marks sit beside their names, 7 × 7 px pixel art: ⌘ beside Command and ⌥ beside Option on a Mac, and
     four panes beside Win on Windows (not the Windows logo itself) (2026-11-01, the user's idea; built in S2-11).
   - S2-2 put it on the right of the text-only screen. The cheat sheet stays when the Earth is drawn.
-  - The right side's lines are 9 px apart, so `Fn+M`, the cheat sheet and the air mouse's four lines (8.3.1) all fit
-    (checked in a mockup, 2026-11-01). The version tag is not shown on this screen; the other screens show it.
+  - The right side's lines are 9 px apart. The air mouse takes one line here, `G0+tilt Move`; its keys show while G0 is
+    held (8.3.1, S2.5-7). The version tag is not shown on this screen; the other screens show it.
 - No effects such as flashing on every key press (that would be too much). The game screen is lively, so keyboard
   mode has a quiet screen.
 
-### 8.3.1 Moving the cursor by tilting (air mouse; decided 2026-10-30, to be built in S2.5)
+### 8.3.1 Moving the cursor by tilting (air mouse; decided 2026-10-30, controls revised 2026-11-01, to be built in S2.5)
 
 In keyboard mode, tilting the Cardputer (its IMU) moves the mouse cursor. It is not for everyday use, but a fallback
 when there is no mouse. So that the cursor does not wander while typing, it moves only while the button on the side
 (G0) is held.
 
+While G0 is held, two sets of keys act alike: the arrow keys printed on `;` `,` `.` `/` (right hand), and `E` `A` `Z`
+`D` around `S` (left hand, so G0 can be held with the right hand).
+
 | Action | Function |
 |---|---|
 | Hold G0 and tilt | The cursor moves in the tilt direction (small tilts are ignored; a bigger tilt is faster) |
-| Short press of G0 | Left click |
-| `Fn+G0` | Right click |
-| Hold G0 and press `;` / `.` | Scroll up / down (the ↑↓ printed on the keys) |
+| Hold G0, press `,` or `A` (left) | Left button (held down while the key is held, so holding it and tilting drags) |
+| Hold G0, press `/` or `D` (right) | Right button |
+| Hold G0, press `;` or `E` (up) / `.` or `Z` (down) | ↑ / ↓ arrow key: walk a menu opened with a click one item at a time; pages scroll too |
+| Hold G0, press `S` | Enter: pick the item |
 
+- The tilt is measured from how the Cardputer is held at the moment G0 goes down, so it works at any angle; it does
+  not need to be held flat.
+- While G0 is held, those keys do not type letters. Letting go of G0 releases any button still down. With `Fn`, the
+  arrow keys are the Fn layer's as always.
+- No wheel for now: the up and down arrow keys scroll pages in most apps, and a menu opened with a click moves only
+  with them.
+- How it got here (2026-11-01, with the user): the first plan was a short press of G0 for a left click, `Fn+G0` for a
+  right click and `;` / `.` for one step of the wheel; it could not drag. Scrolling by holding `;` and tilting came
+  next, then one wheel step per press of `;` / `.` (S2.5-3) and `Fn` with them for the arrow keys (S2.5-4). On the
+  device, a right-click menu did not move with the wheel, and pressing keys on G0's own side while holding it was
+  hard. So up and down became the arrow keys, and `E` `Z` `A` `D` were added for the left hand, as well as the arrow
+  keys so either can be used (the user's ideas; S2.5-6).
 - A mouse (HID) is added to USB alongside the keyboard and media keys. The same over BLE (S5).
-- These actions go on the keyboard mode's cheat sheet too (the user's wish). The screen layout was decided with
-  mockups (8.3, 2026-10-31).
-- The tilt directions and speeds, and the line between a long and a short press of G0, are tuned on the device.
+- On the screen (the user's wish; S2.5-7, the user's ideas): the keyboard's cheat sheet keeps one line for it,
+  `G0+tilt Move`, so the screen still tells how to get to the mouse.
+  While G0 is held, the Earth says `MOUSE` instead of `KEY BOARD` (dimmed behind it the same way, all four corner
+  blocks left out), and the right side shows the mouse's keys instead, laid out as a cross the way `E` `Z` `A` `D`
+  sit around `S`: Up above, Down below, Click left, R-click right, Enter in the middle (S2.5-8, the user's idea), with
+  "tilt Move" above it, "A+tilt Drag" below and "let go of G0: keys". It changes the moment G0 goes down or up.
+- The tilt directions and speeds and the dead zone are tuned on the device.
+
+### 8.3.2 A jog dial as volume, arrow keys and Enter (decided 2026-11-01, to be built in a later S2.5 version)
+
+For people who have Media Jog's jog dial, an M5Stack Unit Encoder (U135) on the Grove port (I²C, address 0x40), so
+that it is not idle while KeySpeaker runs (1.1; the user's idea).
+
+| Action | Data view / game screen | Keyboard mode |
+|---|---|---|
+| Turn right / left | Computer volume up / down (the same as `]` / `[`), one step per click of the dial | → / ← key, one press per click (with Shift held, it selects text) |
+| Press the knob | Play / pause (the same as `Space`) | Enter |
+
+- In the speaker modes the dial is a volume knob, as on a speaker. Turning it for the next or previous track was
+  considered first; a quick turn would skip several tracks, and a knob for volume is what people expect. The tracks
+  stay on `,` and `/` (2026-11-01, with the user).
+- Pressing the knob plays or pauses rather than muting: pressing it usually means "wait a moment", and a paused
+  video or song does not move on meanwhile. Muting stays on `\` (2026-11-01, chosen with the user over mute).
+- In keyboard mode it sends keys, like every key sent to the computer there.
+- Found at start: KeySpeaker looks for the unit at 0x40 when it starts, and uses it only if it is there. Nothing changes
+  without it. As with Media Jog, connect it while the Cardputer is off.
+- Not on the screen's cheat sheet (the user's wish); a line in the log says it was found.
+- The reading code comes from Media Jog. The Grove port's pins (G1, G2) are not used by anything else here.
 
 ### 8.4 Notes for Japanese setups
 
@@ -434,7 +481,7 @@ Expected to be kept.
 | S1 | Build the speed fine-tuning | 8 hours of continuous playback with no audible dropouts |
 | S1.5 | Tune the sound: a lift for the voice band, virtual bass, a better limiter (chapter 9) | Judged easier to hear than S0-2 when compared by ear on the device |
 | S2 | A composite device of UAC, HID keyboard and media keys | On macOS and Windows, both work over one cable |
-| S2.5 | Move the cursor by tilting (while G0 is held; 8.3.1) | On a Mac, holding G0 and tilting moves the cursor, and clicking and scrolling work. Releasing it stops the cursor |
+| S2.5 | Move the cursor by tilting (while G0 is held; 8.3.1) | On a Mac, holding G0 and tilting moves the cursor, and clicking, dragging and picking from a menu work. Releasing it stops the cursor. With a Unit Encoder plugged in, turning it changes the volume (← and → in keyboard mode), and pressing it plays or pauses (Enter in keyboard mode) (8.3.2) |
 | S3 | The full key map, OS profiles, the Fn layer | Every key checked on each OS |
 | S4 | The status screen (usefulness first) | Every item is shown |
 | S5 | Port BLE HID, switch modes automatically by SOF, switch connection channels (5.2) | Plugging and unplugging switches modes, and no key stays held. Typing works on a Mac as a BLE keyboard. Switching channels between two devices works |

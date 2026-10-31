@@ -22,11 +22,20 @@ constexpr float TILT_DEG = 20.0f;                                 // seen from t
 constexpr uint32_t TURN_MS = 60000;                               // one turn a minute
 constexpr int16_t LON_START = 135;                                // Japan in front at start
 // The areas dimmed behind the letters (text size 2: 12 x 16 px a letter), 3 px around each line: a narrower one for
-// "KEY" over a wider one for "BOARD", so the corners beside "KEY" stay bright (S2-12, the user's idea).
+// "KEY" over a wider one for "BOARD", so the corners beside "KEY" stay bright (S2-12, the user's idea). Whole blocks
+// are dimmed, those touching these areas, and the block at each outer corner (above "KEY", below "BOARD") is left
+// out, so the dark part follows the blocks and its corners are rounded off (S2.5-5, the user's idea).
+// While G0 holds the air mouse on, "MOUSE" takes their place on one line, dimmed the same way with all four corner
+// blocks left out (S2.5-7, the user's idea).
 struct Rect {
   int x0, y0, x1, y1;
+  bool roundTop, roundBottom;  // leave out the top or the bottom corner blocks
+  bool mouse;                  // behind "MOUSE", else behind "KEY BOARD"
 };
-static const Rect DIM[2] = {{CX - 21, CY - 20, CX + 21, CY}, {CX - 33, CY, CX + 33, CY + 20}};
+// "BOARD" ends at CX + 30; its area stops short of the next block (from CX + 32), which held no letter (the user's eye).
+static const Rect DIM[3] = {{CX - 21, CY - 20, CX + 21, CY, true, false, false},
+                            {CX - 33, CY, CX + 32, CY + 20, false, true, false},
+                            {CX - 33, CY - 11, CX + 32, CY + 9, true, true, true}};
 constexpr int NSTARS = 16;  // the corners around the disc are small
 
 // Land by latitude band (its centre, 85 to -85): longitude ranges, west to east.
@@ -61,6 +70,8 @@ struct Cell {
   int8_t band = 0;    // the latitude band's centre
   int16_t lon = 0;    // longitude from the centre of the view, in degrees
   uint8_t shade = 0;  // brightness, 0 to 255
+  bool dim = false;   // behind "KEY BOARD"
+  bool dimM = false;  // behind "MOUSE"
 };
 static Cell cell[NY][NX];
 
@@ -99,6 +110,27 @@ static void begin() {
       e.lon = (int16_t)lroundf(atan2f(x, zz) * 180.0f / (float)M_PI);
       e.shade = (uint8_t)((0.45f + 0.55f * z) * 255.0f);
     }
+  // The blocks behind the letters: each one touching a dimmed area, less the outer corner blocks.
+  for (const Rect& d : DIM) {
+    int jTop = NY, jBottom = -1, iMin = NX, iMax = -1;
+    for (int j = 0; j < NY; j++)
+      for (int i = 0; i < NX; i++) {
+        int x0 = OX + i * PX, y0 = OY + j * PY;
+        if (x0 + BW <= d.x0 || x0 >= d.x1 || y0 + BH <= d.y0 || y0 >= d.y1) continue;
+        (d.mouse ? cell[j][i].dimM : cell[j][i].dim) = true;
+        if (j < jTop) jTop = j;
+        if (j > jBottom) jBottom = j;
+        if (i < iMin) iMin = i;
+        if (i > iMax) iMax = i;
+      }
+    if (iMax < 0) continue;
+    for (int j : {d.roundTop ? jTop : -1, d.roundBottom ? jBottom : -1}) {
+      if (j < 0) continue;
+      (d.mouse ? cell[j][iMin].dimM : cell[j][iMin].dim) = false;
+      (d.mouse ? cell[j][iMax].dimM : cell[j][iMax].dim) = false;
+    }
+  }
+
   // Stars around the Earth only: in its square, off the disc (plus a margin).
   uint32_t rng = 3;
   starCount = 0;
@@ -113,9 +145,9 @@ static void begin() {
   }
 }
 
-// Draws the stars, the Earth at the time nowMs, and "KEY BOARD" over it.
+// Draws the stars, the Earth at the time nowMs, and "KEY BOARD" over it, or "MOUSE" while the air mouse is on.
 template <typename Canvas>
-static void draw(Canvas& g, uint32_t nowMs, uint16_t letters) {
+static void draw(Canvas& g, uint32_t nowMs, uint16_t letters, bool mouse = false) {
   static const uint16_t STAR_C[4] = {rgb565(110, 110, 130), rgb565(235, 235, 255), rgb565(255, 220, 60),
                                      rgb565(255, 110, 200)};
   for (int n = 0; n < starCount; n++) {
@@ -136,20 +168,18 @@ static void draw(Canvas& g, uint32_t nowMs, uint16_t letters) {
       else if (isLand(e.band, lon)) r = 40, gr = 230, b = 70;
       else r = 20, gr = 90, b = 255;
       r = r * e.shade / 255, gr = gr * e.shade / 255, b = b * e.shade / 255;
-      int x0 = OX + i * PX, y0 = OY + j * PY;
-      g.fillRect(x0, y0, BW, BH, rgb565(r, gr, b));
-      // The parts behind the letters, at a third of the brightness.
-      for (const Rect& d : DIM) {
-        int dx0 = x0 > d.x0 ? x0 : d.x0, dx1 = x0 + BW < d.x1 ? x0 + BW : d.x1;
-        int dy0 = y0 > d.y0 ? y0 : d.y0, dy1 = y0 + BH < d.y1 ? y0 + BH : d.y1;
-        if (dx0 < dx1 && dy0 < dy1) g.fillRect(dx0, dy0, dx1 - dx0, dy1 - dy0, rgb565(r / 3, gr / 3, b / 3));
-      }
+      if (mouse ? e.dimM : e.dim) r /= 3, gr /= 3, b /= 3;  // behind the letters, a third of the brightness
+      g.fillRect(OX + i * PX, OY + j * PY, BW, BH, rgb565(r, gr, b));
     }
 
   g.setTextSize(2);
   g.setTextColor(letters);
-  g.drawString("KEY", CX - 3 * 6, CY - 17);
-  g.drawString("BOARD", CX - 5 * 6, CY + 1);
+  if (mouse) {
+    g.drawString("MOUSE", CX - 5 * 6, CY - 8);
+  } else {
+    g.drawString("KEY", CX - 3 * 6, CY - 17);
+    g.drawString("BOARD", CX - 5 * 6, CY + 1);
+  }
   g.setTextSize(1);
 }
 
