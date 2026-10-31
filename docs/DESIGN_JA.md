@@ -1,5 +1,7 @@
 # 設計書：KeySpeaker（USB Speaker & BLE Keyboard）
 
+[English](DESIGN.md)
+
 作成日: 2026年10月29日　状態: 設計案。USBスピーカー（S0、S1）は、Macの実機で確認済み（12章の「進み具合」）。そのほかは実機で未確認。
 
 ## 1. 目的と製品像
