@@ -44,6 +44,9 @@
     - (S2-7) The emblem on that screen shakes a pixel or two on loud beats, like a speaker's cone. Splash.h now has
       the grille and the emblem apart. It only reads the level; the audio path is unchanged.
     - (S2-8) The emblem is plain silver: no extra warmth, and its colors turned to grays.
+    - (S2-9) An IAD in front of the speaker's two interfaces (UsbAudioDesc.h), for Windows: without it, Windows 11 did
+      not start the speaker (Code 10), though the keyboard worked.
+    - (S2-10) The speaker's output terminal is a speaker, not headphones, so Windows lists it as "Speakers (KeySpeaker)".
     - (S0-3) A second screen, the flight visualizer (FlightViz.h): the level history as scrolling terrain, with a
       small fighter flying over it. It measures the level of what the computer sends, before its volume, and does
       not touch the audio path. The measurement screen stays the default.
@@ -81,9 +84,10 @@
 #include "esp_core_dump.h"
 #include "UsbIsoFix.h"
 #include "UsbNames.h"
+#include "UsbAudioDesc.h"
 #include "Splash.h"
 
-#define BUILD_TAG "S2-8"
+#define BUILD_TAG "S2-10"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."

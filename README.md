@@ -6,11 +6,10 @@
 
 [日本語版 README](README_JA.md)
 
-> **Status: early development.** On a Mac, one USB-C cable now gives you both: the speaker plays at a good level
-> (3 hours without a dropout, pause and resume work) and the keyboard types, with volume and playback keys. Bluetooth,
-> the tilt mouse and Windows are still to come or to test. Firmware: [`firmware/KeySpeaker_S0/`](firmware/KeySpeaker_S0/).
-> Design: [`docs/DESIGN.md`](docs/DESIGN.md). The test notes are in Japanese for now:
-> [`docs/S0_TEST_JA.md`](docs/S0_TEST_JA.md).
+> **Status: early development.** On a Mac and on Windows 11, one USB-C cable now gives you both: the speaker plays at
+> a good level (8 hours without a dropout, pause and resume work) and the keyboard types, with volume and playback keys.
+> An iPhone 15 works over USB too. Bluetooth and the tilt mouse are still to come. Firmware: [`firmware/KeySpeaker_S0/`](firmware/KeySpeaker_S0/).
+> Design: [`docs/DESIGN.md`](docs/DESIGN.md). Test plan and results: [`docs/S0_TEST.md`](docs/S0_TEST.md).
 
 ## The idea
 

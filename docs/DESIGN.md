@@ -2,8 +2,8 @@
 
 [日本語版](DESIGN_JA.md)
 
-Written: 2026-10-29. Status: design draft. The USB speaker (S0, S1) has been checked on a Mac (chapter 12, "Progress").
-Everything else is not yet checked on the device.
+Written: 2026-10-29. Status: design draft. The USB speaker and keyboard (S0 to S2) have been checked on a Mac and on
+Windows 11, and over USB on an iPhone 15 (chapter 12, "Progress"). Everything else is not yet checked on the device.
 
 ## 1. Purpose and product idea
 
@@ -41,7 +41,7 @@ control. Basic function and stability come before looks.
 | Group | Targets |
 |---|---|
 | **Core targets** | USB connection to macOS and Windows (speaker plus keyboard), BLE keyboard |
-| **Targets to add as they are checked** | iPhone 15 and later and USB-C iPads, Android, digital audio players with USB audio output, game consoles. Game consoles and TVs as a BLE keyboard |
+| **Targets to add as they are checked** | iPhone 15 and later and USB-C iPads, Android, digital audio players with USB audio output, game consoles. Game consoles and TVs as a BLE keyboard. Checked so far: iPhone 15 over USB (sound, keyboard, Japanese input and volume keys, S2-10, 2026-10-31). Android is expected to work the same way over USB, but has not been tried |
 | **Out of scope** | ChromeOS, wireless audio, internet radio, analog input through the 3.5 mm jack, a sender app on the computer |
 
 ## 3. Feasibility summary
@@ -317,11 +317,15 @@ modes available.
 
 **The keyboard mode's screen**
 
-- On the left, a slowly spinning Earth (to tie in with "Earth Defense" on the game screen; changed from KariPom's face
-  on 2026-10-30).
+- At the top left, a slowly spinning Earth (to tie in with "Earth Defense" on the game screen; changed from KariPom's
+  face on 2026-10-30).
   - The Earth is drawn with the same rectangular blocks as the graphic EQ and the terrain (6 × 3 px, every 8 px across
-    and 4 px down), 16 columns by 32 rows (about 128 px square). Sea in blue, land in green, polar regions in white,
-    darker toward the edge.
+    and 4 px down), 12 columns by 24 rows (about 96 px square). It was first 16 by 32 (about 128 px square), and was
+    made smaller so the cheat sheet can always be shown (2026-10-31, decided with the user from mockups). Sea in blue,
+    land in green, polar regions in white, darker toward the edge.
+  - A large `KEY` `BOARD` sits in white over the middle of the Earth, with the Earth behind the letters dimmed to a
+    third of its brightness so they read well (2026-10-31: the letters on the Earth were the user's idea; the dimming
+    was chosen over a black outline only and over amber letters, by comparing mockups).
   - The land shapes come from the same original coarse map as the mockup (10-degree steps), to fit the coarseness of
     the blocks and match the terrain and the graphic EQ (2026-10-30, the user's decision).
   - As on the real Earth, the land flows from left to right, slowly, about one turn a minute.
@@ -331,8 +335,8 @@ modes available.
     ones, in the same colors and proportions; the white stars twinkle now and then; none drawn behind the Earth).
   - While waiting for BLE pairing, the Earth is gray (with the land still faintly visible). It takes on color once
     connected.
-- On the right: `KEY` `BOARD`, the connection (`USB` or `BLE CH1` to `3`) and the OS profile, and a small `Fn+M MODE`
-  (`Fn+B CH` over BLE).
+- Under the Earth: the connection (`USB` or `BLE CH1` to `3`), the OS profile and `A/あ` on one line, and below them
+  `Fn+M mode` (`Fn+B CH` over BLE) and `Fn+O Mac/Win`. The right side is the cheat sheet.
 - A cheat sheet of the keys that only keyboard mode has (the Fn combinations, Eisu / Kana, the jobs of `alt` and `opt`
   under the OS profile, and copy and paste) is always on the screen (2026-10-30, the user's idea; keys in orange,
   meanings in white).
@@ -344,6 +348,7 @@ modes available.
     with the user).
   - "あ" is not in Font0, so it is drawn as pixel art made from Hiragino.
   - S2-2 put it on the right of the text-only screen. The cheat sheet stays when the Earth is drawn.
+  - The cheat sheet's lines are 10 px apart, so it still fits with the air mouse's four lines (8.3.1) added.
 - No effects such as flashing on every key press (that would be too much). The game screen is lively, so keyboard
   mode has a quiet screen.
 
@@ -361,8 +366,8 @@ when there is no mouse. So that the cursor does not wander while typing, it move
 | Hold G0 and press `;` / `.` | Scroll up / down (the ↑↓ printed on the keys) |
 
 - A mouse (HID) is added to USB alongside the keyboard and media keys. The same over BLE (S5).
-- These actions go on the keyboard mode's cheat sheet too (the user's wish). The layout of the Earth and the cheat
-  sheet side by side is to be decided with a mockup.
+- These actions go on the keyboard mode's cheat sheet too (the user's wish). The screen layout was decided with
+  mockups (8.3, 2026-10-31).
 - The tilt directions and speeds, and the line between a long and a short press of G0, are tuned on the device.
 
 ### 8.4 Notes for Japanese setups
@@ -423,21 +428,25 @@ Expected to be kept.
 | S6 | Widen the targets: iPhone and iPad, Android, audio players, game consoles | Record the sound, keyboard and power results for each device |
 | S7 | A retro-device style screen design | — |
 
-**Progress (2026-10-30)**
+**Progress (2026-11-01)**
 
-- S0: Recognized on a Mac and plays at a good level (a boost of +9 to +12 dB is good). A 6-hour measurement found the
-  clock drift. Windows, plugging and unplugging, the earphone jack, power and 44.1 kHz are not yet checked.
-- S1: 3 hours on a Mac with no dropouts. Ten pause and resume cycles with no restart. The 8-hour continuous pass
-  criterion is not met yet. Windows is not yet checked.
-- S2: A prototype with the speaker, the HID keyboard and the media keys built together compiles (not yet checked on the
-  device).
-- The device records are in `docs/S0_TEST_JA.md`.
+- S0: Recognized on a Mac and on Windows 11, and plays at a good level (a boost of +9 to +12 dB is good). A 6-hour
+  measurement found the clock drift. Unplugging and plugging back in works on Windows. The earphone jack, power and
+  44.1 kHz are not yet checked.
+- S1: Passed. 8 hours 47 minutes of continuous playback on Windows 11 (S2-10) with no dropouts and no restart. Before
+  that, 3 hours on a Mac and 3 hours 15 minutes on Windows (S2-9) with no dropouts, and ten pause and resume cycles
+  with no restart on each.
+- S2: Passed. On a Mac and on Windows 11 the speaker, the keyboard (including the A/あ key) and the media keys work over
+  one cable. Windows needed an IAD in front of the speaker (S2-9), and lists it as "Speakers (KeySpeaker)" (S2-10). The
+  keyboard screen's Earth layout is decided (8.3) but not yet built.
+- S6 (early): an iPhone 15 over USB plays the sound and takes the keyboard and the volume keys.
+- The device records are in `docs/S0_TEST.md`.
 
 ## 13. Main risks
 
 1. How stable `USBAudioCard` really is on the Cardputer ADV (checked in S0). Nothing else works if this does not, so it
    is tested first. → On a Mac, the clock drift correction and the workarounds for the two bugs found (4.1) made it
-   stable. Windows is next.
+   stable. Windows 11 needed an IAD in front of the speaker (S2-9) and then was stable for 8 hours (S2-10).
 2. Whether power from phones and tablets gets the connection refused or drains the battery too fast (checked in S0
    and S6).
 3. Whether a BLE keyboard works on each device (the Mac in S5, other devices in S6).
