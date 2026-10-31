@@ -61,6 +61,9 @@
       for picking from a menu opened with a click. The tilt only moves the cursor.
     - (S2.5-4) With G0 held, Fn+; , . / are still the arrow keys (not the mouse), so a menu opened with a click can be
       walked one item at a time; picking one by tilting alone was hard.
+    - (S2.5-10) A jog dial, M5Stack's Unit Encoder (U135) on the Grove port as in Media Jog (design 8.3.2), when it is
+      there: in the data and game modes turning it changes the computer's volume and pressing it plays or pauses; in
+      keyboard mode it sends ← → and Enter. Looked for at start and once a second while missing.
     - (S2.5-8) The mouse's keys are laid out as a cross on the right, as E Z A D sit around S: Up above, Down below,
       Click left, R-click right, Enter in the middle.
     - (S2.5-7) While G0 is held, the Earth says "MOUSE" and the right side lists the mouse's keys, at once; the
@@ -99,6 +102,7 @@
 #include "USBHIDKeyboard.h"
 #include "USBHIDConsumerControl.h"
 #include "USBHIDMouse.h"
+#include <Wire.h>
 #include <Preferences.h>
 #include "esp32-hal-tinyusb.h"
 #include "soc/usb_struct.h"
@@ -112,7 +116,7 @@
 #include "Splash.h"
 #include "KeyEarth.h"
 
-#define BUILD_TAG "S2.5-8"
+#define BUILD_TAG "S2.5-10"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -846,7 +850,8 @@ static uint8_t airHid(uint8_t code) {  // what a key sends while G0 is held; 0 f
   }
 }
 
-static void sendKeys(const Keyboard_Class::KeysState& ks, const uint8_t* labels, int n) {
+// extra: one more key pressed with the held ones (the jog dial's taps, S2.5-10).
+static void sendKeys(const Keyboard_Class::KeysState& ks, const uint8_t* labels, int n, uint8_t extra = 0) {
   KeyReport r = {};
   if (ks.ctrl) r.modifiers |= MOD_CTRL;
   if (ks.shift) r.modifiers |= MOD_SHIFT;
@@ -870,7 +875,21 @@ static void sendKeys(const Keyboard_Class::KeysState& ks, const uint8_t* labels,
     }
     if (dropShift) r.modifiers &= (uint8_t)~MOD_SHIFT;
   }
+  if (extra) {
+    bool dup = false;
+    for (int j = 0; j < 6; j++) dup = dup || r.keys[j] == extra;
+    if (!dup) r.keys[k < 6 ? k : 5] = extra;
+  }
   sendReport(r);
+}
+
+// The keys held now, sent again; with extra, that key pressed too.
+static void resendKeys(uint8_t extra = 0) {
+  uint8_t labels[16];
+  int n = 0;
+  for (const auto& pos : M5Cardputer.Keyboard.keyList())
+    if (n < 16) labels[n++] = M5Cardputer.Keyboard.getKeyValue(pos).value_first;
+  sendKeys(M5Cardputer.Keyboard.keysState(), labels, n, extra);
 }
 
 static void setMode(uint8_t m) {
@@ -1039,13 +1058,7 @@ static void airService(uint32_t now) {
       mouse.release(MOUSE_ALL);
       buttons = 0;
     }
-    if (viewMode() == MODE_KEYS) {  // the arrow keys type again, or stop typing
-      uint8_t labels[16];
-      int n = 0;
-      for (const auto& pos : M5Cardputer.Keyboard.keyList())
-        if (n < 16) labels[n++] = M5Cardputer.Keyboard.getKeyValue(pos).value_first;
-      sendKeys(M5Cardputer.Keyboard.keysState(), labels, n);
-    }
+    if (viewMode() == MODE_KEYS) resendKeys();  // the mouse's keys type again, or stop typing
   }
   if (!airOn) return;
 
@@ -1081,6 +1094,84 @@ static void airService(uint32_t now) {
     Serial.printf("[AIR] side %+.0f fore %+.0f%s%s\n", side, fore, buttons & MOUSE_LEFT ? " L" : "",
                   buttons & MOUSE_RIGHT ? " R" : "");
   }
+}
+
+// ---- Jog dial (S2.5-10, design 8.3.2): M5Stack's Unit Encoder (U135) on the Grove port (I2C address 0x40, SDA G2,
+// SCL G1), read as Media Jog reads it. Two counts a click, clockwise up; the button reads 0 while pressed. In the data
+// and game modes a click is one step of the computer's volume and a press plays or pauses; in keyboard mode a click
+// is → or ← (with the keys held, so Shift selects) and a press is Enter. Looked for at start and, while missing, once
+// a second; a unit that stops answering is dropped.
+static constexpr uint8_t DIAL_ADDR = 0x40, DIAL_REG_COUNT = 0x10, DIAL_REG_BUTTON = 0x20;
+static constexpr uint32_t DIAL_MS = 20;
+
+static bool dialRead(uint8_t reg, uint8_t* buf, uint8_t len) {  // false instead of filler bytes
+  Wire.beginTransmission(DIAL_ADDR);
+  Wire.write(reg);
+  if (Wire.endTransmission() != 0) return false;
+  if (Wire.requestFrom(DIAL_ADDR, len) != len) return false;
+  for (uint8_t i = 0; i < len; i++) {
+    int b = Wire.read();
+    if (b < 0) return false;
+    buf[i] = (uint8_t)b;
+  }
+  return true;
+}
+
+static void dialService(uint32_t now) {
+  static bool found = false;
+  static uint32_t last = 0, lastProbe = 0;
+  static int16_t lastCount = 0;
+  static int accum = 0;
+  static bool down = false;
+  if (now - last < DIAL_MS) return;
+  last = now;
+  uint8_t d[2];
+  if (!found) {
+    if (lastProbe && now - lastProbe < 1000) return;
+    lastProbe = now;
+    if (!dialRead(DIAL_REG_COUNT, d, 2)) return;
+    lastCount = (int16_t)(d[0] | (d[1] << 8));
+    uint8_t b;
+    down = dialRead(DIAL_REG_BUTTON, &b, 1) && b == 0;
+    accum = 0;
+    found = true;
+    Serial.println("[DIAL] Unit Encoder found");
+    return;
+  }
+  if (!dialRead(DIAL_REG_COUNT, d, 2)) {
+    found = false;
+    Serial.println("[DIAL] Unit Encoder lost");
+    return;
+  }
+  int16_t count = (int16_t)(d[0] | (d[1] << 8));
+  accum += (int16_t)(count - lastCount);
+  lastCount = count;
+  uint8_t b = 1;
+  bool press = dialRead(DIAL_REG_BUTTON, &b, 1) && b == 0;
+  bool keys = viewMode() == MODE_KEYS;
+  while (accum >= 2 || accum <= -2) {
+    bool up = accum > 0;
+    accum += up ? -2 : 2;
+    lastKeyMs = now;
+    if (keys) {
+      resendKeys(up ? HID_RIGHT : HID_LEFT);
+      resendKeys();
+    } else {
+      media.press(up ? CONSUMER_CONTROL_VOLUME_INCREMENT : CONSUMER_CONTROL_VOLUME_DECREMENT);
+      media.release();
+    }
+  }
+  if (press && !down) {
+    lastKeyMs = now;
+    if (keys) {
+      resendKeys(HID_ENTER);
+      resendKeys();
+    } else {
+      media.press(CONSUMER_CONTROL_PLAY_PAUSE);
+      media.release();
+    }
+  }
+  down = press;
 }
 
 // ---- Keyboard mode screen (design 8.3). S2-2: a cheat sheet of the keys only this mode has, always on the right, keys
@@ -1268,6 +1359,7 @@ void setup() {
   kbd.begin();
   media.begin();
   mouse.begin();
+  Wire.begin(2, 1, 200000);  // (S2.5-10) the Grove port, for a jog dial: SDA G2, SCL G1, as in Media Jog
   Serial.printf("[BOOT] IMU %s\n", M5.Imu.isEnabled() ? "on" : "not found");
   Serial.printf("[BOOT] ready, heap %u\n", (unsigned)ESP.getFreeHeap());
 }
@@ -1280,6 +1372,7 @@ void loop() {
   usbEventLog();
   keyService();
   airService(millis());
+  dialService(millis());
 
   static uint32_t lastScreen = 0, lastFrame = 0, lastLog = 0;
   uint32_t now = millis();

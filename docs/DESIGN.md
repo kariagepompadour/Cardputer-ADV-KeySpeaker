@@ -409,7 +409,7 @@ While G0 is held, two sets of keys act alike: the arrow keys printed on `;` `,` 
   "tilt Move" above it, "A+tilt Drag" below and "let go of G0: keys". It changes the moment G0 goes down or up.
 - The tilt directions and speeds and the dead zone are tuned on the device.
 
-### 8.3.2 A jog dial as volume, arrow keys and Enter (decided 2026-11-01, to be built in a later S2.5 version)
+### 8.3.2 A jog dial as volume, arrow keys and Enter (decided 2026-11-01, built in S2.5-10)
 
 For people who have Media Jog's jog dial, an M5Stack Unit Encoder (U135) on the Grove port (I²C, address 0x40), so
 that it is not idle while KeySpeaker runs (1.1; the user's idea).
@@ -425,10 +425,12 @@ that it is not idle while KeySpeaker runs (1.1; the user's idea).
 - Pressing the knob plays or pauses rather than muting: pressing it usually means "wait a moment", and a paused
   video or song does not move on meanwhile. Muting stays on `\` (2026-11-01, chosen with the user over mute).
 - In keyboard mode it sends keys, like every key sent to the computer there.
-- Found at start: KeySpeaker looks for the unit at 0x40 when it starts, and uses it only if it is there. Nothing changes
-  without it. As with Media Jog, connect it while the Cardputer is off.
+- KeySpeaker looks for the unit at 0x40 when it starts and, while it is missing, once a second (as Media Jog does),
+  and uses it only if it is there. Nothing changes without it. As with Media Jog, connect it while the Cardputer is
+  off.
 - Not on the screen's cheat sheet (the user's wish); a line in the log says it was found.
-- The reading code comes from Media Jog. The Grove port's pins (G1, G2) are not used by anything else here.
+- The reading code comes from Media Jog, without its library (the two registers are read directly). The Grove port's
+  pins (G1, G2) are not used by anything else here.
 
 ### 8.4 Notes for Japanese setups
 

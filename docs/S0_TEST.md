@@ -2,12 +2,12 @@
 
 [日本語版](S0_TEST_JA.md)
 
-Target: `firmware/KeySpeaker_S0/KeySpeaker_S0.ino.bin` (`S2.5-8`). This is S0-6 plus the clock drift correction (S1-1),
+Target: `firmware/KeySpeaker_S0/KeySpeaker_S0.ino.bin` (`S2.5-10`). This is S0-6 plus the clock drift correction (S1-1),
 a record of why it restarted by itself (S1-2, S1-3) and the fix for that (S1-4 to S1-6), the startup screen (S1-7 to
 S1-11), the USB keyboard and the three modes (S2-1 to S2-5), the help screen and the emblem screen after being left
 alone (S2-6), the silver emblem that shakes with loud sounds (S2-7, S2-8), and the fix that makes it work as a
 speaker on Windows (S2-9), with the name "Speakers" (S2-10), the keyboard screen's spinning Earth (S2-11), a surer
-`Fn+M` (S2-12), and the air mouse (S2.5-1 to S2.5-8). `S2.5-8` is shown at the top right of the data screen. How to check S1 is
+`Fn+M` (S2-12), the air mouse (S2.5-1 to S2.5-8), and the jog dial (S2.5-10). `S2.5-10` is shown at the top right of the data screen. How to check S1 is
 in 5.8, S2 in 5.10, and the air mouse in 5.11. The results up to S0-6 are kept in this document as they were.
 
 Status: volume checked on the device (Mac, 2026-10-29). It was louder and easier to hear than S0-1; a boost of +9 to
@@ -412,6 +412,16 @@ M5Unified powers up the ES8311's analog circuits, its DAC and its output and set
 (volume at the minimum while powering up, a short wait, then the volume raised smoothly) is to be tried after the
 air mouse is checked. How much it helps is not known until it is heard.
 
+**S2.5-9 (tried, 2026-11-01; dropped):** M5Unified wrote the ES8311 set-up, output on and 0 dB, before the I2S clock
+(also the codec's clock) started. S2.5-9 sets the speaker up itself (`cfg.internal_spk = false`, the same pins as
+M5Unified): the same set-up with the output off and the volume at the minimum, then, once the clock runs, the output
+on and the volume raised from about -64 dB to 0 dB over 0.2 s. The log says `[BOOT] speaker on, quietly`. To check:
+the click at start, and that sound, volume and the earphone jack are as before. Result on the device: the click was
+the same, neither gone nor quieter; sound and volume were as before. So the click does not come from how the codec
+is set up but from earlier, most likely the speaker being powered as the Cardputer starts, which software cannot
+stop. Taken as unavoidable (decided with the user), and S2.5-9 was dropped: the firmware stays at S2.5-8, with
+M5Unified setting up the speaker.
+
 **S2.5-5 (Mac, 2026-11-01):** the corners behind "KEY BOARD" look right ("ばっちり"). The startup click is unchanged,
 as expected (not yet worked on). With a right-click menu open, holding G0 and pressing up or down did not move it (they
 were the wheel), and pressing keys on G0's own side while holding it was hard. S2.5-6: up and down are the arrow keys,
@@ -438,6 +448,19 @@ cheat sheet has no mouse lines and G0 does nothing.
 5. With G0 held, `;` `,` `.` `/` and `E` `A` `S` `Z` `D` type no letters; after letting go of G0 they type again. Typing without G0 is unchanged.
 6. On Windows: the mouse is a new part of the USB device. If the keyboard or the speaker stops working there, note it
    (as with S2-10, an old registration may need uninstalling).
+
+### 5.12 The jog dial (added in S2.5-10)
+
+**S2.5-10 (Mac, 2026-11-01):** works well on the device (the user's impression: "ばっちり").
+
+Design 8.3.2. Needs Media Jog's Unit Encoder (U135) on the Grove port; connect it while the Cardputer is off. The log
+says `[DIAL] Unit Encoder found`.
+
+1. On the data or game screen, turn it right and left: the computer's volume goes up and down one step a click, and
+   `PC vol` follows. Press it: the music pauses, and plays again on the next press.
+2. In keyboard mode, in a text field: turning it moves the text cursor right and left one character a click; with
+   Shift held it selects. Pressing it is Enter.
+3. Without the unit, nothing changes and the log stays quiet.
 
 ## 6. Please report
 
