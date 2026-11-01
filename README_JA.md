@@ -7,7 +7,7 @@
 [English README](README.md)
 
 > **状態: 開発の初期段階です。** MacとWindows 11では、USB-Cケーブル1本で、スピーカーとキーボードの両方が使えるようになりました。十分な音量で鳴り（8時間続けて音切れなし、一時停止と再開も問題なし）、
-> キーボードで文字が打て、音量や再生のキーも効きます。USBでつないだiPhone 15でも使え、傾きで動かすマウスも使えます。ケーブルを抜くとBluetooth LEのキーボードとマウスになります（Macで確認。USBに戻すには、電源スイッチを切ってリセットボタンを押します）。
+> キーボードで文字が打て、音量や再生のキーも効きます。USBでつないだiPhone 15でも使え、傾きで動かすマウスも使えます。予備として、ケーブルを抜くとBluetooth LEのキーボードとマウスにもなります（MacとWindows 11で確認。USBに戻すには、電源スイッチを切ってリセットボタンを押します）。
 > ファームウェアは [`firmware/KeySpeaker_S0/`](firmware/KeySpeaker_S0/)、設計は [`docs/DESIGN_JA.md`](docs/DESIGN_JA.md)、検証記録は [`docs/S0_TEST_JA.md`](docs/S0_TEST_JA.md) にあります。
 
 ## 発案のきっかけ
@@ -18,15 +18,21 @@
 
 ## できるようにすること
 
-- **USB-Cケーブルでつなぐと**：ケーブル1本で、スピーカーとキーボードになります。
-- **ケーブルを抜くと**：Bluetooth LEキーボードになります。
-- **相手の機器には何も入れません。** Cardputerに本体アプリだけの `.ino.bin` をLauncherから入れるだけです。USBとBluetooth LEは自動で切り替わるので、設定はいりません。
+- **USB-Cケーブルでつなぐと（基本の使い方）**：ケーブル1本で、スピーカーとキーボードになります。
+- **ケーブルを抜くと（予備）**：数秒で自動的に、Bluetooth LEのキーボードとマウスになります。
+- **相手の機器には何も入れません。** Cardputerに本体アプリだけの `.ino.bin` をLauncherから入れるだけです。
+
+Bluetooth LE（予備）の制限:
+
+- **USBに戻すとき**：一度抜くと、ケーブルを挿し直してもUSBとして認識されません。ケーブルを挿したまま、電源スイッチを切ってリセットボタンを押してください。キーボード画面に `Off+Reset to USB` と出ます。
+- **アプリを切り替えたとき**：[Media Jog](https://github.com/kariagepompadour/Cardputer-ADV-Media-Jog)でペアリングしたパソコンは、KeySpeakerで使うときに一度削除してペアリングし直す必要があります。逆も同じです（Macで確認）。
+- つながるのは一度に1台、ペアリングしておけるのは2台までです。
 
 使い方の例:
 
 - スピーカーのないPC（デスクトップPC、Mac mini、モニターなど）につなぐ。
 - USB-Cから音声を出せる機器（スマホ、タブレット、デジタルオーディオプレーヤー、ゲーム機）につなぐ。
-- Mac、iPhone、iPadなどで、Bluetooth LEキーボードとして使う（ゲーム機やテレビは、使えたらおまけ）。
+- ケーブルが届かないところで、予備のBluetooth LEキーボードとマウスとして使う（MacとWindows 11で確認）。
 - **USB-Cイヤホンアダプター**として使う：Cardputerのイヤホン端子にイヤホンを挿します（モノラルなので、両耳から同じ音が出ます）。
 
 キーが小さいので、長文ではなく、ちょっとした入力（検索欄、パスワード、ゲーム機の文字入力など）向けです。
@@ -74,7 +80,8 @@
 
 | 区分 | 機器 |
 | --- | --- |
-| **基本の対象** | macOS、WindowsとのUSB接続（スピーカー＋キーボード）、Bluetooth LEキーボード |
+| **基本の対象** | macOS、WindowsとのUSB接続（スピーカー＋キーボード） |
+| **予備** | Bluetooth LEのキーボードとマウス（macOS、Windows） |
 | **確認しながら広げる対象** | iPhone 15以降・USB-CのiPad、Android、USB音声出力のあるデジタルオーディオプレーヤー、ゲーム機、ほかの機器でのBluetooth LEキーボード |
 | **対象外** | ChromeOS、ワイヤレス音声、インターネットラジオ、3.5mm端子からの音声入力 |
 
@@ -90,7 +97,7 @@
 
 Cardputer ADVには、すでに別の仕事があります。インターネットラジオは[RADIO DAYS](https://github.com/kariagepompadour/RADIODAYS)、
 ジョグダイヤルは[Media Jog](https://github.com/kariagepompadour/Cardputer-ADV-Media-Jog)です。それぞれが別のアプリで、Launcherで切り替えます。
-KeySpeakerには、設定がいりません。USBとBluetooth LEは自動で切り替わります。
+KeySpeakerには、設定がいりません。つなげば、スピーカーとキーボードになります。
 
 ## 給電
 

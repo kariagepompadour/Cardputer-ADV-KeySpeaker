@@ -150,6 +150,9 @@ first on a Mac (S5). Other devices are tried in S6, starting with the ones at ha
 
 ### 5.2 BLE mode
 
+- Its place: a spare. KeySpeaker is meant to be used over USB; BLE is there for when the cable is out (the user's
+  decision, 2026-11-01, after the tests: going back to USB needs a power cut, a Media Jog pairing needs pairing
+  again, and the Cardputer ADV's power handling seemed fragile, e.g. the Launcher restarting over and over once).
 - A BLE HID keyboard and mouse (the air mouse, 8.3.1). Port Media Jog's NimBLE code (its fixed GATT table, saved
   pairings, releasing held keys when switching).
 - No audio. No Wi-Fi either (Wi-Fi is used only by the Launcher for installing).
@@ -235,6 +238,8 @@ Ordinary characters, Shift, Ctrl, Tab, Enter, Del (Backspace).
 | `alt` | Command | Alt |
 
 ### 8.3 Modes and keys (decided 2026-10-30, built in S2)
+
+A summary of all the screens, as they are now: [`SCREENS.md`](SCREENS.md).
 
 **The emblem screen**
 

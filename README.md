@@ -8,8 +8,8 @@
 
 > **Status: early development.** On a Mac and on Windows 11, one USB-C cable now gives you both: the speaker plays at
 > a good level (8 hours without a dropout, pause and resume work) and the keyboard types, with volume and playback keys.
-> An iPhone 15 works over USB too, and the tilt mouse works. Unplugged, it is a Bluetooth LE keyboard and mouse
-> (working on a Mac; going back to USB needs the power switch off and the reset button). Firmware: [`firmware/KeySpeaker_S0/`](firmware/KeySpeaker_S0/).
+> An iPhone 15 works over USB too, and the tilt mouse works. As a spare, unplugged it is a Bluetooth LE keyboard and
+> mouse (working on a Mac and on Windows 11; going back to USB needs the power switch off and the reset button). Firmware: [`firmware/KeySpeaker_S0/`](firmware/KeySpeaker_S0/).
 > Design: [`docs/DESIGN.md`](docs/DESIGN.md). Test plan and results: [`docs/S0_TEST.md`](docs/S0_TEST.md).
 
 ## The idea
@@ -21,16 +21,25 @@ time?
 
 ## What it will do
 
-- **Plug in a USB-C cable:** the Cardputer ADV becomes a speaker and a keyboard, over one cable.
-- **Unplug it:** it becomes a Bluetooth LE keyboard.
+- **Plug in a USB-C cable (the main way to use it):** the Cardputer ADV becomes a speaker and a keyboard, over one
+  cable.
+- **Unplug it (a spare):** it becomes a Bluetooth LE keyboard and mouse by itself, a few seconds later.
 - **Nothing to install on the other device.** Only the app-only `.ino.bin` goes onto the Cardputer, through a
-  launcher. It switches between USB and Bluetooth LE by itself: there is nothing to set up.
+  launcher.
+
+Limits of the Bluetooth LE spare:
+
+- **Going back to USB:** after an unplug, plugging the cable in again is not recognized. With the cable in, switch
+  the power off and press the reset button. The keyboard screen says `Off+Reset to USB`.
+- **Switching apps:** a computer paired in [Media Jog](https://github.com/kariagepompadour/Cardputer-ADV-Media-Jog)
+  has to be removed and paired again for KeySpeaker, and the other way round (seen on a Mac).
+- One computer at a time, and at most 2 paired computers.
 
 Ways to use it:
 
 - On a computer without speakers (a desktop PC, a Mac mini, a monitor).
 - On a device that can send audio out of its USB-C port: a phone, a tablet, a digital audio player, a game console.
-- As a Bluetooth LE keyboard for a Mac, an iPhone or an iPad, and with luck a console or a TV.
+- Away from the cable, as a spare Bluetooth LE keyboard and mouse (checked on a Mac and on Windows 11).
 - As a **USB-C earphone adapter**: plug earphones into the Cardputer's jack (mono: both ears get the same sound).
 
 The keyboard is small: it is meant for short entries (a search box, a password field, a console's text screen), not
@@ -83,7 +92,8 @@ pointer, tap G0 to click, `Fn+G0` to right-click, G0 with `;` / `.` to scroll.
 
 | | Devices |
 | --- | --- |
-| **Main targets** | macOS and Windows over USB (speaker + keyboard); Bluetooth LE keyboard |
+| **Main targets** | macOS and Windows over USB (speaker + keyboard) |
+| **Spare** | Bluetooth LE keyboard and mouse (macOS, Windows) |
 | **To be checked one by one** | iPhone 15 or later and USB-C iPads, Android, digital audio players with USB audio out, game consoles; the Bluetooth LE keyboard on other devices |
 | **Not planned** | ChromeOS, wireless audio, internet radio, audio input through the 3.5 mm jack |
 
@@ -99,7 +109,7 @@ The Cardputer ADV cannot be a wireless speaker without software on the other dev
 
 The Cardputer ADV already has other jobs: internet radio is [RADIO DAYS](https://github.com/kariagepompadour/RADIODAYS),
 a jog dial is [Media Jog](https://github.com/kariagepompadour/Cardputer-ADV-Media-Jog). Each is its own app, and
-you switch between them with the launcher. KeySpeaker needs no setup: it picks USB or Bluetooth LE by itself.
+you switch between them with the launcher. KeySpeaker needs no setup: plug it in, and it is a speaker and a keyboard.
 
 ## Power
 
