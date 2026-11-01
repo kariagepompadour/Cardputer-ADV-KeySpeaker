@@ -69,6 +69,10 @@ Pictures of every screen: [`docs/SCREENS.md`](docs/SCREENS.md).
 
 *On the device, from left: measure mode, flight mode, keyboard mode.*
 
+<img src="docs/images/flight_demo.gif" alt="Flight mode moving on the device: the fighter shoots a target over the music's terrain" width="414">
+
+*Flight mode on the device, 3 seconds (recorded on an earlier build, which still showed the status line at the top).*
+
 Without USB (over Bluetooth LE), only keyboard mode is shown.
 
 In every mode:

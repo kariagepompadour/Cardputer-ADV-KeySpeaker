@@ -61,6 +61,10 @@ A screen saver to watch while music plays, not a game: no score, nothing to lose
 
 <img src="images/photo_flight.jpg" alt="Flight mode on the device: the fighter over the terrain" width="480">
 
+<img src="images/flight_demo.gif" alt="Flight mode moving on the device: the fighter shoots a target" width="414">
+
+*Moving, 3 seconds. Recorded on an earlier build, which still showed the status line at the top.*
+
 ![Flight mode: six moments, with the terrain alone and with the equalizer](images/game_patterns.png)
 
 - The music's level is the terrain, drawn like an LED level meter, blue at the bottom through green, yellow and

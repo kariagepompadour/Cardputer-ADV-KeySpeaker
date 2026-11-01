@@ -57,6 +57,10 @@ Bluetooth LE（予備）の制限:
 
 *実機の画面。左から measure mode、flight mode、keyboard mode。*
 
+<img src="docs/images/flight_demo.gif" alt="実機で動くflight mode：音楽の地形の上で、戦闘機が標的を撃つ" width="414">
+
+*実機で動くflight mode（3秒）。少し前の版で撮ったので、上に状態の行が出ている。*
+
 USBがないとき（Bluetooth LEのとき）は、keyboard modeだけになります。
 
 どのモードでも:

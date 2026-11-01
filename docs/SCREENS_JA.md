@@ -46,6 +46,10 @@ S0からある計測の画面。スピーカーがどう動いているかを確
 
 <img src="images/photo_flight.jpg" alt="実機のflight mode：地形の上を飛ぶ戦闘機" width="480">
 
+<img src="images/flight_demo.gif" alt="実機で動くflight mode：戦闘機が標的を撃つ" width="414">
+
+*動いているところ（3秒）。少し前の版で撮ったので、上に状態の行が出ている。*
+
 ![flight mode：6つの場面。地形だけのときと、イコライザーが出ているとき](images/game_patterns.png)
 
 - 音楽の大きさが地形になる。LEDのレベルメーターのように、下の青から緑、黄、オレンジ、上の赤へ色が変わり、左へ流れる。
