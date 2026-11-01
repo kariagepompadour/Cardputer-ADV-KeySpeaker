@@ -261,9 +261,15 @@ A summary of all the screens, as they are now: [`SCREENS.md`](SCREENS.md).
   to it (the speaker resting). It stays until a key is pressed, and that key only brings the screen back; it does
   nothing else (decided with the user on 2026-10-31, built in S2-6. The first idea was the game screen only, coming
   back when music starts; instead both modes come back with a key. It does not switch while music is playing).
-- Only the bottom of the grille is darkened, to show `h HELP  Fn+M KEYBOARD` (the keys in orange). This also shows at
-  startup. At startup, keys still held from the Launcher are ignored, so nothing happens by mistake. When it starts in
-  keyboard mode, only `Fn+M MODE` is shown.
+- At rest, only the bottom of the grille is darkened, to show `h HELP  Fn+M KEYBOARD` (the keys in orange). At
+  startup, keys still held from the Launcher are ignored, so nothing happens by mistake.
+- S5-13 (2026-11-01, the user's calls, from mockups and test builds on the device):
+  - The grille is perforated metal with round holes (`firmware/tools/make_grille.py`), instead of the original
+    picture's weave, which did not read as a speaker on this small screen. The weave left inside the emblem is turned
+    to black, so the face is black and its edge a soft shadow.
+  - At start the line `h HELP  Fn+M KEYBOARD` is no longer shown: USB is still coming up then, so `h` and `Fn+M` did
+    not do what it said (the user noticed). Instead, "KeySpeaker" is shown under the emblem, large, white, straight on
+    the grille with a dark shadow (the user's idea; chosen over a dark plate behind it).
 
 **The emblem shakes**
 

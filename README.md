@@ -47,18 +47,28 @@ long texts.
 
 ## Modes and keys
 
-It starts with the KariPom emblem on a speaker grille, with `h HELP  Fn+M KEYBOARD` at the bottom. `Fn+M` then cycles
-through three modes; the last one is remembered. In the Data and Game modes, after a minute with no key and no sound,
-the emblem comes back and stays until you press a key (that key only wakes it). When music starts again, the emblem
-shakes on the loud beats, like a speaker's cone.
+At start, KariPom's emblem on a speaker grille and the name "KeySpeaker" show for 2 seconds. `Fn+M` then cycles
+through three modes (over USB); the last one is remembered. In measure mode and flight mode, after a minute with no
+key and no sound, the emblem comes back with `h HELP  Fn+M KEYBOARD` at the bottom, and stays until you press a key
+(that key only wakes it). When music starts again, the emblem shakes on the loud beats, like a speaker's cone.
+Pictures of every screen: [`docs/SCREENS.md`](docs/SCREENS.md).
 
 | Mode | Screen | Keys |
 | --- | --- | --- |
-| **Data** | Buffer, clock drift, volume and level meters | Speaker and playback keys (below) |
-| **Game** | A flight over the music: the volume as terrain, a little fighter, a Showa-era graphic equalizer | Speaker and playback keys (below) |
-| **Keyboard** | A key cheat sheet (a slowly spinning Earth is coming) | Every key goes to the computer |
+| **measure mode** | Buffer, clock drift, volume and level meters | Speaker and playback keys (below) |
+| **flight mode** | A flight over the music: the volume as terrain, a little fighter, a Showa-era graphic equalizer | Speaker and playback keys (below) |
+| **keyboard mode** | A slowly spinning Earth and a key cheat sheet | Every key goes to the computer |
 
-Speaker and playback keys (Data and Game modes):
+Without USB (over Bluetooth LE), only keyboard mode is shown.
+
+In every mode:
+
+| Key | Does |
+| --- | --- |
+| `Fn+M` | Next mode (over USB) |
+| `Fn+O` | Mac ↔ Windows profile (remembered) |
+
+Speaker and playback keys (measure mode and flight mode):
 
 | Key | Does |
 | --- | --- |
@@ -68,7 +78,7 @@ Speaker and playback keys (Data and Game modes):
 | `-` / `=` | Boost down / up |
 | `b` | Bass cut on / off |
 | `r` | Reset the counters |
-| `v` | Data ↔ Game |
+| `v` | measure mode ↔ flight mode |
 | `h` | Opens / closes a help screen of these keys (they keep working while it is open) |
 | any other key | Opens / closes the help screen, like `h` |
 
@@ -83,10 +93,22 @@ Keyboard mode (letters, Shift, Ctrl, Tab, Enter and Del go straight through):
 | `Fn+Del` | Forward delete |
 | `Fn+[` / `Fn+]` | Japanese input: A / あ (the 英数 / かな keys, LANG2 / LANG1). The screen shows the last one, like the Mac's menu bar |
 | `alt` / `opt` | Mac: Command / Option. Windows: Alt / Win |
-| `Fn+O` | Mac ↔ Windows profile (remembered) |
 
-Coming next: a **tilt mouse** for when there is no mouse at hand: hold the side button (G0) and tilt to move the
-pointer, tap G0 to click, `Fn+G0` to right-click, G0 with `;` / `.` to scroll.
+**Tilt mouse** (keyboard mode), for when there is no mouse at hand. Hold the side button (G0): the screen shows
+the mouse keys, and tilting moves the pointer, measured from how you held it when G0 went down.
+
+| With G0 held | Does |
+| --- | --- |
+| tilt | Move the pointer (a bigger tilt moves faster) |
+| `A` or `,` | Left click (held while the key is held: tilt to drag) |
+| `D` or `/` | Right click |
+| `E` or `;` / `Z` or `.` | ↑ / ↓ arrow keys (menus, scrolling) |
+| `S` | Enter |
+
+**Jog dial** (optional): M5Stack's Unit Encoder (U135) on the Grove port, as in
+[Media Jog](https://github.com/kariagepompadour/Cardputer-ADV-Media-Jog). In measure mode and flight mode, turning
+it changes the computer's volume and pressing it plays or pauses; in keyboard mode it sends ← → and Enter. Connect it
+while the Cardputer is off.
 
 ## Scope
 

@@ -2,12 +2,12 @@
 
 [日本語版](S0_TEST_JA.md)
 
-Target: `firmware/KeySpeaker_S0/KeySpeaker_S0.ino.bin` (`S5-12`). This is S0-6 plus the clock drift correction (S1-1),
+Target: `firmware/KeySpeaker_S0/KeySpeaker_S0.ino.bin` (`S5-13`). This is S0-6 plus the clock drift correction (S1-1),
 a record of why it restarted by itself (S1-2, S1-3) and the fix for that (S1-4 to S1-6), the startup screen (S1-7 to
 S1-11), the USB keyboard and the three modes (S2-1 to S2-5), the help screen and the emblem screen after being left
 alone (S2-6), the silver emblem that shakes with loud sounds (S2-7, S2-8), and the fix that makes it work as a
 speaker on Windows (S2-9), with the name "Speakers" (S2-10), the keyboard screen's spinning Earth (S2-11), a surer
-`Fn+M` (S2-12), the air mouse (S2.5-1 to S2.5-8), the jog dial (S2.5-10), and the BLE keyboard and mouse (S5-1 to S5-12). `S5-12` is shown at the top right of the data screen. How to check S1 is
+`Fn+M` (S2-12), the air mouse (S2.5-1 to S2.5-8), the jog dial (S2.5-10), the BLE keyboard and mouse (S5-1 to S5-12), and the start screen's round-hole grille and name (S5-13). `S5-13` is shown at the top right of the data screen. How to check S1 is
 in 5.8, S2 in 5.10, and the air mouse in 5.11. The results up to S0-6 are kept in this document as they were.
 
 Status: volume checked on the device (Mac, 2026-10-29). It was louder and easier to hear than S0-1; a boost of +9 to
@@ -518,6 +518,10 @@ hold on a Mac: after switching apps, remove the device on the Mac and pair again
 KeySpeaker (one link at a time) did not show on Windows; with the Mac's Bluetooth off it did. Paired on Windows as
 "KeySpeaker": typing, the air mouse (moving, `A` / `D` clicks) and reconnecting by itself after the Cardputer was
 switched off and on all worked. S5 passed.
+
+**S5-13 (2026-11-01):** checked on the device by the user: the start screen's round-hole grille and "KeySpeaker",
+`S5-13` on the measure screen, and the tidied screens (no diagnostics at the bottom right, the flight screen's top
+line only when something is wrong) are fine.
 
 Design 5.2 (plan A: Media Jog's BLE identity and GATT table) and 5.3. Over USB nothing changes. Without USB (on the
 battery, or on a charger only) the Cardputer advertises as "KeySpeaker" after 3 seconds; the keyboard screen shows

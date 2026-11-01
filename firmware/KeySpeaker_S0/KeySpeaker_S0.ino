@@ -95,6 +95,15 @@
     - (S5-12) Tidied after the tests: the S5-7 pulse at start, the 200 ms buffer of S5-8 and Fn+R (S5-10, S5-11) are
       taken out again, none of them having helped; the buffer is back at the 500 ms of the 8-hour test. USB comes
       back after an unplug only with a real power cut, so without USB the keyboard screen says "Off+Reset to USB".
+    - (S5-13) The emblem screen's grille is perforated metal with round holes instead of the weave, which did not
+      read as a speaker on this screen (the user's call, from mockups; Splash.h, tools/make_grille.py). The weave
+      inside the emblem is turned to black. The line "h HELP  Fn+M KEYBOARD" is shown only on the resting emblem
+      screen: at start USB is still coming up, so those keys did not do what it said (the user noticed).
+      At start the screen shows "KeySpeaker" under the emblem instead, large, white with a shadow (the user's idea).
+      The game screen's top line shows only when something is wrong (not connected, muted, dropouts counted): the
+      boost, bass cut and zero counters stayed there as if left over (the user's call).
+      Also left over and gone: the S5-5 / S5-6 diagnostics at the keyboard and mouse screens' bottom right, and "S0"
+      in the data screen's title, now just "KeySpeaker" (the user noticed both).
     - (S2.5-10) A jog dial, M5Stack's Unit Encoder (U135) on the Grove port as in Media Jog (design 8.3.2), when it is
       there: in the data and game modes turning it changes the computer's volume and pressing it plays or pauses; in
       keyboard mode it sends ← → and Enter. Looked for at start and once a second while missing.
@@ -152,7 +161,7 @@
 #define KS_BLE 1  // (S5-5) 0: build without BLE, to compare
 #include "BleHid.h"
 
-#define BUILD_TAG "S5-12"
+#define BUILD_TAG "S5-13"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -614,7 +623,7 @@ static void drawScreen(uint32_t fillNow, uint32_t elapsedS) {
   canvas.fillSprite(COL_BG);
   canvas.setTextSize(2);
   canvas.setTextColor(COL_AMBER);
-  canvas.drawString("KeySpeaker S0", 4, 2);
+  canvas.drawString("KeySpeaker", 4, 2);
   canvas.setTextSize(1);
   canvas.setTextColor(COL_DIM);
   canvas.drawString(BUILD_TAG, 206, 2);
@@ -692,17 +701,21 @@ static void drawViz(uint32_t now) {
   flightviz::update(viz, now);
   flightviz::render(viz, static_cast<uint16_t*>(canvas.getBuffer()), now);
 
-  // Status line, kept small and dim so the terrain stays the main thing.
+  // Status line, only when something is wrong (S5-13, the user's call; until then it was always there, dim): not
+  // connected, muted, or dropouts counted. The rest (boost, bass cut) is on the data screen, so the terrain stays alone.
   char l[48];
-  bool mounted = (bool)USB, st = streaming;
   uint32_t u = underruns, o = overruns;
+  bool mute = uac.mute(UAC_CHAN_MASTER);
   canvas.setTextSize(1);
-  canvas.setTextColor(st ? COL_DIM : mounted ? COL_WARN : COL_BAD);
-  snprintf(l, sizeof l, "%s  +%ddB %s", st ? "USB" : mounted ? "USB no stream" : "not connected", boostDb.load(), bassCut ? "cut" : "full");
-  canvas.drawString(l, 4, 2);
-  canvas.setTextColor(u || o ? COL_BAD : COL_DIM);
-  snprintf(l, sizeof l, "%sU%lu O%lu", uac.mute(UAC_CHAN_MASTER) ? "MUTE " : "", (unsigned long)u, (unsigned long)o);
-  canvas.drawRightString(l, 236, 2);
+  if (!(bool)USB) {
+    canvas.setTextColor(COL_BAD);
+    canvas.drawString("not connected", 4, 2);
+  }
+  if (mute || u || o) {
+    canvas.setTextColor(u || o ? COL_BAD : COL_WARN);
+    snprintf(l, sizeof l, "%sU%lu O%lu", mute ? "MUTE " : "", (unsigned long)u, (unsigned long)o);
+    canvas.drawRightString(l, 236, 2);
+  }
   canvas.pushSprite(0, 0);
 
   uint32_t us = micros() - t0;
@@ -817,19 +830,27 @@ static void drawSplash() {
       row[x] = (uint16_t)((c << 8) | (c >> 8));
     }
   }
-  // Darken the bottom of the grille to about 40 % and write how to reach the help and the keyboard on it.
-  for (int i = SPLASH_W * 121; i < SPLASH_W * SPLASH_H; i++) {
-    uint16_t c = (uint16_t)((buf[i] << 8) | (buf[i] >> 8));
-    uint16_t r = (c >> 11) * 2 / 5, g = ((c >> 5) & 63) * 2 / 5, b = (c & 31) * 2 / 5;
-    c = (uint16_t)((r << 11) | (g << 5) | b);
-    buf[i] = (uint16_t)((c << 8) | (c >> 8));
-  }
-  static const char* const SPEAKER[] = {"h", "HELP", "Fn+M", "KEYBOARD"};
-  static const char* const KEYS[] = {"Fn+M", "MODE"};
-  if (mode == MODE_KEYS)  // only at start: the keys go to the computer, so there is no help here
-    drawHintLine(KEYS, 2, 125);
-  else
+  // At rest, darken the bottom of the grille to about 40 % and write how to reach the help and the keyboard on it.
+  // Not at start (S5-13): USB is still coming up then, so h and Fn+M would not do what the line says.
+  if (splashIdle) {
+    for (int i = SPLASH_W * 121; i < SPLASH_W * SPLASH_H; i++) {
+      uint16_t c = (uint16_t)((buf[i] << 8) | (buf[i] >> 8));
+      uint16_t r = (c >> 11) * 2 / 5, g = ((c >> 5) & 63) * 2 / 5, b = (c & 31) * 2 / 5;
+      c = (uint16_t)((r << 11) | (g << 5) | b);
+      buf[i] = (uint16_t)((c << 8) | (c >> 8));
+    }
+    static const char* const SPEAKER[] = {"h", "HELP", "Fn+M", "KEYBOARD"};
     drawHintLine(SPEAKER, 4, 125);
+  } else {
+    // At start, the name under the emblem in large white letters, straight on the grille with a dark shadow (S5-13,
+    // the user's idea; chosen over a dark plate behind it).
+    canvas.setTextSize(2);
+    canvas.setTextColor(COL_BG);
+    canvas.drawString("KeySpeaker", 61, 108);
+    canvas.setTextColor(COL_FG);
+    canvas.drawString("KeySpeaker", 60, 107);
+    canvas.setTextSize(1);
+  }
   canvas.pushSprite(0, 0);
 }
 
@@ -1376,17 +1397,8 @@ static void drawKeys() {
     }
     if (M5.Imu.isEnabled()) drawHelp("G0+tilt", "Move", sx, y + 3, mx);  // the way into the air mouse (design 8.3.1)
   }
-  if (!mounted) {  // (S5-5) why USB may not be up: did the audio start, and how much memory is left
-    char d[48];
-    snprintf(d, sizeof d, "uac %s %uk%s", uacStarted ? "ok" : "FAIL", (unsigned)(ESP.getFreeHeap() / 1024),
-             KS_BLE ? "" : " noBLE");
-    canvas.setTextColor(COL_DIM);
-    canvas.drawRightString(d, 236, 125);
-    // (S5-6) BLE: subscriptions, reports accepted / refused, the last refusal's code
-    snprintf(d, sizeof d, "k%d m%d ok%lu ng%lu rc%d", (int)BleHid::kbSub(), (int)BleHid::mouseSub(),
-             (unsigned long)BleHid::sentOk, (unsigned long)BleHid::sentNg, BleHid::lastRc);
-    canvas.drawRightString(d, 236, 116);
-  }
+  // (S5-13) The S5-5 / S5-6 diagnostics at the bottom right (uac, free memory, BLE subscriptions and reports) are gone
+  // from the screen now that BLE works; they looked left over (the user noticed). The serial log keeps [LINK] lines.
   canvas.pushSprite(0, 0);
 }
 

@@ -7,12 +7,15 @@ Usage (macOS, uses sips for scaling):
       KeySpeaker_S0/Splash.h
 
 The three images are the layers of assets/splash.png, all at the size of assets/splash_original.webp:
-- splash_grille.png: the grille alone. The original's rubber bumper, black border and emblem are replaced by more of
-  its weave (copied from the weave left of the emblem, brightness matched, with soft edges), so it fills the screen.
+- splash_grille.png: the grille alone, perforated metal at the screen's size, drawn by tools/make_grille.py (S5-13).
+  Up to S5-12 it was the original picture's weave, with its rubber bumper, black border and emblem replaced by more
+  of the weave; on the small screen that did not read as a speaker.
 - splash_emblem.png: the emblem at 80 % of its size, with its ring of weave and its soft edge, on black (its colors
-  already multiplied by its alpha).
+  already multiplied by its alpha). The weave inside it (the face, the eyes, the ring) and its dark edge are turned
+  to black here (WEAVE_CUT), so no old weave shows over the new grille: the face is black, and the edge a soft
+  shadow (S5-13).
 - splash_emblem_alpha.png: the emblem's alpha, white where it covers the grille.
-The grille with the emblem over it is assets/splash.png.
+assets/splash.png is the original picture's layout (gold, weave grille), kept as the source.
 
 The Cardputer ADV's LCD shows dark colors lighter and bluer than a computer screen. So the colors are corrected for
 it: a gamma that sinks the darks, and less blue in the darks, so the black grille loses its blue cast. The gold
@@ -30,6 +33,8 @@ W, H = 240, 135
 GAMMA = 1.35                     # > 1 sinks the darks and mid-tones; white stays white
 DARK_B = -0.06                   # blue change at black, against the LCD's blue cast
 EMBLEM_SAT = 0.0                 # the emblem's color saturation: 0 gray (silver), 1 as drawn (gold)
+WEAVE_CUT = (32, 64)             # after correction, emblem pixels darker than the first are black, up to the second
+                                 # faded in: the weave and the dark edge, not the metal (S5-13)
 correct = "--no-correct" not in sys.argv
 sys.argv = [a for a in sys.argv if a != "--no-correct"]
 
@@ -90,7 +95,10 @@ for y in range(ey0, ey1):
         r, g, b = (min(255, round(v * 255 / a)) if a else 0 for v in emblem[y][x])
         gray = 0.299 * r + 0.587 * g + 0.114 * b
         r, g, b = (min(255, round(gray + (v - gray) * EMBLEM_SAT)) for v in (r, g, b))
-        em_rgb.append(rgb565(*fix(r, g, b)) if a else 0)
+        r, g, b = fix(r, g, b)
+        lum = 0.299 * r + 0.587 * g + 0.114 * b
+        k = min(1.0, max(0.0, (lum - WEAVE_CUT[0]) / (WEAVE_CUT[1] - WEAVE_CUT[0])))
+        em_rgb.append(rgb565(*(round(v * k) for v in (r, g, b))) if a else 0)
         em_a.append(a)
 
 
