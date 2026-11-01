@@ -22,7 +22,7 @@
 
 - **USB-Cケーブルでつなぐと（基本の使い方）**：ケーブル1本で、スピーカーとキーボードになります。
 - **ケーブルを抜くと（予備）**：数秒で自動的に、Bluetooth LEのキーボードとマウスになります。
-- **相手の機器には何も入れません。** Cardputerに本体アプリだけの `.ino.bin` をLauncherから入れるだけです。
+- **相手の機器には何も入れません。** CardputerにKeySpeakerを、LauncherかM5Burnerで入れるだけです（[インストール](#インストール)）。
 
 Bluetooth LE（予備）の制限:
 
@@ -130,6 +130,13 @@ keyboard mode（文字、Shift、Ctrl、Tab、Enter、Delはそのまま送る�
 Cardputer ADVには、すでに別の仕事があります。インターネットラジオは[RADIO DAYS](https://github.com/kariagepompadour/RADIODAYS)、
 ジョグダイヤルは[Media Jog](https://github.com/kariagepompadour/Cardputer-ADV-Media-Jog)です。それぞれが別のアプリで、Launcherで切り替えます。
 KeySpeakerには、設定がいりません。つなげば、スピーカーとキーボードになります。
+
+## インストール
+
+2つの方法があります。
+
+- **Launcherで入れる（ほかのアプリも残せます）**：本体アプリだけの [`firmware/KeySpeaker_S0/KeySpeaker_S0.ino.bin`](firmware/KeySpeaker_S0/) をLauncherから入れます。チェックサムは同じ場所の `SHA256SUMS.txt` にあります。
+- **M5Burnerで入れる**：**CARDPUTER** を選び、**KeySpeaker**（「kariagepompadour Cardputer ADV KeySpeaker」）を検索して書き込みます。本体を丸ごと書き換えるので、Launcherやほかのアプリは消えます。
 
 ## 給電
 

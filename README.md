@@ -26,8 +26,8 @@ time?
 - **Plug in a USB-C cable (the main way to use it):** the Cardputer ADV becomes a speaker and a keyboard, over one
   cable.
 - **Unplug it (a spare):** it becomes a Bluetooth LE keyboard and mouse by itself, a few seconds later.
-- **Nothing to install on the other device.** Only the app-only `.ino.bin` goes onto the Cardputer, through a
-  launcher.
+- **Nothing to install on the other device.** Only KeySpeaker goes onto the Cardputer, through a launcher or
+  M5Burner ([Install](#install)).
 
 Limits of the Bluetooth LE spare:
 
@@ -146,6 +146,16 @@ The Cardputer ADV cannot be a wireless speaker without software on the other dev
 The Cardputer ADV already has other jobs: internet radio is [RADIO DAYS](https://github.com/kariagepompadour/RADIODAYS),
 a jog dial is [Media Jog](https://github.com/kariagepompadour/Cardputer-ADV-Media-Jog). Each is its own app, and
 you switch between them with the launcher. KeySpeaker needs no setup: plug it in, and it is a speaker and a keyboard.
+
+## Install
+
+Two ways:
+
+- **With a launcher (keeps your other apps):** install the app-only
+  [`firmware/KeySpeaker_S0/KeySpeaker_S0.ino.bin`](firmware/KeySpeaker_S0/) from the launcher. Its checksum is in
+  `SHA256SUMS.txt` next to it.
+- **With M5Burner:** choose **CARDPUTER**, search for **KeySpeaker** ("kariagepompadour Cardputer ADV KeySpeaker")
+  and burn it. This writes the whole flash: the launcher and any other apps on the Cardputer are replaced.
 
 ## Power
 
