@@ -34,7 +34,8 @@ The keyboard does not send characters to the computer yet. Bluetooth and Wi-Fi a
 ## 2. Installing
 
 1. Check `KeySpeaker_S0.ino.bin` against `SHA256SUMS.txt`.
-2. Install it as usual through the Launcher's Wi-Fi upload, and start it from the Launcher.
+2. Install it as usual through the Launcher's Wi-Fi upload, and start it from the Launcher. (Or burn it from
+   M5Burner, which replaces the Launcher; checked with S5-13.)
 3. First the startup screen (a speaker grille with KariPom's emblem) shows for 2 seconds. A key press moves on at
    once. USB and audio get ready in the meantime.
 4. The screen shows "KeySpeaker S0".
@@ -522,6 +523,10 @@ switched off and on all worked. S5 passed.
 **S5-13 (2026-11-01):** checked on the device by the user: the start screen's round-hole grille and "KeySpeaker",
 `S5-13` on the measure screen, and the tidied screens (no diagnostics at the bottom right, the flight screen's top
 line only when something is wrong) are fine.
+
+**S5-13 from M5Burner (2026-11-01):** the full image (`KeySpeaker_S5-13_MERGED.bin`: the same app as the
+published `.ino.bin`, with the bootloader and the partition table) was published in M5Burner (CARDPUTER,
+"kariagepompadour Cardputer ADV KeySpeaker"). The user burned it from M5Burner onto the device: no problems.
 
 Design 5.2 (plan A: Media Jog's BLE identity and GATT table) and 5.3. Over USB nothing changes. Without USB (on the
 battery, or on a charger only) the Cardputer advertises as "KeySpeaker" after 3 seconds; the keyboard screen shows
