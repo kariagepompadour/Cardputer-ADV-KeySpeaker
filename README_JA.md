@@ -6,7 +6,7 @@
 
 [English README](README.md)
 
-> **状態: 開発の初期段階です。** MacとWindows 11では、USB-Cケーブル1本で、スピーカーとキーボードの両方が使えるようになりました。十分な音量で鳴り（8時間続けて音切れなし、一時停止と再開も問題なし）、
+> **状態: 開発中です。** MacとWindows 11では、USB-Cケーブル1本で、スピーカーとキーボードの両方が使えるようになりました。十分な音量で鳴り（8時間続けて音切れなし、一時停止と再開も問題なし）、
 > キーボードで文字が打て、音量や再生のキーも効きます。USBでつないだiPhone 15でも使え、傾きで動かすマウスも使えます。予備として、ケーブルを抜くとBluetooth LEのキーボードとマウスにもなります（MacとWindows 11で確認。USBに戻すには、電源スイッチを切ってリセットボタンを押します）。
 > ファームウェアは [`firmware/KeySpeaker_S0/`](firmware/KeySpeaker_S0/)、設計は [`docs/DESIGN_JA.md`](docs/DESIGN_JA.md)、検証記録は [`docs/S0_TEST_JA.md`](docs/S0_TEST_JA.md) にあります。
 

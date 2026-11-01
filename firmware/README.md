@@ -4,7 +4,7 @@ Cardputer ADV firmware. Each stage is its own sketch folder with its app-only `.
 
 | Folder | Stage | Status |
 | --- | --- | --- |
-| [`KeySpeaker_S0/`](KeySpeaker_S0/) | S0: USB Audio Class 1 speaker only; measures the buffer and the clock drift. S0-3 adds a flight visualizer screen (`v`). S1 (now `S1-6`) corrects the clock drift and fixes two USB restarts | On a Mac and Windows 11: 8 hours with no dropouts (without the S1 correction, one every 1.4 hours); ten pause/resume cycles without a restart. Now `S5-12`: USB keyboard, media keys and a tilt mouse too, a spinning Earth on the keyboard screen, Media Jog's jog dial if it is plugged in, and a BLE keyboard and mouse without USB (`BleHid.h`). Test plan: [`../docs/S0_TEST.md`](../docs/S0_TEST.md) |
+| [`KeySpeaker_S0/`](KeySpeaker_S0/) | S0: USB Audio Class 1 speaker only; measures the buffer and the clock drift. S0-3 adds a flight visualizer screen (`v`). S1 (now `S1-6`) corrects the clock drift and fixes two USB restarts | On a Mac and Windows 11: 8 hours with no dropouts (without the S1 correction, one every 1.4 hours); ten pause/resume cycles without a restart. Now `S5-13`: USB keyboard, media keys and a tilt mouse too, a spinning Earth on the keyboard screen, Media Jog's jog dial if it is plugged in, a BLE keyboard and mouse without USB as a spare (`BleHid.h`), and a start screen with a round-hole grille. Test plan: [`../docs/S0_TEST.md`](../docs/S0_TEST.md) |
 
 ## Building
 
@@ -23,10 +23,11 @@ puts an Interface Association Descriptor in front of the speaker (`KeySpeaker_S0
 does not start the speaker (Code 10); the keyboard still works. The same file makes the output a speaker rather than
 headphones, so Windows lists "Speakers (KeySpeaker)".
 
-The emblem screen `KeySpeaker_S0/Splash.h` is made from the layers of `assets/splash.png` (the author's KariPom emblem
-from `assets/splash_original.webp`: the grille fills the screen, the emblem at 80 %): `assets/splash_grille.png`, and
-`assets/splash_emblem.png` with its alpha `assets/splash_emblem_alpha.png`, kept apart so the emblem can shake on loud
-beats. Run
+The emblem screen `KeySpeaker_S0/Splash.h` is made from two layers, kept apart so the emblem can shake on loud beats:
+the grille `assets/splash_grille.png`, perforated metal drawn by `tools/make_grille.py`, and the author's KariPom
+emblem `assets/splash_emblem.png` with its alpha `assets/splash_emblem_alpha.png`, cut from `assets/splash.png` (the
+original picture, from `assets/splash_original.webp`, at 80 %). Run
+`python3 tools/make_grille.py assets/splash_grille.png`, then
 `python3 tools/make_splash.py assets/splash_grille.png assets/splash_emblem.png assets/splash_emblem_alpha.png KeySpeaker_S0/Splash.h`
 (macOS, uses `sips`).
 

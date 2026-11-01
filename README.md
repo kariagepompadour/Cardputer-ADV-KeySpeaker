@@ -6,7 +6,7 @@
 
 [日本語版 README](README_JA.md)
 
-> **Status: early development.** On a Mac and on Windows 11, one USB-C cable now gives you both: the speaker plays at
+> **Status: in development.** On a Mac and on Windows 11, one USB-C cable now gives you both: the speaker plays at
 > a good level (8 hours without a dropout, pause and resume work) and the keyboard types, with volume and playback keys.
 > An iPhone 15 works over USB too, and the tilt mouse works. As a spare, unplugged it is a Bluetooth LE keyboard and
 > mouse (working on a Mac and on Windows 11; going back to USB needs the power switch off and the reset button). Firmware: [`firmware/KeySpeaker_S0/`](firmware/KeySpeaker_S0/).
