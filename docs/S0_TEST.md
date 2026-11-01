@@ -2,12 +2,12 @@
 
 [日本語版](S0_TEST_JA.md)
 
-Target: `firmware/KeySpeaker_S0/KeySpeaker_S0.ino.bin` (`S2.5-10`). This is S0-6 plus the clock drift correction (S1-1),
+Target: `firmware/KeySpeaker_S0/KeySpeaker_S0.ino.bin` (`S5-12`). This is S0-6 plus the clock drift correction (S1-1),
 a record of why it restarted by itself (S1-2, S1-3) and the fix for that (S1-4 to S1-6), the startup screen (S1-7 to
 S1-11), the USB keyboard and the three modes (S2-1 to S2-5), the help screen and the emblem screen after being left
 alone (S2-6), the silver emblem that shakes with loud sounds (S2-7, S2-8), and the fix that makes it work as a
 speaker on Windows (S2-9), with the name "Speakers" (S2-10), the keyboard screen's spinning Earth (S2-11), a surer
-`Fn+M` (S2-12), the air mouse (S2.5-1 to S2.5-8), and the jog dial (S2.5-10). `S2.5-10` is shown at the top right of the data screen. How to check S1 is
+`Fn+M` (S2-12), the air mouse (S2.5-1 to S2.5-8), the jog dial (S2.5-10), and the BLE keyboard and mouse (S5-1 to S5-12). `S5-12` is shown at the top right of the data screen. How to check S1 is
 in 5.8, S2 in 5.10, and the air mouse in 5.11. The results up to S0-6 are kept in this document as they were.
 
 Status: volume checked on the device (Mac, 2026-10-29). It was louder and easier to hear than S0-1; a boost of +9 to
@@ -464,6 +464,59 @@ says `[DIAL] Unit Encoder found`.
 2. In keyboard mode, in a text field: turning it moves the text cursor right and left one character a click; with
    Shift held it selects. Pressing it is Enter.
 3. Without the unit, nothing changes and the log stays quiet.
+
+### 5.13 BLE keyboard and mouse (added in S5-1)
+
+**S5-1 (Mac, 2026-11-01):** after unplugging, the screen still said `USB` and BLE never started; the Mac listed
+"MediaJog BLE" (its earlier pairing) as not connected. The USB stack still reported "mounted" without the cable (the
+Cardputer ADV cannot see the cable). S5-2 counts USB as there only while the computer's SOFs come in (design 5.3).
+
+**S5-2 to S5-8 (Mac, 2026-11-01):**
+- USB sometimes did not come up at all after the launcher handed over, with or without BLE built in (a build
+  without BLE, S5-5 noBLE, did the same). The Mac saw nothing, not even the launcher's port, until the cable was
+  plugged into the Mac again and the Cardputer switched off and on. S5-4 waits 10 s for USB at start before BLE;
+  S5-7 also pulses USB every 3 s when no SOF has come since start (the old pulse ran only after SOFs had stopped).
+- Over BLE (after removing the old "MediaJog BLE" pairing on the Mac: the Cardputer's pairings were erased with its
+  internal flash), the Mac connected and subscribed to the keyboard and the mouse, and the Cardputer sent 574
+  reports, all accepted (screen counters of S5-6), yet nothing was typed and the cursor did not move: macOS created
+  no HID device for it. The report map is byte for byte Media Jog's.
+- After BLE had started, plugging USB back in did not bring USB back.
+- With BLE running only 32 KB of memory were free (107 KB before it starts). Taken as the likely cause of the last
+  two: S5-8 shrinks the audio ring buffer from 500 ms to 200 ms (it is kept near 80 ms), freeing about 29 KB. Agreed
+  with the user as an audio-path change. On the device, USB playback was fine (buffer 66 to 80 ms, no dropouts in the
+  first minute), but BLE typing still did not work: memory was not the cause.
+- The cause, found in the Mac's own log (`log stream`, process `BTLEServer`, as Codex suggested): macOS read the
+  HID service and checked encryption before pairing had finished ("Not creating HID device as the link is not
+  encrypted", then "peerDidCompletePairing" 1.3 s later), and did not try again. S5-9: the Cardputer asks for
+  encryption as soon as a computer connects, and the HID service can be read only over an encrypted link.
+
+**S5-9 (Mac, 2026-11-01):** after pairing again, macOS created the "KeySpeaker" HID device (it shows in
+`ioreg`), typing and the air mouse work over BLE, and the Mac reconnected by itself after the link dropped. Still to
+check: a Mac paired in Media Jog.
+
+After a restart of the Cardputer, the Mac reconnected over BLE by itself, and typing and the mouse worked. USB did not
+come back after an unplug and replug, not even when replugged within 2 s, before BLE started (the Mac saw nothing from
+the unplug on): so not BLE's doing. With the cable in, the power switch does not cut the power (USB powers it); the
+switch off plus the reset button does, and USB then came up. S5-10 added `Fn+R` to restart; after it, USB did not come
+up (the Mac saw nothing, not even the Launcher, until the power was really cut). S5-11 made `Fn+R` go through 0.2 s of
+deep sleep; it restarted, but USB still did not come back. S5-12 takes `Fn+R` out again, as well as the 200 ms
+buffer of S5-8 (memory was not the cause) and the start pulse of S5-7 (no sign that it helped). The keyboard screen
+says `Off+Reset to USB` without USB.
+
+Design 5.2 (plan A: Media Jog's BLE identity and GATT table) and 5.3. Over USB nothing changes. Without USB (on the
+battery, or on a charger only) the Cardputer advertises as "KeySpeaker" after 3 seconds; the keyboard screen shows
+`BLE wait` in yellow, then `BLE` in green once a computer is connected and ready.
+
+1. Unplug USB. After 3 seconds, `BLE wait` shows. On the Mac, open System Settings > Bluetooth and connect to
+   "KeySpeaker" (no code to type). `BLE` turns green.
+2. Typing, the A/あ key, `Fn` with the arrows and so on work as over USB.
+3. The air mouse: hold G0 and tilt, `A` / `D` clicks, `E` / `Z` and `S` in a right-click menu.
+4. With the jog dial plugged in: ← → and Enter.
+5. Plug USB back in: BLE stops at once, the speaker and USB keyboard work as before. Unplug again: BLE comes back by
+   itself and the Mac reconnects without pairing again. No key stays held across the switch.
+6. A Mac already paired in Media Jog: it connects to KeySpeaker without pairing again, and after going back to Media
+   Jog, it still connects there. (The Mac may show either name.)
+7. At most 2 paired computers (as Media Jog).
 
 ## 6. Please report
 

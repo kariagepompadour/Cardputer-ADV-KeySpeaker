@@ -61,6 +61,40 @@
       for picking from a menu opened with a click. The tilt only moves the cursor.
     - (S2.5-4) With G0 held, Fn+; , . / are still the arrow keys (not the mouse), so a menu opened with a click can be
       walked one item at a time; picking one by tilting alone was hard.
+    - (S5-1) A BLE keyboard and mouse (BleHid.h, ported from Media Jog with its BLE identity and GATT table, design
+      5.2 plan A): 3 s after USB goes away (unplugged, or only a charger), the Cardputer advertises as "KeySpeaker";
+      when USB comes back, BLE stops. Keys, the air mouse and the jog dial's keys go to whichever link is up. The
+      keyboard screen shows "BLE" (green when ready, "BLE wait" in yellow before).
+    - (S5-2) USB counts as there only while the computer's SOFs come in (design 5.3): the Cardputer ADV cannot see the
+      cable, and after unplugging, the USB stack still reported "mounted", so S5-1 never started BLE. Without USB only
+      the keyboard (and mouse) screen is shown, as before.
+    - (S5-3) A log line for each USB / BLE switch, with what USB looked like then (mounted, SOF seen, how long ago),
+      to find why S5-2 went to BLE about 2 s after start with USB connected.
+    - (S5-4) With S5-2 and S5-3 the Mac never took the USB device: BLE started 3 s after start while the Mac was still
+      setting USB up, and USB did not come up. Until USB has been seen once, BLE now waits 10 s; after USB was there
+      and went away (unplugged), still 3 s.
+    - (S5-5) USB does not come up at all since BLE was built in (S5-4 showed NO USB from the start). While USB is not
+      up, the keyboard screen's bottom right shows whether the USB audio started and the free memory, and KS_BLE 0
+      builds the same firmware without BLE, to compare.
+    - (S5-6) Over BLE the keys did not arrive though the link was ready. The keyboard screen's bottom right now also
+      shows, while USB is not up, the keyboard and mouse subscriptions (k, m), the reports accepted and refused, and the
+      last refusal's code.
+    - (S5-7) USB sometimes never came up after the launcher handed over: the computer sent no SOF at all, and the
+      reconnect pulse ran only after SOFs had been seen and stopped. Now it also runs when no SOF has come 3 s after
+      start, every 3 s until one does.
+    - (S5-8) The ring buffer is 200 ms instead of 500 ms, to leave the BLE stack room: with BLE running only 32 KB were
+      free. The buffer is kept near 80 ms (at most 81 ms seen in 8 hours), so 200 ms still leaves 120 ms above it.
+    - (S5-9) The BLE keyboard: macOS did not create the HID device because the link was not yet encrypted when it read
+      the HID service (seen in the Mac's log). The Cardputer now asks for encryption as soon as a computer connects, and
+      the HID service can be read only over an encrypted link (BleHid.h).
+    - (S5-10) Fn+R restarts KeySpeaker. After an unplug, USB does not come back when it is plugged in again, BLE or
+      not (a quick unplug and replug before BLE started showed it), and the Cardputer ADV cannot sense USB power to
+      restart by itself; so without USB the keyboard screen shows "Fn+R to USB".
+    - (S5-11) Fn+R goes through 0.2 s of deep sleep instead of a plain restart: once USB had stopped, a plain restart
+      (or the Launcher's) did not bring it back, only cutting the power did.
+    - (S5-12) Tidied after the tests: the S5-7 pulse at start, the 200 ms buffer of S5-8 and Fn+R (S5-10, S5-11) are
+      taken out again, none of them having helped; the buffer is back at the 500 ms of the 8-hour test. USB comes
+      back after an unplug only with a real power cut, so without USB the keyboard screen says "Off+Reset to USB".
     - (S2.5-10) A jog dial, M5Stack's Unit Encoder (U135) on the Grove port as in Media Jog (design 8.3.2), when it is
       there: in the data and game modes turning it changes the computer's volume and pressing it plays or pauses; in
       keyboard mode it sends ← → and Enter. Looked for at start and once a second while missing.
@@ -115,8 +149,10 @@
 #include "UsbAudioDesc.h"
 #include "Splash.h"
 #include "KeyEarth.h"
+#define KS_BLE 1  // (S5-5) 0: build without BLE, to compare
+#include "BleHid.h"
 
-#define BUILD_TAG "S2.5-10"
+#define BUILD_TAG "S5-12"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -133,7 +169,7 @@
 // ---- Audio format and buffer sizes
 static constexpr uint32_t RATE = 48000;          // USB and speaker sample rate (Hz); no resampling in between
 static constexpr size_t CHUNK = 480;             // samples handed to M5.Speaker at a time (10 ms)
-static constexpr size_t RING_SAMPLES = 24000;    // mono ring buffer: 500 ms
+static constexpr size_t RING_SAMPLES = 24000;    // mono ring buffer: 500 ms (200 ms in S5-8 to S5-11)
 static constexpr size_t START_FILL = 4800;       // (re)start playing when 100 ms are buffered
 static constexpr float TARGET_FILL = START_FILL - 2 * CHUNK;  // the level right after starting, when both of
                                                               // M5.Speaker's slots are filled; S1 holds it there
@@ -685,7 +721,14 @@ static int8_t inputKana = -1;     // the last input switch sent with Fn+[ / Fn+]
                                   // is only what was asked for, and nothing is saved.
 static Preferences prefs;
 
-static uint8_t viewMode() { return (bool)USB ? mode : (uint8_t)MODE_KEYS; }
+// (S5-2) USB is there: mounted and the computer's SOFs (one a millisecond) seen within the last second. The Cardputer
+// ADV cannot sense the cable, and after unplugging, the USB stack can still report it mounted. A computer asleep
+// (USB suspended) sends no SOFs either, so it counts as gone too; BLE then starts, which is harmless.
+static bool uacStarted = false;  // (S5-5) uac.begin() succeeded
+
+static bool usbUp() { return (bool)USB && usbSawHost && millis() - usbLastSofMs < 1000; }
+
+static uint8_t viewMode() { return usbUp() ? mode : (uint8_t)MODE_KEYS; }
 
 // ---- Emblem screen (S1-7, S2-6, design 8.3): shown at start for SPLASH_MS or until a key, and, in the measurement
 // and visualizer modes, after IDLE_MS with no key and no sound, until a key (splashIdle). That key only closes it.
@@ -800,8 +843,14 @@ static constexpr uint8_t MOD_CTRL = 0x01, MOD_SHIFT = 0x02, MOD_ALT = 0x04, MOD_
 static KeyReport sentReport = {};
 
 static void sendReport(const KeyReport& r) {
-  if (!(bool)USB) {  // nobody to send to (and the send would wait for a timeout)
-    sentReport = KeyReport{};
+  if (!usbUp()) {  // (S5-1) over BLE when its link is ready; else nobody to send to
+    if (!BleHid::ready()) {
+      sentReport = KeyReport{};
+      return;
+    }
+    if (memcmp(&r, &sentReport, sizeof r) == 0) return;
+    static_assert(sizeof(KeyReport) == 8, "the BLE keyboard report is 8 bytes");
+    if (BleHid::sendKeyboard((const uint8_t*)&r)) sentReport = r;
     return;
   }
   if (memcmp(&r, &sentReport, sizeof r) == 0) return;
@@ -941,7 +990,7 @@ static void keyService() {
     if (!fresh && !fnLate) continue;
     if (ks.fn) {  // the Cardputer's own Fn keys, in every mode
       if (c == 'm') {
-        if ((bool)USB) setMode((uint8_t)((mode + 1) % MODE_COUNT));
+        if (usbUp()) setMode((uint8_t)((mode + 1) % MODE_COUNT));
         else Serial.println("[KEY] Fn+M before USB is up: no mode change");
         if (!fresh) Serial.println("[KEY] Fn+M: Fn came after M");
         acted = true;
@@ -1037,6 +1086,17 @@ static float airSpeed(float deg, float gain) {  // signed, 0 inside the dead zon
   return copysignf(gain * e * sqrtf(e), deg);
 }
 
+// One mouse report: to USB, or over BLE without it (S5-1). was: the buttons down before.
+static void airMouse(uint8_t buttons, int8_t x, int8_t y, uint8_t was) {
+  if (!usbUp()) {
+    BleHid::sendMouse(buttons, x, y);
+    return;
+  }
+  if (buttons & ~was) mouse.press(buttons & ~was);
+  if (was & ~buttons) mouse.release(was & ~buttons);
+  if (x || y) mouse.move(x, y);
+}
+
 static void airService(uint32_t now) {
   static uint32_t last = 0, lastLog = 0;
   static float ax = 0, ay = 0, az = 1, roll0 = 0, pitch0 = 0, fx = 0, fy = 0;
@@ -1055,7 +1115,7 @@ static void airService(uint32_t now) {
       fx = fy = 0;
       Serial.printf("[AIR] on: accel %.2f %.2f %.2f\n", ax, ay, az);
     } else {
-      mouse.release(MOUSE_ALL);
+      airMouse(0, 0, 0, buttons);
       buttons = 0;
     }
     if (viewMode() == MODE_KEYS) resendKeys();  // the mouse's keys type again, or stop typing
@@ -1065,8 +1125,7 @@ static void airService(uint32_t now) {
   uint8_t b = (airHeld(',') || airHeld('a') ? MOUSE_LEFT : 0) | (airHeld('/') || airHeld('d') ? MOUSE_RIGHT : 0);
   if (M5Cardputer.Keyboard.keysState().fn) b &= buttons;  // Fn+, and Fn+/ are arrows: no new button press
   if (b != buttons) {
-    if (b & ~buttons) mouse.press(b & ~buttons);
-    if (buttons & ~b) mouse.release(buttons & ~b);
+    airMouse(b, 0, 0, buttons);
     buttons = b;
   }
 
@@ -1088,7 +1147,7 @@ static void airService(uint32_t now) {
   int8_t mx = (int8_t)cx, my = (int8_t)cy;
   fx -= mx;
   fy -= my;
-  if (mx || my) mouse.move(mx, my);
+  if (mx || my) airMouse(buttons, mx, my, buttons);
   if (now - lastLog >= 500) {
     lastLog = now;
     Serial.printf("[AIR] side %+.0f fore %+.0f%s%s\n", side, fore, buttons & MOUSE_LEFT ? " L" : "",
@@ -1174,6 +1233,41 @@ static void dialService(uint32_t now) {
   down = press;
 }
 
+// ---- USB or BLE (S5-1, design 5.3): BLE starts once USB has been gone for BLE_AFTER_MS (unplugged, only a charger,
+// or not yet taken at start) and stops as soon as USB is there, so the other device never sees two keyboards.
+static constexpr uint32_t BLE_AFTER_MS = 3000;
+static constexpr uint32_t BLE_AFTER_START_MS = 10000;  // (S5-4) before USB was ever seen: let the computer set it up
+
+static void linkService(uint32_t now) {
+  static uint32_t usbGoneSince = 0;
+  static bool wasUp = false;
+  bool up = usbUp();
+  if (up != wasUp) {  // (S5-3) why it changed
+    wasUp = up;
+    Serial.printf("[LINK] t=%lu usb %s: mounted %d, sof seen %d, last sof %lu ms ago\n", (unsigned long)now,
+                  up ? "up" : "gone", (int)(bool)USB, (int)usbSawHost, (unsigned long)(now - usbLastSofMs));
+  }
+  if (up) {
+    usbGoneSince = 0;
+    if (BleHid::on) {
+      BleHid::stop();
+      keysRedraw = true;
+    }
+  } else {
+    if (!usbGoneSince) usbGoneSince = now ? now : 1;
+    if (!BleHid::on && now - usbGoneSince >= (usbSawHost ? BLE_AFTER_MS : BLE_AFTER_START_MS)) {
+      Serial.printf("[LINK] t=%lu BLE on: mounted %d, sof seen %d, last sof %lu ms ago\n", (unsigned long)now,
+                    (int)(bool)USB, (int)usbSawHost, (unsigned long)(now - usbLastSofMs));
+      BleHid::start();
+      keysRedraw = true;
+    }
+  }
+  if (BleHid::service(now)) {  // ready changed: the computer starts from all keys up
+    sentReport = KeyReport{};
+    keysRedraw = true;
+  }
+}
+
 // ---- Keyboard mode screen (design 8.3). S2-2: a cheat sheet of the keys only this mode has, always on the right, keys
 // in amber and their meaning in white; the last three lines follow the Mac / Windows profile. S2-11: the spinning Earth
 // at the top left (KeyEarth.h), and the connection, OS and A/あ under it.
@@ -1213,17 +1307,19 @@ static void drawHelp(const char* key, const char* meaning, int x, int y, int mea
 }
 
 static void drawKeys() {
-  bool mounted = (bool)USB;
+  bool mounted = usbUp();
   uint32_t now = millis();
   canvas.fillSprite(COL_BG);
   KeyEarth::draw(canvas, now, COL_FG, airOn);
   // Under the Earth, lines 9 px apart: the connection, the OS profile and the input switch, always "A/あ" with the
   // last one chosen in amber (both white before); then the keys of this side, Fn+[ ] next to the A/あ it switches
-  // (2026-11-01). From S5 the connection line also shows the BLE channel, and Fn+B gets the line under it.
+  // (2026-11-01). The connection: USB, or BLE (S5-1), green when ready, "BLE wait" in yellow while advertising or
+  // pairing, "NO USB" before BLE starts.
   int x = 4;
-  canvas.setTextColor(mounted ? COL_OK : COL_WARN);
-  canvas.drawString(mounted ? "USB" : "NO USB", x, 99);
-  x += canvas.textWidth(mounted ? "USB" : "NO USB") + 6;
+  const char* link = mounted ? "USB" : BleHid::ready() ? "BLE" : BleHid::on ? "BLE wait" : "NO USB";
+  canvas.setTextColor(mounted || BleHid::ready() ? COL_OK : COL_WARN);
+  canvas.drawString(link, x, 99);
+  x += canvas.textWidth(link) + 6;
   canvas.setTextColor(COL_FG);
   canvas.drawString(osWin ? "Win" : "Mac", x, 99);
   x += 24;
@@ -1235,6 +1331,8 @@ static void drawKeys() {
   drawHelp("Fn+O", "Mac/Win", 4, 108, 46);
   drawHelp("Fn+[ ]", "A/", 4, 117, 46);
   drawKanaA(46 + 12, 117, 1, COL_FG);
+  // (S5-12) Without USB: USB comes back only after a real power cut (switch off, then the reset button)
+  if (!mounted) drawHelp("Off+Reset", "to USB", 4, 126, 64);
 
   // The right side, lines 9 px apart: Fn+M at the top (it works in every mode), then the cheat sheet, and
   // "G0+tilt Move" when the IMU is there. No version tag here: the other screens show it. While G0 is held, the mouse's
@@ -1277,6 +1375,17 @@ static void drawKeys() {
       y += 9;
     }
     if (M5.Imu.isEnabled()) drawHelp("G0+tilt", "Move", sx, y + 3, mx);  // the way into the air mouse (design 8.3.1)
+  }
+  if (!mounted) {  // (S5-5) why USB may not be up: did the audio start, and how much memory is left
+    char d[48];
+    snprintf(d, sizeof d, "uac %s %uk%s", uacStarted ? "ok" : "FAIL", (unsigned)(ESP.getFreeHeap() / 1024),
+             KS_BLE ? "" : " noBLE");
+    canvas.setTextColor(COL_DIM);
+    canvas.drawRightString(d, 236, 125);
+    // (S5-6) BLE: subscriptions, reports accepted / refused, the last refusal's code
+    snprintf(d, sizeof d, "k%d m%d ok%lu ng%lu rc%d", (int)BleHid::kbSub(), (int)BleHid::mouseSub(),
+             (unsigned long)BleHid::sentOk, (unsigned long)BleHid::sentNg, BleHid::lastRc);
+    canvas.drawRightString(d, 236, 116);
   }
   canvas.pushSprite(0, 0);
 }
@@ -1355,7 +1464,8 @@ void setup() {
   xTaskCreatePinnedToCore(playTask, "play", 4096, nullptr, 3, nullptr, APP_CPU_NUM);
   uac.onEvent(onUsbEvent);
   uac.onData(onSpkData);
-  if (!uac.begin()) Serial.println("[BOOT] USB audio failed to start");
+  uacStarted = uac.begin();
+  if (!uacStarted) Serial.println("[BOOT] USB audio failed to start");
   kbd.begin();
   media.begin();
   mouse.begin();
@@ -1373,6 +1483,7 @@ void loop() {
   keyService();
   airService(millis());
   dialService(millis());
+  linkService(millis());
 
   static uint32_t lastScreen = 0, lastFrame = 0, lastLog = 0;
   uint32_t now = millis();

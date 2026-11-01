@@ -150,13 +150,18 @@ first on a Mac (S5). Other devices are tried in S6, starting with the ones at ha
 
 ### 5.2 BLE mode
 
-- A BLE HID keyboard. Port Media Jog's NimBLE code (the HID service, saved pairings, releasing held keys when
-  switching).
+- A BLE HID keyboard and mouse (the air mouse, 8.3.1). Port Media Jog's NimBLE code (its fixed GATT table, saved
+  pairings, releasing held keys when switching).
 - No audio. No Wi-Fi either (Wi-Fi is used only by the Launcher for installing).
-- Switching the connection (channels 1 to 3): like Logitech's Easy-Switch, it remembers pairings with up to three
-  devices (a Mac, an iPad, a phone and so on) and switches which one it is connected to. Each channel uses its own BLE
-  address, so the other devices see separate keyboards. The channel is chosen on the connection screen (`Fn+B`), and
-  its number is shown on the keyboard mode's screen (added 2026-10-30; not yet checked on the device).
+- The same BLE identity and GATT table as Media Jog (plan A, decided 2026-11-01 with the user). Both apps run on the
+  same Cardputer, one at a time, and NimBLE keeps the pairings in one store they share: at most 3 bonds in all, and
+  one record per computer. With the same identity and table, a computer paired in either app works in both, with no
+  pairing again after switching apps. For someone without Media Jog it is simply a BLE keyboard and mouse.
+  - The limit is Media Jog's: at most 2 paired computers (each takes 3 of the 8 subscription records NimBLE keeps;
+    a third can make NimBLE drop the oldest other pairing).
+  - Dropped: channels 1 to 3 with a BLE address each, like Logitech's Easy-Switch (planned 2026-10-30). Their own
+    identity would share the bond store with Media Jog: a computer paired in both apps would need pairing again at
+    each switch, and the three bonds would be shared. Plan A is simpler; channels can be looked at again if needed.
 
 ### 5.3 Switching modes
 
@@ -165,7 +170,12 @@ first on a Mac (S5). Other devices are tried in S6, starting with the ones at ha
   - The Cardputer ADV cannot detect the cable from the supply voltage, so it uses SOF watching, proven in RADIO DAYS
     SDR's `usbLinkService()`.
   - With only a charger plugged in, it goes into BLE mode as well.
-- Manual: `Fn+B` switches (the same key as Media Jog; a fallback).
+- No manual switch for now (`Fn+B` was planned as a fallback, with the channels; it is kept free).
+- Back to USB: after an unplug, USB does not come back when the cable is plugged in again, with BLE or without it, and
+  the Cardputer ADV cannot sense USB power. A restart from software does not bring it back either (tried: a plain
+  restart, and 0.2 s of deep sleep, as `Fn+R` in S5-10 and S5-11; both dropped). Only a real power cut does: with the
+  cable in, USB keeps the Cardputer powered, so switch it off and press the reset button. Without USB, the keyboard
+  screen shows `Off+Reset to USB` (S5-12). Bringing USB back without a power cut is left for later.
 - BLE is stopped while in USB mode, so the other device does not see two keyboards.
 - Sending the keys to a BLE device while USB stays connected (or pairing one then) was considered and dropped
   (2026-11-01, with the user): few keyboards do that, and it would make the behavior harder to follow. To use or pair
@@ -291,7 +301,7 @@ modes available.
 | Key | Function |
 |---|---|
 | `Fn+M` | Switch modes (does nothing when USB is not connected) |
-| `Fn+B` | Open or close the connection screen (S5; choose BLE channel 1 to 3) |
+| `Fn+B` | Not used for now (the BLE channels were dropped, 5.2) |
 
 **Data view mode / game screen mode** (used as a speaker)
 
@@ -346,11 +356,12 @@ modes available.
     ones, in the same colors and proportions; the white stars twinkle now and then; none drawn behind the Earth).
   - While waiting for BLE pairing, the Earth is gray (with the land still faintly visible). It takes on color once
     connected.
-- Under the Earth, lines 9 px apart: the connection (`USB`, or `BLE CH1` to `3`), the OS profile and `A/あ` on one
-  line, and below them `Fn+B BLE CH` (over BLE, from S5), `Fn+O Mac/Win` and `Fn+[ ] A/あ`. `Fn+M mode` is at the top
+- Under the Earth, lines 9 px apart: the connection (`USB` or `BLE`), the OS profile and `A/あ` on one line, and below
+  them `Fn+O Mac/Win` and `Fn+[ ] A/あ`. `Fn+M mode` is at the top
   of the right side (it works in every mode), above the cheat sheet; it is shown only while USB is connected. Decided
   2026-11-01 with the user, by mockups: `Fn+[ ]` moved here from the cheat sheet, next to the `A/あ` it switches;
-  `Fn+M` went to the top right, which leaves room under the Earth for `Fn+B` (the user's ideas). Putting all of these over the Earth, and shrinking the Earth to about 80 px so
+  `Fn+M` went to the top right, since it works in every mode (the user's ideas; it was also to leave room for `Fn+B`
+  and the BLE channels, since dropped). Putting all of these over the Earth, and shrinking the Earth to about 80 px so
   five lines fit under it, were tried too: the first dimmed most of the Earth, the second left little Earth around
   "KEY BOARD".
 - A cheat sheet of the keys that only keyboard mode has (the Fn combinations, the jobs of `alt` and `opt` under the
@@ -486,7 +497,7 @@ Expected to be kept.
 | S2.5 | Move the cursor by tilting (while G0 is held; 8.3.1) | On a Mac, holding G0 and tilting moves the cursor, and clicking, dragging and picking from a menu work. Releasing it stops the cursor. With a Unit Encoder plugged in, turning it changes the volume (← and → in keyboard mode), and pressing it plays or pauses (Enter in keyboard mode) (8.3.2) |
 | S3 | The full key map, OS profiles, the Fn layer | Every key checked on each OS |
 | S4 | The status screen (usefulness first) | Every item is shown |
-| S5 | Port BLE HID, switch modes automatically by SOF, switch connection channels (5.2) | Plugging and unplugging switches modes, and no key stays held. Typing works on a Mac as a BLE keyboard. Switching channels between two devices works |
+| S5 | Port BLE HID (keyboard and mouse, Media Jog's identity and table), switch modes automatically by SOF (5.2) | Plugging and unplugging switches modes, and no key stays held. Typing and the air mouse work on a Mac as a BLE keyboard and mouse. A computer paired in Media Jog works without pairing again |
 | S6 | Widen the targets: iPhone and iPad, Android, audio players, game consoles | Record the sound, keyboard and power results for each device |
 | S7 | A retro-device style screen design | — |
 
@@ -502,6 +513,9 @@ Expected to be kept.
   one cable. Windows needed an IAD in front of the speaker (S2-9), and lists it as "Speakers (KeySpeaker)" (S2-10). The
   keyboard screen's Earth (8.3) is built in S2-11 and checked on the device.
 - S2.5: The air mouse (8.3.1) and Media Jog's jog dial (8.3.2) work on a Mac and on Windows (S2.5-10).
+- S5 (in progress): Without USB, KeySpeaker is a BLE keyboard and mouse; typing and the air mouse work on a Mac, and
+  the Mac reconnects by itself (S5-9). Going back to USB needs a power cut (5.3). Not yet checked: a computer paired
+  in Media Jog, other devices.
 - S6 (early): an iPhone 15 over USB plays the sound and takes the keyboard and the volume keys.
 - The device records are in `docs/S0_TEST.md`.
 
