@@ -509,6 +509,11 @@ says `Off+Reset to USB` without USB.
 KeySpeaker was chosen by hand, then it came from the Cardputer. Which output to use is the Mac's choice; the firmware
 cannot set it.
 
+**Media Jog's pairing (Mac, 2026-11-01):** with the Mac paired as "MediaJog BLE" in Media Jog, KeySpeaker stayed at
+`BLE wait` (`k0 m0`). The Mac's log showed it seeing KeySpeaker's advertising (HID service) again and again, but it
+never tried to connect, and Bluetooth settings showed no Connect button for "MediaJog BLE". So item 6 below does not
+hold on a Mac: after switching apps, remove the device on the Mac and pair again (the user's decision).
+
 Design 5.2 (plan A: Media Jog's BLE identity and GATT table) and 5.3. Over USB nothing changes. Without USB (on the
 battery, or on a charger only) the Cardputer advertises as "KeySpeaker" after 3 seconds; the keyboard screen shows
 `BLE wait` in yellow, then `BLE` in green once a computer is connected and ready.

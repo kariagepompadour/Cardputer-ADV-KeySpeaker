@@ -162,6 +162,9 @@ first on a Mac (S5). Other devices are tried in S6, starting with the ones at ha
   - Dropped: channels 1 to 3 with a BLE address each, like Logitech's Easy-Switch (planned 2026-10-30). Their own
     identity would share the bond store with Media Jog: a computer paired in both apps would need pairing again at
     each switch, and the three bonds would be shared. Plan A is simpler; channels can be looked at again if needed.
+  - On a Mac, sharing the pairing did not work (2026-11-01): with the Mac paired as "MediaJog BLE", KeySpeaker
+    advertised and the Mac saw it, but never connected, and Bluetooth settings offered no Connect button. So after
+    switching apps, remove the device on the Mac and pair again (the user's decision; not looked into further).
 
 ### 5.3 Switching modes
 
@@ -521,8 +524,8 @@ Expected to be kept.
   keyboard screen's Earth (8.3) is built in S2-11 and checked on the device.
 - S2.5: The air mouse (8.3.1) and Media Jog's jog dial (8.3.2) work on a Mac and on Windows (S2.5-10).
 - S5 (in progress): Without USB, KeySpeaker is a BLE keyboard and mouse; typing and the air mouse work on a Mac, and
-  the Mac reconnects by itself (S5-9). Going back to USB needs a power cut (5.3). Not yet checked: a computer paired
-  in Media Jog, other devices.
+  the Mac reconnects by itself (S5-9). Going back to USB needs a power cut (5.3). A Mac paired in Media Jog needs
+  pairing again (5.2). Not yet checked: other devices.
 - S6 (early): an iPhone 15 over USB plays the sound and takes the keyboard and the volume keys.
 - The device records are in `docs/S0_TEST.md`.
 
