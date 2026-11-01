@@ -507,7 +507,7 @@ Expected to be kept.
 | S2.5 | Move the cursor by tilting (while G0 is held; 8.3.1) | On a Mac, holding G0 and tilting moves the cursor, and clicking, dragging and picking from a menu work. Releasing it stops the cursor. With a Unit Encoder plugged in, turning it changes the volume (← and → in keyboard mode), and pressing it plays or pauses (Enter in keyboard mode) (8.3.2) |
 | S3 | The full key map, OS profiles, the Fn layer | Every key checked on each OS |
 | S4 | The status screen (usefulness first) | Every item is shown |
-| S5 | Port BLE HID (keyboard and mouse, Media Jog's identity and table), switch modes automatically by SOF (5.2) | Plugging and unplugging switches modes, and no key stays held. Typing and the air mouse work on a Mac as a BLE keyboard and mouse. A computer paired in Media Jog works without pairing again |
+| S5 | Port BLE HID (keyboard and mouse, Media Jog's identity and table), switch modes automatically by SOF (5.2) | Unplugging switches to BLE, and no key stays held. Typing and the air mouse work as a BLE keyboard and mouse on a Mac and on Windows. (Changed 2026-11-01 after the tests: going back to USB needs a power cut (5.3), and a computer paired in Media Jog needs pairing again (5.2).) |
 | S6 | Widen the targets: iPhone and iPad, Android, audio players, game consoles | Record the sound, keyboard and power results for each device |
 | S7 | A retro-device style screen design | — |
 
@@ -523,9 +523,9 @@ Expected to be kept.
   one cable. Windows needed an IAD in front of the speaker (S2-9), and lists it as "Speakers (KeySpeaker)" (S2-10). The
   keyboard screen's Earth (8.3) is built in S2-11 and checked on the device.
 - S2.5: The air mouse (8.3.1) and Media Jog's jog dial (8.3.2) work on a Mac and on Windows (S2.5-10).
-- S5 (in progress): Without USB, KeySpeaker is a BLE keyboard and mouse; typing and the air mouse work on a Mac, and
-  the Mac reconnects by itself (S5-9). Going back to USB needs a power cut (5.3). A Mac paired in Media Jog needs
-  pairing again (5.2). Not yet checked: other devices.
+- S5: passed. Without USB, KeySpeaker is a BLE keyboard and mouse; typing and the air mouse work on a Mac (S5-9) and
+  on Windows 11 (S5-12), and both reconnect by themselves. Going back to USB needs a power cut (5.3). A Mac paired in Media Jog needs
+  pairing again (5.2). Other devices are S6.
 - S6 (early): an iPhone 15 over USB plays the sound and takes the keyboard and the volume keys.
 - The device records are in `docs/S0_TEST.md`.
 

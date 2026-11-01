@@ -296,6 +296,8 @@ Cardputerを再起動すると、MacはBLEで自分からつなぎ直し、文�
 
 **Media Jogのペアリング（Mac、2026-11-01）:** MacがMedia Jogで「MediaJog BLE」としてペアリングしている状態で、KeySpeakerは `BLE wait`（`k0 m0`）のままだった。Macの記録では、KeySpeakerの電波（HIDのサービス）を何度も見つけていたが、一度もつなぎに来ず、Bluetoothの設定にも「MediaJog BLE」の「接続」ボタンが出なかった。なので下の6は、Macでは成り立たない。アプリを切り替えたら、Macで一度解除してペアリングし直す（利用者の決定）。
 
+**S5-12（Windows 11、2026-11-01）:** KeySpeakerとペアリングしているMacが、接続を切るたびにすぐつなぎ直すため、KeySpeaker（一度に1台とだけつながる）はWindowsに出てこなかった。MacのBluetoothをオフにすると出た。Windowsで「KeySpeaker」とペアリングし、文字入力、エアマウス（カーソルの移動、`A` / `D` のクリック）、Cardputerの電源を切って入れ直したあとの自動のつなぎ直しが、すべて使えた。S5は合格。
+
 設計書5.2（案A：Media JogのBLEの名乗りとGATTの表）と5.3。USBのときは何も変わらない。USBがないとき（電池で動いているとき、または充電器だけにつないでいるとき）、3秒たつと「KeySpeaker」として電波を出す。キーボード画面には、まず黄色で `BLE wait`、パソコンとつながって使える状態になると緑で `BLE` と出る。
 
 1. USBを抜く。3秒たつと `BLE wait` が出る。Macの「システム設定」→「Bluetooth」で「KeySpeaker」に接続する（コードの入力はない）。`BLE` が緑になる。

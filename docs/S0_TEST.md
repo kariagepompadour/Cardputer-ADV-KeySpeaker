@@ -514,6 +514,11 @@ cannot set it.
 never tried to connect, and Bluetooth settings showed no Connect button for "MediaJog BLE". So item 6 below does not
 hold on a Mac: after switching apps, remove the device on the Mac and pair again (the user's decision).
 
+**S5-12 (Windows 11, 2026-11-01):** the Mac, paired with KeySpeaker, reconnected each time it was disconnected, so
+KeySpeaker (one link at a time) did not show on Windows; with the Mac's Bluetooth off it did. Paired on Windows as
+"KeySpeaker": typing, the air mouse (moving, `A` / `D` clicks) and reconnecting by itself after the Cardputer was
+switched off and on all worked. S5 passed.
+
 Design 5.2 (plan A: Media Jog's BLE identity and GATT table) and 5.3. Over USB nothing changes. Without USB (on the
 battery, or on a charger only) the Cardputer advertises as "KeySpeaker" after 3 seconds; the keyboard screen shows
 `BLE wait` in yellow, then `BLE` in green once a computer is connected and ready.
