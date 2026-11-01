@@ -2,12 +2,13 @@
 
 [日本語版](SCREENS_JA.md)
 
-A summary of what the Cardputer ADV's screen (240 x 135 px) shows, as of S5-12 (2026-11-01). The details and the
+A summary of what the Cardputer ADV's screen (240 x 135 px) shows, as of S5-13 (2026-11-01). The details and the
 history of each decision are in [`DESIGN.md`](DESIGN.md) 8.3 to 8.3.2. Many of the looks below were the user's
 ideas; they are marked "(the user's idea)".
 
-The pictures are drawn on a computer, not photos of the device: the start screen from the firmware's own data, the
-others from previews and mockups made during development, so small details can differ from the current build.
+The photos are of the device running S5-13. The other pictures are drawn on a computer, from previews and mockups
+made during development, so small details can differ from the current build; they show what a photo cannot catch
+(several flight moments, sharp text).
 
 ## Common rules
 
@@ -27,7 +28,7 @@ shown and `Fn+M` does nothing.
 
 ## Start screen and the resting emblem
 
-![The start screen: KariPom's silver emblem on a perforated metal grille, with KeySpeaker under it](images/start.png)
+<img src="images/photo_start.jpg" alt="The start screen on the device: KariPom's silver emblem on a perforated metal grille, with KeySpeaker under it" width="480">
 
 - KariPom's metal emblem on a full-screen speaker grille, for 2 seconds at start (a key skips it). Not a mode: seen
   now and then, it stays fun.
@@ -46,7 +47,9 @@ shown and `Fn+M` does nothing.
 
 The measurement screen from S0, kept for checking how the speaker runs.
 
-- Top: `KeySpeaker` in amber, the build (for example `S5-12`) at the top right.
+<img src="images/photo_measure.jpg" alt="Measure mode on the device, streaming over USB" width="480">
+
+- Top: `KeySpeaker` in amber, the build (for example `S5-13`) at the top right.
 - The USB state: green when streaming, yellow when connected but idle, red when not connected.
 - The buffer as a bar, the clock drift correction, the counters (underruns in red), the volume, and level meters
   for what comes in and what goes out.
@@ -55,6 +58,8 @@ The measurement screen from S0, kept for checking how the speaker runs.
 ## Flight mode
 
 A screen saver to watch while music plays, not a game: no score, nothing to lose.
+
+<img src="images/photo_flight.jpg" alt="Flight mode on the device: the fighter over the terrain" width="480">
 
 ![Flight mode: six moments, with the terrain alone and with the equalizer](images/game_patterns.png)
 
@@ -79,7 +84,12 @@ A screen saver to watch while music plays, not a game: no score, nothing to lose
 
 Quiet on purpose: flight mode is busy, so this one is calm. Nothing flashes when a key is pressed.
 
-![The keyboard screen on a Mac, over USB](images/keyboard_mac.png)
+<p>
+  <img src="images/photo_keyboard.jpg" alt="The keyboard screen on the device (Mac, USB)" width="49%">
+  <img src="images/keyboard_mac.png" alt="The keyboard screen on a Mac, over USB, drawn" width="49%">
+</p>
+
+*Left: a photo of the device. Right: drawn on a computer.*
 
 **The Earth (top left, about 96 px square)**
 
@@ -110,7 +120,12 @@ Quiet on purpose: flight mode is busy, so this one is calm. Nothing flashes when
 
 **While G0 is held (the air mouse)**
 
-![The mouse screen while G0 is held](images/mouse_mac.png)
+<p>
+  <img src="images/photo_mouse.jpg" alt="The mouse screen on the device while G0 is held" width="49%">
+  <img src="images/mouse_mac.png" alt="The mouse screen while G0 is held, drawn" width="49%">
+</p>
+
+*Left: a photo of the device. Right: drawn on a computer.*
 
 - The Earth says **MOUSE** instead (dimmed the same way, all four corner blocks left out), and the right side shows
   the mouse keys at once; letting go of G0 brings the keyboard back (the user's idea, S2.5-7).

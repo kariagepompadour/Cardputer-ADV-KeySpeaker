@@ -4,6 +4,8 @@
 
 **A pocket speaker and keyboard for your computer, phone or console. Keep it in your bag.**
 
+<img src="docs/images/photo_start.jpg" alt="KeySpeaker's start screen on the Cardputer ADV: KariPom's emblem on a speaker grille" width="480">
+
 [日本語版 README](README_JA.md)
 
 > **Status: in development.** On a Mac and on Windows 11, one USB-C cable now gives you both: the speaker plays at
@@ -58,6 +60,14 @@ Pictures of every screen: [`docs/SCREENS.md`](docs/SCREENS.md).
 | **measure mode** | Buffer, clock drift, volume and level meters | Speaker and playback keys (below) |
 | **flight mode** | A flight over the music: the volume as terrain, a little fighter, a Showa-era graphic equalizer | Speaker and playback keys (below) |
 | **keyboard mode** | A slowly spinning Earth and a key cheat sheet | Every key goes to the computer |
+
+<p>
+  <img src="docs/images/photo_measure.jpg" alt="Measure mode on the device" width="32%">
+  <img src="docs/images/photo_flight.jpg" alt="Flight mode on the device" width="32%">
+  <img src="docs/images/photo_keyboard.jpg" alt="Keyboard mode on the device" width="32%">
+</p>
+
+*On the device, from left: measure mode, flight mode, keyboard mode.*
 
 Without USB (over Bluetooth LE), only keyboard mode is shown.
 

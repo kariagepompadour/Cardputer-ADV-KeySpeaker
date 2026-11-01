@@ -4,6 +4,8 @@
 
 **PCにも、スマホにも、ゲーム機にも。カバンに入れておける、小さなスピーカー＆キーボード。**
 
+<img src="docs/images/photo_start.jpg" alt="Cardputer ADVに出たKeySpeakerの起動画面：スピーカーの網目に、かりポムのエンブレム" width="480">
+
 [English README](README.md)
 
 > **状態: 開発中です。** MacとWindows 11では、USB-Cケーブル1本で、スピーカーとキーボードの両方が使えるようになりました。十分な音量で鳴り（8時間続けて音切れなし、一時停止と再開も問題なし）、
@@ -46,6 +48,14 @@ Bluetooth LE（予備）の制限:
 | **measure mode**（計測） | バッファー、時計のずれ、音量とレベルメーター | スピーカーと再生のキー（下） |
 | **flight mode**（フライト） | 音楽の上を飛ぶ画面（音量の地形、小さな戦闘機、昭和のグライコ） | スピーカーと再生のキー（下） |
 | **keyboard mode**（キーボード） | ゆっくり回る地球と、キーの早見表 | すべてのキーをPCへ送る |
+
+<p>
+  <img src="docs/images/photo_measure.jpg" alt="実機のmeasure mode" width="32%">
+  <img src="docs/images/photo_flight.jpg" alt="実機のflight mode" width="32%">
+  <img src="docs/images/photo_keyboard.jpg" alt="実機のkeyboard mode" width="32%">
+</p>
+
+*実機の画面。左から measure mode、flight mode、keyboard mode。*
 
 USBがないとき（Bluetooth LEのとき）は、keyboard modeだけになります。
 
