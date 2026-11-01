@@ -503,6 +503,12 @@ deep sleep; it restarted, but USB still did not come back. S5-12 takes `Fn+R` ou
 buffer of S5-8 (memory was not the cause) and the start pulse of S5-7 (no sign that it helped). The keyboard screen
 says `Off+Reset to USB` without USB.
 
+**S5-12 (Mac, 2026-11-01):** Over BLE, typing and the air mouse worked, and the keyboard screen showed
+`Off+Reset to USB` at the lower left. After the switch off plus the reset button with the cable in, USB came up (green
+`USB`) and the Mac listed "KeySpeaker" in its sound output, but did not pick it: the sound stayed on the Mac until
+KeySpeaker was chosen by hand, then it came from the Cardputer. Which output to use is the Mac's choice; the firmware
+cannot set it.
+
 Design 5.2 (plan A: Media Jog's BLE identity and GATT table) and 5.3. Over USB nothing changes. Without USB (on the
 battery, or on a charger only) the Cardputer advertises as "KeySpeaker" after 3 seconds; the keyboard screen shows
 `BLE wait` in yellow, then `BLE` in green once a computer is connected and ready.
