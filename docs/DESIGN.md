@@ -175,7 +175,14 @@ first on a Mac (S5). Other devices are tried in S6, starting with the ones at ha
   the Cardputer ADV cannot sense USB power. A restart from software does not bring it back either (tried: a plain
   restart, and 0.2 s of deep sleep, as `Fn+R` in S5-10 and S5-11; both dropped). Only a real power cut does: with the
   cable in, USB keeps the Cardputer powered, so switch it off and press the reset button. Without USB, the keyboard
-  screen shows `Off+Reset to USB` (S5-12). Bringing USB back without a power cut is left for later.
+  screen shows `Off+Reset to USB` (S5-12). This is how it is used: after a replug, USB is not
+  recognized, so switch off and reset (the user's decision, 2026-11-01; no further search for a way around it).
+  - The Mac's log on a replug (S5-12, 2026-11-01, USB-C port of the Mac): on the unplug, the port logged "hardware
+    connection lost" and powered off; on the replug it logged nothing at all, and the port still showed no connection
+    (`ConnectionActive = No`) with the cable in. So the Mac did not notice anything was attached, before any USB
+    traffic; the cause is likely at the USB-C connection level, not in the firmware (not yet confirmed). In RADIO DAYS
+    SDR, a hot replug came back by itself on one Windows PC (3 of 3); its port type was not recorded.
+  - The user decided to keep BLE: dropping it would not bring USB back (the build without BLE did not either).
 - BLE is stopped while in USB mode, so the other device does not see two keyboards.
 - Sending the keys to a BLE device while USB stays connected (or pairing one then) was considered and dropped
   (2026-11-01, with the user): few keyboards do that, and it would make the behavior harder to follow. To use or pair
