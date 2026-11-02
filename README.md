@@ -154,7 +154,7 @@ Two ways:
 - **With a launcher (keeps your other apps):** install the app-only
   [`firmware/KeySpeaker_S0/KeySpeaker_S0.ino.bin`](firmware/KeySpeaker_S0/) from the launcher. Its checksum is in
   `SHA256SUMS.txt` next to it.
-- **With M5Burner:** choose **CARDPUTER**, search for **KeySpeaker** ("kariagepompadour Cardputer ADV KeySpeaker")
+- **With M5Burner:** choose **CARDPUTER**, search for **KeySpeaker** ("Cardputer ADV KeySpeaker" by kariagepompadour)
   and burn it. This writes the whole flash: the launcher and any other apps on the Cardputer are replaced.
 
 ## Power

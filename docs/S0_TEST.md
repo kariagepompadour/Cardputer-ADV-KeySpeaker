@@ -548,6 +548,10 @@ only change the `A/あ` on the Cardputer's screen). No sound from the speaker. T
 the game screen stays, targets come now and then and the fighter shoots them down; the user found this many about
 right. When music starts, the screen gets busy all at once, which the user finds fine as it is.
 
+**S5-15 from M5Burner (2026-11-02):** the full image (`KeySpeaker_S5-15_MERGED.bin`: the committed S5-15 `.ino.bin`
+at 0x10000, with the same bootloader, partition table and boot_app0 as the S5-13 image) replaced S5-13 in M5Burner,
+now named "Cardputer ADV KeySpeaker". The user burned it from M5Burner: `S5-15` on the device, no problems.
+
 Design 5.2 (plan A: Media Jog's BLE identity and GATT table) and 5.3. Over USB nothing changes. Without USB (on the
 battery, or on a charger only) the Cardputer advertises as "KeySpeaker" after 3 seconds; the keyboard screen shows
 `BLE wait` in yellow, then `BLE` in green once a computer is connected and ready.

@@ -136,7 +136,7 @@ KeySpeakerには、設定がいりません。つなげば、スピーカーと�
 2つの方法があります。
 
 - **Launcherで入れる（ほかのアプリも残せます）**：本体アプリだけの [`firmware/KeySpeaker_S0/KeySpeaker_S0.ino.bin`](firmware/KeySpeaker_S0/) をLauncherから入れます。チェックサムは同じ場所の `SHA256SUMS.txt` にあります。
-- **M5Burnerで入れる**：**CARDPUTER** を選び、**KeySpeaker**（「kariagepompadour Cardputer ADV KeySpeaker」）を検索して書き込みます。本体を丸ごと書き換えるので、Launcherやほかのアプリは消えます。
+- **M5Burnerで入れる**：**CARDPUTER** を選び、**KeySpeaker**（kariagepompadourの「Cardputer ADV KeySpeaker」）を検索して書き込みます。本体を丸ごと書き換えるので、Launcherやほかのアプリは消えます。
 
 ## 給電
 
