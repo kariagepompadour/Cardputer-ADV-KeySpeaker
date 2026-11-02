@@ -528,6 +528,10 @@ line only when something is wrong) are fine.
 published `.ino.bin`, with the bootloader and the partition table) was published in M5Burner (CARDPUTER,
 "kariagepompadour Cardputer ADV KeySpeaker"). The user burned it from M5Burner onto the device: no problems.
 
+**iPhone 15 again, with S5-13 (USB-C, 2026-11-02):** a quick check by the user: the sound played from KeySpeaker
+and typing worked, as with S2-10. The air mouse was not tried: an iPhone shows a pointer only with AssistiveTouch
+turned on.
+
 Design 5.2 (plan A: Media Jog's BLE identity and GATT table) and 5.3. Over USB nothing changes. Without USB (on the
 battery, or on a charger only) the Cardputer advertises as "KeySpeaker" after 3 seconds; the keyboard screen shows
 `BLE wait` in yellow, then `BLE` in green once a computer is connected and ready.

@@ -302,6 +302,8 @@ Cardputerを再起動すると、MacはBLEで自分からつなぎ直し、文�
 
 **M5BurnerからのS5-13（2026-11-01）:** 丸ごとのイメージ（`KeySpeaker_S5-13_MERGED.bin`。公開している `.ino.bin` と同じアプリに、ブートローダーとパーティション表を足したもの）を、M5Burner（CARDPUTER、「kariagepompadour Cardputer ADV KeySpeaker」）で公開した。利用者がM5Burnerから実機に書き込み、問題なかった。
 
+**iPhone 15でもう一度、S5-13（USB-C、2026-11-02）:** 利用者が軽く確かめた。S2-10のときと同じく、音はKeySpeakerから鳴り、文字も打てた。エアマウスは試していない（iPhoneはAssistiveTouchを有効にしたときだけポインタを出す）。
+
 設計書5.2（案A：Media JogのBLEの名乗りとGATTの表）と5.3。USBのときは何も変わらない。USBがないとき（電池で動いているとき、または充電器だけにつないでいるとき）、3秒たつと「KeySpeaker」として電波を出す。キーボード画面には、まず黄色で `BLE wait`、パソコンとつながって使える状態になると緑で `BLE` と出る。
 
 1. USBを抜く。3秒たつと `BLE wait` が出る。Macの「システム設定」→「Bluetooth」で「KeySpeaker」に接続する（コードの入力はない）。`BLE` が緑になる。
