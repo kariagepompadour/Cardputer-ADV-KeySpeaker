@@ -50,9 +50,9 @@ long texts.
 ## Modes and keys
 
 At start, KariPom's emblem on a speaker grille and the name "KeySpeaker" show for 2 seconds. `Fn+M` then cycles
-through three modes (over USB); the last one is remembered. In measure mode and flight mode, after a minute with no
+through three modes (over USB); the last one is remembered. In measure mode, after a minute with no
 key and no sound, the emblem comes back with `h HELP  Fn+M KEYBOARD` at the bottom, and stays until you press a key
-(that key only wakes it). When music starts again, the emblem shakes on the loud beats, like a speaker's cone.
+(that key only wakes it). Flight mode stays as it is, to be watched. When music starts again, the emblem shakes on the loud beats, like a speaker's cone.
 Pictures of every screen: [`docs/SCREENS.md`](docs/SCREENS.md).
 
 | Mode | Screen | Keys |

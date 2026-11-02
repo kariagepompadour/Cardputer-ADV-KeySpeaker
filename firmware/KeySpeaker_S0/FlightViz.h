@@ -89,9 +89,9 @@ constexpr float FADE_S = 0.45f;         // the equalizer rises from, or sinks in
 constexpr int CRATER_SEG = 3;           // a bomb knocks this many segments off the bar it hits (1 off each neighbor)
 // Targets: a column well above the running average and clearly louder than the one before is a beat, and a beat
 // brings in a target from the right (not more often than SPAWN_MS_MIN). Music with few clear beats still brings one
-// every SPAWN_MS_MAX; silence brings none.
+// every SPAWN_MS_MAX; silence one every SPAWN_MS_QUIET, so the screen still plays like a game's demo (S5-15).
 constexpr float BEAT_DB = 1.5f, BEAT_RISE_DB = 1.0f;
-constexpr uint32_t SPAWN_MS_MIN = 1600, SPAWN_MS_MAX = 4500;
+constexpr uint32_t SPAWN_MS_MIN = 1600, SPAWN_MS_MAX = 4500, SPAWN_MS_QUIET = 6000;
 constexpr float MAT_S = 0.7f, MAT_R = 46.0f;  // a target materializes from dots drawn in from this far, this long
 constexpr int MAX_TARGETS = 3;          // on screen at once, not counting swarmers
 constexpr int MAX_ENEMIES = 6;          // room for a pod's three swarmers
@@ -649,7 +649,7 @@ static void update(State& s, uint32_t nowMs) {
     if (m.age >= MINE_S || m.x < -DOT) m.on = false;
   }
   bool music = s.prevDb > DB_SILENT;
-  if (s.beat || (music && (int32_t)(nowMs - s.nextSpawnMs) >= (int32_t)(SPAWN_MS_MAX - SPAWN_MS_MIN))) {
+  if (s.beat || (int32_t)(nowMs - s.nextSpawnMs) >= (int32_t)((music ? SPAWN_MS_MAX : SPAWN_MS_QUIET) - SPAWN_MS_MIN)) {
     s.beat = false;
     int targets = 0;
     for (const auto& e : s.e) targets += e.on && e.kind != SWARMER;

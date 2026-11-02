@@ -44,7 +44,7 @@ control. Basic function and stability come before looks.
 | Group | Targets |
 |---|---|
 | **Core targets** | USB connection to macOS and Windows (speaker plus keyboard), BLE keyboard |
-| **Targets to add as they are checked** | iPhone 15 and later and USB-C iPads, Android, digital audio players with USB audio output, game consoles. Game consoles and TVs as a BLE keyboard. Checked so far: iPhone 15 over USB (sound, keyboard, Japanese input and volume keys, S2-10, 2026-10-31). Android is expected to work the same way over USB, but has not been tried |
+| **Targets to add as they are checked** | iPhone 15 and later and USB-C iPads, Android, digital audio players with USB audio output, game consoles. Game consoles and TVs as a BLE keyboard. Checked so far: iPhone 15 over USB (sound, keyboard, Japanese input and volume keys, S2-10, 2026-10-31). PS5 over USB (keyboard only: no sound; Japanese or English input follows the PS5's text field, and `Fn+[` / `Fn+]` do not switch it; S5-14, 2026-11-02). Android is expected to work the same way over USB, but has not been tried |
 | **Out of scope** | ChromeOS, wireless audio, internet radio, analog input through the 3.5 mm jack, a sender app on the computer |
 
 ## 3. Feasibility summary
@@ -261,6 +261,8 @@ A summary of all the screens, as they are now: [`SCREENS.md`](SCREENS.md).
   to it (the speaker resting). It stays until a key is pressed, and that key only brings the screen back; it does
   nothing else (decided with the user on 2026-10-31, built in S2-6. The first idea was the game screen only, coming
   back when music starts; instead both modes come back with a key. It does not switch while music is playing).
+  Since S5-14 (2026-11-02, the user's call) only the data mode does this: the game screen stays, since it is made to
+  be watched, like an arcade game's demo. To show the resting speaker, leave KeySpeaker in the data mode.
 - At rest, only the bottom of the grille is darkened, to show `h HELP  Fn+M KEYBOARD` (the keys in orange). At
   startup, keys still held from the Launcher are ignored, so nothing happens by mistake.
 - S5-13 (2026-11-01, the user's calls, from mockups and test builds on the device):

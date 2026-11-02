@@ -102,6 +102,10 @@
       At start the screen shows "KeySpeaker" under the emblem instead, large, white with a shadow (the user's idea).
       The game screen's top line shows only when something is wrong (not connected, muted, dropouts counted): the
       boost, bass cut and zero counters stayed there as if left over (the user's call).
+    - (S5-14) The game screen no longer gives way to the resting emblem screen when left alone: it is there to be
+      watched (the user's call). The data view still does.
+    - (S5-15) In silence a target still comes every 6 seconds on the game screen (none came before), so it plays like
+      a game's demo when left up (the user's call).
       Also left over and gone: the S5-5 / S5-6 diagnostics at the keyboard and mouse screens' bottom right, and "S0"
       in the data screen's title, now just "KeySpeaker" (the user noticed both).
     - (S2.5-10) A jog dial, M5Stack's Unit Encoder (U135) on the Grove port as in Media Jog (design 8.3.2), when it is
@@ -161,7 +165,7 @@
 #define KS_BLE 1  // (S5-5) 0: build without BLE, to compare
 #include "BleHid.h"
 
-#define BUILD_TAG "S5-13"
+#define BUILD_TAG "S5-15"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -744,7 +748,7 @@ static bool usbUp() { return (bool)USB && usbSawHost && millis() - usbLastSofMs 
 static uint8_t viewMode() { return usbUp() ? mode : (uint8_t)MODE_KEYS; }
 
 // ---- Emblem screen (S1-7, S2-6, design 8.3): shown at start for SPLASH_MS or until a key, and, in the measurement
-// and visualizer modes, after IDLE_MS with no key and no sound, until a key (splashIdle). That key only closes it.
+// mode (not the game screen since S5-14), after IDLE_MS with no key and no sound, until a key (splashIdle). That key only closes it.
 // At start a key does its job as usual; v closes the screen to the measurement screen.
 static constexpr uint32_t SPLASH_MS = 2000, IDLE_MS = 60000;
 static bool splashOn = false, splashDrawn = false, splashIdle = false;
@@ -1528,7 +1532,7 @@ void loop() {
   if (splashOn && !splashIdle && now - splashStartMs >= SPLASH_MS) splashOn = false;
   if (view == MODE_KEYS) helpOn = false;
   uint32_t lastSound = lastSoundMs;
-  if (!splashOn && view != MODE_KEYS && now - (lastKeyMs > lastSound ? lastKeyMs : lastSound) >= IDLE_MS) {
+  if (!splashOn && view == MODE_DATA && now - (lastKeyMs > lastSound ? lastKeyMs : lastSound) >= IDLE_MS) {
     helpOn = false;
     showSplash(true);
   }

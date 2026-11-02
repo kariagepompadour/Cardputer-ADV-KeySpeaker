@@ -38,8 +38,8 @@ shown and `Fn+M` does nothing.
   silver, like a speaker badge (the user's judgment, S2-8).
 - At rest, at the bottom, on a darker strip of grille: `h HELP  Fn+M KEYBOARD` (keys in amber). Not at start: USB is
   still coming up then, so those keys would not work yet (S5-13).
-- **Resting:** in measure mode and flight mode, after a minute with no key and no sound, the emblem comes back, like a
-  speaker at rest. It stays until a key is pressed; that key only wakes the screen.
+- **Resting:** in measure mode, after a minute with no key and no sound, the emblem comes back, like a speaker at rest.
+  It stays until a key is pressed; that key only wakes the screen. Flight mode stays as it is, to be watched (S5-14).
 - **Shaking:** the emblem jumps 1 px (2 px on very loud beats) on loud beats and settles back within 0.1 s, like a
   speaker's cone (the user's idea, S2-7). So a resting speaker starts to shake when the music comes back.
 
@@ -70,7 +70,7 @@ A screen saver to watch while music plays, not a game: no score, nothing to lose
 - The music's level is the terrain, drawn like an LED level meter, blue at the bottom through green, yellow and
   orange to red, scrolling left.
 - A small fighter (original pixel art in the style of early-80s arcade games) flies over it, fires a laser and drops
-  bombs that leave small craters. Beats bring in harmless targets of six kinds that the fighter shoots; they pop in
+  bombs that leave small craters. Beats bring in harmless targets of six kinds that the fighter shoots (in silence, one every 6 seconds, S5-15); they pop in
   colored sparks. They shoot back now and then; a hit only lights up the fighter's shield.
 - Now and then a graphic equalizer like an old hi-fi's rises in front of the terrain: 30 bands with falling peak
   dots, in the aqua of a fluorescent display or in KariPom's colors. The patterns take turns every minute.

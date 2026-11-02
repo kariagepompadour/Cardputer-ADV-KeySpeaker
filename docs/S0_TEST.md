@@ -167,14 +167,14 @@ it.
   in large dots (3 × 3 px), like the terrain.
 - On the song's beats (moments that suddenly get louder), small targets appear. The pink eyeball walker appears toward
   the right of the screen, as dots gather from around it; the others fly in from the right edge (even in songs with few
-  clear beats, one comes every few seconds).
+  clear beats, one comes every few seconds; from S5-15, in silence too, every 6 seconds).
 - The targets are six kinds of original pixel art: the pink eyeball walker, a fast saucer, a red mutant that zigzags,
   a blue bomber that leaves blinking mines, a spiky pod that splits into three small ones when shot, and those small
   ones.
 - The fighter moves forward, matches the height and fires. A hit throws colorful sparks to the edge of the screen. The
   targets sometimes fire orange shots back at the fighter. The fighter usually dodges up or down; when hit, its shield
   (a ring of light-blue dots) only flashes for a moment, and it is never destroyed. There is no score.
-- Quiet songs bring no targets.
+- Quiet songs bring no targets (up to S5-14).
 - The small text at the top shows the connection, the boost, and the dropout (`U`) and skip (`O`) counts.
 
 1. Play music, press `v`, and check that the terrain moves with the loudness and that the fighter flies smoothly.
@@ -531,6 +531,22 @@ published `.ino.bin`, with the bootloader and the partition table) was published
 **iPhone 15 again, with S5-13 (USB-C, 2026-11-02):** a quick check by the user: the sound played from KeySpeaker
 and typing worked, as with S2-10. The air mouse was not tried: an iPhone shows a pointer only with AssistiveTouch
 turned on.
+
+**S5-14 (2026-11-02):** checked on the device by the user: with no sound and no key, the game screen stays (it used
+to give way to the resting emblem screen), and the data view goes to the emblem screen after a minute as before.
+While music played (S5-13), the game screen once gave way all the same; the computer's volume was low, so the
+sound was probably below the silence level (about −60 dB) for a minute. That was not checked further.
+In silence the fighter keeps flying, firing and bombing, but no targets come: silence brought none (S5-15 changes
+this).
+
+**PS5 (USB, S5-14, 2026-11-02):** checked by the user. KeySpeaker works as a keyboard. In the Netflix app's search
+only English input is offered, and the letters came in. In the PS5's own search, what KeySpeaker typed came in as
+Japanese ("あいうえお"), and stayed Japanese with the on-screen keyboard set to ABC and after `Fn+[` / `Fn+]` (those
+only change the `A/あ` on the Cardputer's screen). No sound from the speaker. The air mouse was not tried.
+
+**S5-15 (2026-11-02):** checked on the device by the user: `S5-15` on the measure screen. In silence with no key,
+the game screen stays, targets come now and then and the fighter shoots them down; the user found this many about
+right. When music starts, the screen gets busy all at once, which the user finds fine as it is.
 
 Design 5.2 (plan A: Media Jog's BLE identity and GATT table) and 5.3. Over USB nothing changes. Without USB (on the
 battery, or on a charger only) the Cardputer advertises as "KeySpeaker" after 3 seconds; the keyboard screen shows
