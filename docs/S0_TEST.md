@@ -588,8 +588,12 @@ frames were viewed. The MERGED image `KeySpeaker_S9-2_MERGED.bin` was made as fo
 the S9-2 `.ino.bin` at 0x10000, 0xFF after).
 
 **S9-2 on the device (2026-11-04), by the user:** the S9-2 build was tried on the Cardputer ADV and the monster's new reaches
-**looked good ("よさそう").** Not reported, so not claimed: the drawing time (`draw_max`), the memory left, any flicker where an
-arm crosses the bars and the fighter, and whether the MERGED image was burned from M5Burner (it is not uploaded there yet).
+**looked good ("よさそう").** Not reported, so not claimed: the drawing time (`draw_max`), the memory left, and any flicker
+where an arm crosses the bars and the fighter.
+
+**S9-2 from M5Burner (2026-11-04), by the user:** `KeySpeaker_S9-2_MERGED.bin` was published in M5Burner (CARDPUTER,
+"Cardputer ADV KeySpeaker", version `S9-2`), burned from M5Burner onto the Cardputer ADV and
+checked: **confirmed ("確認しました").** The user did not list what was looked at beyond that, so only that is claimed here.
 
 Design 5.2 (plan A: Media Jog's BLE identity and GATT table) and 5.3. Over USB nothing changes. Without USB (on the
 battery, or on a charger only) the Cardputer advertises as "KeySpeaker" after 3 seconds; the keyboard screen shows
