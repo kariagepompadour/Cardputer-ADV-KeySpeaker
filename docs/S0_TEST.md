@@ -578,6 +578,19 @@ stay well under 33 ms); the memory left (`heap` in the log); and whether anythin
 bars and the fighter. M5Burner's listing still carries S5-15 until the S9-1 image is uploaded there. The S8-1 AUX input
 is not part of S9-1 and stays unverified on its own branch.
 
+**S9-2 (2026-11-04):** the monster's reach in `FlightViz.h`, changed after trying it on the web demo. Each reach is drawn by
+lot from four approaches (from the right, over the top, from below, or swinging past the fighter and hooking back); the other
+arm helps with a pose of its own (claws too, pounds its chest, goes high and smashes down, or stays down); and about four
+visits in ten let the fighter pass first and then reach back after it with the far arm. The arms hang still while it walks.
+Built with `build.sh` (app image `13818a85…`, 30 % of the flash). The same `FlightViz.h` was also run on the computer: 60
+visits, all 60 reached, 34 with the near arm and 26 with the far one (the chase), the four approaches about evenly drawn, and
+frames were viewed. The MERGED image `KeySpeaker_S9-2_MERGED.bin` was made as for S9-1 (the S5-15 image's first 0x10000 bytes,
+the S9-2 `.ino.bin` at 0x10000, 0xFF after).
+
+**S9-2 on the device (2026-11-04), by the user:** the S9-2 build was tried on the Cardputer ADV and the monster's new reaches
+**looked good ("よさそう").** Not reported, so not claimed: the drawing time (`draw_max`), the memory left, any flicker where an
+arm crosses the bars and the fighter, and whether the MERGED image was burned from M5Burner (it is not uploaded there yet).
+
 Design 5.2 (plan A: Media Jog's BLE identity and GATT table) and 5.3. Over USB nothing changes. Without USB (on the
 battery, or on a charger only) the Cardputer advertises as "KeySpeaker" after 3 seconds; the keyboard screen shows
 `BLE wait` in yellow, then `BLE` in green once a computer is connected and ready.
