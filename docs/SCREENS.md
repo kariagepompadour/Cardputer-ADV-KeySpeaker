@@ -72,6 +72,10 @@ A screen saver to watch while music plays, not a game: no score, nothing to lose
 - A small fighter (original pixel art in the style of early-80s arcade games) flies over it, fires a laser and drops
   bombs that leave small craters. Beats bring in harmless targets of six kinds that the fighter shoots (in silence, one every 6 seconds, S5-15); they pop in
   colored sparks. They shoot back now and then; a hit only lights up the fighter's shield.
+- While music plays (after about 3 seconds of sound), a space monster, the beast from the Space Invaders cabinet art
+  (black and red, lit from the left, glowing yellow eyes, 69 x 90 px), now and then walks in from the right behind the
+  terrain and reaches for the fighter with a clawed hand drawn in front of everything. The fighter slips away, the hand
+  closes on nothing, and the monster draws its arm back and walks off (S9-1; designed in the web demo first).
 - Now and then a graphic equalizer like an old hi-fi's rises in front of the terrain: 30 bands with falling peak
   dots, in the aqua of a fluorescent display or in KariPom's colors. The patterns take turns every minute.
 - Nothing else on it while all is well: a line at the top shows only when something is wrong (`not connected` in

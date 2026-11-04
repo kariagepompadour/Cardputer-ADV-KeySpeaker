@@ -552,6 +552,22 @@ right. When music starts, the screen gets busy all at once, which the user finds
 at 0x10000, with the same bootloader, partition table and boot_app0 as the S5-13 image) replaced S5-13 in M5Burner,
 now named "Cardputer ADV KeySpeaker". The user burned it from M5Burner: `S5-15` on the device, no problems.
 
+**S9-1 (2026-11-04):** a space monster on the game screen (`FlightViz.h`), designed and tried in the web demo first
+(the user's design: the beast of the Space Invaders cabinet art, black and red, lit from the left, glowing yellow eyes).
+It walks in only while music plays, reaches for the fighter, misses and walks off; see [SCREENS.md](SCREENS.md). Built
+with `build.sh`; the logic and the drawing were also run on a computer (no visit in 40 s of silence; the first one 6 s
+after music starts and then one every 30 s or so, each going from walking to reaching, grabbing, missing and leaving)
+and viewed frame by frame. S9-1 is the S5-15 code plus `FlightViz.h` only: the USB audio, HID keyboard and BLE code are
+the same as in S5-15 (the S8-1 AUX input is on its own branch and is not in it).
+
+**S9-1 on the device (2026-11-04), by the user:** an earlier build of S9-1 that still carried the S8-1 AUX input was
+imported into the Cardputer ADV through M5Launcher: it started normally and the monster appeared on the device's screen.
+The web demo with the same monster was published and checked on its public page. **Still to check on the device**, with
+the build without the AUX input: that it starts, the MERGED image through M5Burner, USB audio and the HID keyboard (the
+code is S5-15's, so nothing should change), the game screen's drawing time (the monster adds a few thousand pixel writes
+a frame; the measure screen's `draw_max` should stay well under 33 ms), the memory left (`heap` in the log), and that
+nothing flickers where the arm crosses the bars and the fighter.
+
 Design 5.2 (plan A: Media Jog's BLE identity and GATT table) and 5.3. Over USB nothing changes. Without USB (on the
 battery, or on a charger only) the Cardputer advertises as "KeySpeaker" after 3 seconds; the keyboard screen shows
 `BLE wait` in yellow, then `BLE` in green once a computer is connected and ready.

@@ -108,6 +108,13 @@
       a game's demo when left up (the user's call).
       Also left over and gone: the S5-5 / S5-6 diagnostics at the keyboard and mouse screens' bottom right, and "S0"
       in the data screen's title, now just "KeySpeaker" (the user noticed both).
+    - (S9-1) A space monster on the game screen (FlightViz.h), the beast from the Space Invaders cabinet art, 69 x 90 px,
+      feet on the bottom edge, only while music plays (after 3 s of sound; a gap of up to 2 s is not silence). It walks in
+      from the right with the terrain, reaches for the fighter with a clawed hand, misses as the fighter slips away, draws
+      its arm back and walks off; the next visit comes 12 to 28 s later. The body is behind the terrain, both arms are in
+      front of everything. Black-red, lit from the left, glowing yellow eyes (the user's design, made and tried in the
+      web demo first). No new state beyond a few dozen bytes. Nothing else changes: this build is the S5-15 code plus
+      FlightViz.h (the S8-1 AUX input is not in it).
     - (S2.5-10) A jog dial, M5Stack's Unit Encoder (U135) on the Grove port as in Media Jog (design 8.3.2), when it is
       there: in the data and game modes turning it changes the computer's volume and pressing it plays or pauses; in
       keyboard mode it sends ← → and Enter. Looked for at start and once a second while missing.
@@ -165,7 +172,7 @@
 #define KS_BLE 1  // (S5-5) 0: build without BLE, to compare
 #include "BleHid.h"
 
-#define BUILD_TAG "S5-15"
+#define BUILD_TAG "S9-1"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
