@@ -568,10 +568,11 @@ works.** The web demo with the same monster was published and checked on its pub
 
 **S9-1 MERGED image on the device (2026-11-04), by the user:** `KeySpeaker_S9-1_MERGED.bin` (the S9-1 `.ino.bin` at
 0x10000 with the same bootloader, partition table and boot_app0 as the S5-15 image, compared byte for byte) was written
-to the Cardputer ADV: **it starts normally, the monster appears, and typing from the HID keyboard works.** USB audio was
-not reported for this image (it was checked through M5Launcher, above).
+to the Cardputer ADV: **it starts normally, the sound is heard (USB audio works), the monster appears, and typing from
+the HID keyboard works.** The monster comes only while music plays, so its appearing agrees with the sound reaching the
+speaker. (Heard by the user; no long run, buffer values or dropout counts were reported for this image.)
 
-**Not checked yet, for S9-1:** USB audio on the device after writing the MERGED image; BLE keyboard and mouse; the game
+**Not checked yet, for S9-1:** BLE keyboard and mouse; the game
 screen's drawing time (the monster adds a few thousand pixel writes a frame; the measure screen's `draw_max` should
 stay well under 33 ms); the memory left (`heap` in the log); and whether anything flickers where the arm crosses the
 bars and the fighter. M5Burner's listing still carries S5-15 until the S9-1 image is uploaded there. The S8-1 AUX input
