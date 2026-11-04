@@ -25,7 +25,9 @@
   A space monster (the beast from the Space Invaders cabinet art, black and red, lit from the left, with glowing
   yellow eyes) visits now and then, only while music plays: it walks in from the right with the terrain, behind the
   bars, reaches for the fighter with a clawed hand that is drawn in front of everything, misses as the fighter slips
-  away, and walks off (S9-1).
+  away, and walks off (S9-1). Each reach comes from a different side (from the right, over the top, from below, or
+  swinging past the fighter and hooking back), the other arm helps with a pose of its own, and about four visits in ten let
+  the fighter pass first and then reach back after it with the far arm (S9-2).
 
   Plain C++ on a 240 x 135 RGB565 frame buffer laid out like M5Canvas's (16-bit pixels, high byte first), so the same
   code also runs on a computer for previews.
@@ -127,6 +129,8 @@ constexpr float K_REACH_S = 0.8f, K_GRAB_S = 0.22f, K_MISS_S = 0.45f, K_RETRACT_
 constexpr float K_ARM = 26.0f;          // two links of this length: a short, thick arm (reach about 51 px)
 constexpr float K_HANG = 44.0f;         // where the hand hangs below the shoulder
 constexpr int K_START_DX = 44;          // it reaches when the fighter is this close
+constexpr int K_CHASE_DX = 36;          // a chasing monster reaches back while the fighter is this close behind its far shoulder
+constexpr uint32_t K_CHASE_PERCENT = 40;  // how many visits are chases
 constexpr float K_EVADE_PX = 17.0f;     // how far the fighter slips away as the fist closes
 constexpr uint32_t KONG_MS_MIN = 12000, KONG_MS_MAX = 28000;  // between two visits
 constexpr uint32_t KONG_FIRST_MS = 6000;     // the first visit, after the start
@@ -226,6 +230,9 @@ struct Kong {
   float tx = 0, ty = 0;      // where the fighter was when it reached
   bool musicOn = false;
   uint32_t musicSince = 0, lastMusic = 0;
+  uint8_t arm = 0;           // the arm that goes for the fighter: 0 the near one, 1 the far one (S9-2)
+  uint8_t style = 0;         // the way in: 0 from the right, 1 over the top, 2 from below, 3 past the fighter and hooking back
+  bool chase = false;        // this visit it lets the fighter pass first, then reaches back after it with the far arm
 };
 
 struct State {
@@ -562,6 +569,8 @@ static inline float kongSpeed(uint8_t ph) {  // it slows down while it reaches, 
 }
 // The shoulder of the arm toward the fighter (left), for a body at screen x bx.
 static inline void kongShoulder(int bx, float& sx, float& sy) { sx = (float)(bx + 7); sy = (float)(H - KH + 7 * DOT + 2); }
+// The far arm's shoulder (right).
+static inline void kongShoulder2(int bx, float& sx, float& sy) { sx = (float)(bx + 21 * DOT); sy = (float)(H - KH + 7 * DOT + 2); }
 
 // Moves the monster. Returns how far (px, up or down) the fighter should slip away right now: 0 except while the fist closes.
 static float updateKong(State& s, uint32_t nowMs, float dt, float shipCx, float shipCy) {
@@ -576,7 +585,10 @@ static float updateKong(State& s, uint32_t nowMs, float dt, float shipCx, float 
   }
   bool musicOk = k.musicOn && nowMs - k.musicSince >= KONG_MUSIC_MS;
   if (k.ph == K_IDLE) {
-    if (musicOk && (int32_t)(nowMs - k.nextMs) >= 0) k.ph = K_WALK, k.t = 0, k.x = (float)(W + 4);
+    if (musicOk && (int32_t)(nowMs - k.nextMs) >= 0) {
+      k.ph = K_WALK, k.t = 0, k.x = (float)(W + 4);
+      k.chase = nextRandom(s) % 100 < K_CHASE_PERCENT;
+    }
     return 0;
   }
   k.x -= SCROLL_PX_S * kongSpeed(k.ph) * dt;
@@ -584,9 +596,14 @@ static float updateKong(State& s, uint32_t nowMs, float dt, float shipCx, float 
   kongShoulder((int)lrintf(k.x), shx, shy);
   float evade = 0;
   if (k.ph == K_WALK) {  // close enough, and within reach: lock on to where the fighter is and reach
-    float dx = shx - shipCx, dy = shy - shipCy;
-    if (k.x < W - KW - 6 && dx <= K_START_DX && dx > -10 && sqrtf(dx * dx + dy * dy) <= 2 * K_ARM * 1.25f) {
-      k.ph = K_REACH, k.t = 0, k.tx = shipCx, k.ty = shipCy;
+    float dx = shx - shipCx, dy = shy - shipCy, s2x, s2y;
+    kongShoulder2((int)lrintf(k.x), s2x, s2y);
+    float d2x = s2x - shipCx, d2y = s2y - shipCy;
+    if (!k.chase && k.x < W - KW - 6 && dx <= K_START_DX && dx > -10 && sqrtf(dx * dx + dy * dy) <= 2 * K_ARM * 1.25f) {
+      k.ph = K_REACH, k.t = 0, k.tx = shipCx, k.ty = shipCy, k.arm = 0, k.style = nextRandom(s) % 4;
+    } else if (k.chase && d2x <= 4 && d2x >= -K_CHASE_DX && sqrtf(d2x * d2x + d2y * d2y) <= 2 * K_ARM - 1) {
+      // it let the fighter pass: now it reaches back after it with the far arm
+      k.ph = K_REACH, k.t = 0, k.tx = shipCx, k.ty = shipCy, k.arm = 1, k.style = nextRandom(s) % 4;
     }
   } else if (k.ph == K_REACH) {
     if (k.t >= K_REACH_S) k.ph = K_GRAB, k.t = 0;
@@ -980,28 +997,68 @@ static void drawKongArm(uint16_t* fb, float sx, float sy, float hx, float hy, in
   }
 }
 
-// Both arms, in front of everything. While it waits they hang; they reach only for the fighter.
-static void drawKongArms(const State& s, uint16_t* fb) {
+// Both arms, in front of everything. While it waits they hang still. Each reach goes for the fighter with one arm (k.arm: 0 the
+// near one, 1 the far one, which catches the fighter as the monster walks past it) from the side drawn by lot (k.style: 0 from the
+// right, straight in; 1 over the top, a smash; 2 from below, a scoop; 3 past the fighter and hooking back). The other arm helps
+// with a pose of its own (st): 1 claws too, 2 pounds its chest, 3 goes high and smashes down, 4 stays down (S9-2).
+static inline float kongMix(float a, float b, float u) { return a + (b - a) * u; }
+static void drawKongArms(const State& s, uint16_t* fb, uint32_t nowMs) {
   const Kong& k = s.k;
   if (k.ph == K_IDLE) return;
   int bx = (int)lrintf(k.x), by = H - KH;
-  float s1x = (float)(bx + 7), s1y = (float)(by + 7 * DOT + 2), s2x = (float)(bx + 21 * DOT), s2y = s1y;
-  float hang1x = s1x - 4, hang1y = s1y + K_HANG;
-  float h1x = hang1x, h1y = hang1y;
-  bool open = false;
-  if (k.ph == K_REACH) {
-    float u = ease3(k.t / K_REACH_S);
-    h1x = s1x + (k.tx - s1x) * u, h1y = s1y + (k.ty - s1y) * u;
-    open = true;
-  } else if (k.ph == K_GRAB || k.ph == K_MISS) {
-    h1x = k.tx, h1y = k.ty;
-    if (k.ph == K_GRAB && k.t < K_GRAB_S * 0.5f) open = true;  // the fingers snap shut
-  } else if (k.ph == K_LEAVE && k.t < K_RETRACT_S && k.tx != 0) {  // the arm is drawn back
-    float u = ease3(k.t / K_RETRACT_S);
-    h1x = k.tx + (hang1x - k.tx) * u, h1y = k.ty + (hang1y - k.ty) * u;
+  const float sy0 = (float)(by + 7 * DOT + 2);
+  const float sx[2] = {(float)(bx + 7), (float)(bx + 21 * DOT)}, sy[2] = {sy0, sy0}, ds[2] = {-1.0f, 1.0f};
+  const bool reaching = k.ph == K_REACH || k.ph == K_GRAB || k.ph == K_MISS;
+  const float pound = (sinf(nowMs * 0.02f) + 1) * 0.5f;
+  static const uint8_t ST[4] = {1, 2, 4, 3};
+  const int st = ST[k.style & 3];
+  const bool wp = k.style != 0;  // the way in: where the hand goes first (relative to the fighter) before it snaps onto it
+  const float wpx = k.style == 1 ? k.tx + 6 : k.style == 2 ? k.tx + 4 : k.tx - 8, wpy = k.style == 1 ? k.ty - 36 : k.style == 2 ? k.ty + 36 : k.ty - 6;
+  const float uR = k.ph == K_REACH ? ease3(k.t / K_REACH_S) : 1.0f;
+  const float snap = k.ph == K_GRAB ? ease3(k.t / K_GRAB_S) : k.ph == K_MISS ? 1.0f : 0.0f;
+  const bool fistOpen = k.ph == K_REACH || (k.ph == K_GRAB && k.t < K_GRAB_S * 0.5f);  // the fingers snap shut
+  float hx[2], hy[2];
+  bool open[2] = {false, false};
+  for (int i = 0; i < 2; i++) {
+    const float d = ds[i], gx = sx[i] + 4 * d, gy = sy[i] + K_HANG;  // where the hand hangs
+    hx[i] = gx, hy[i] = gy;
+    if (i == k.arm) {  // the arm that goes for the fighter
+      if (reaching) {
+        if (k.ph == K_REACH) {
+          hx[i] = wp ? kongMix(gx, wpx, uR) : kongMix(sx[i], k.tx, uR);
+          hy[i] = wp ? kongMix(gy, wpy, uR) : kongMix(sy[i], k.ty, uR);
+        } else if (k.ph == K_GRAB && wp) {
+          hx[i] = kongMix(wpx, k.tx, snap), hy[i] = kongMix(wpy, k.ty, snap);
+        } else {
+          hx[i] = k.tx, hy[i] = k.ty;
+        }
+        open[i] = fistOpen;
+      } else if (k.ph == K_LEAVE && k.t < K_RETRACT_S && k.tx != 0) {  // the arm is drawn back
+        float u = ease3(k.t / K_RETRACT_S);
+        hx[i] = kongMix(k.tx, gx, u), hy[i] = kongMix(k.ty, gy, u);
+      }
+    } else {  // the other arm
+      const float fx = k.tx + 10 * d, fy = k.ty - 8, upx = sx[i] + 2 * d, upy = sy[i] - 34;
+      if (reaching) {
+        if (st == 1) {
+          float u = k.ph == K_REACH ? ease3((k.t - 0.12f) / (K_REACH_S - 0.12f)) : 1.0f;
+          hx[i] = kongMix(gx, fx, u), hy[i] = kongMix(gy, fy, u);
+          open[i] = fistOpen;
+        } else if (st == 2) {
+          float cx = sx[i] - d * (16 + 6 * pound), cy = sy[i] + 12 + 5 * pound;
+          hx[i] = kongMix(gx, cx, uR), hy[i] = kongMix(gy, cy, uR);
+        } else if (st == 3) {
+          if (k.ph == K_REACH) hx[i] = kongMix(gx, upx, uR), hy[i] = kongMix(gy, upy, uR), open[i] = true;
+          else hx[i] = kongMix(upx, fx, snap), hy[i] = kongMix(upy, fy, snap);
+        }
+      } else if (k.ph == K_LEAVE && k.t < K_RETRACT_S && k.tx != 0 && st != 4) {
+        float u = ease3(k.t / K_RETRACT_S);
+        float fromx = (st == 1 || st == 3) ? fx : sx[i] - d * 19, fromy = (st == 1 || st == 3) ? fy : sy[i] + 14;
+        hx[i] = kongMix(fromx, gx, u), hy[i] = kongMix(fromy, gy, u);
+      }
+    }
   }
-  drawKongArm(fb, s2x, s2y, s2x + 4, s2y + K_HANG, +1, false);
-  drawKongArm(fb, s1x, s1y, h1x, h1y, -1, open);
+  for (int i = 1; i >= 0; i--) drawKongArm(fb, sx[i], sy[i], hx[i], hy[i], (int)ds[i], open[i]);
 }
 
 // Draws the whole frame (black sky with stars, terrain, bursts, targets, mines, their bullets, laser beams, bombs, fighter) into fb.
@@ -1129,7 +1186,7 @@ static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
   // Engine flame behind the hull (dot row 2), flickering between one and two dots.
   dot(fb, sx - DOT, sy + 2 * DOT, F2);
   if ((nowMs / 90) & 1) dot(fb, sx - 2 * DOT, sy + 2 * DOT, F1);
-  drawKongArms(s, fb);  // both arms: in front of the terrain, the equalizer and the fighter
+  drawKongArms(s, fb, nowMs);  // both arms: in front of the terrain, the equalizer and the fighter
 }
 
 }  // namespace flightviz
