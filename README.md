@@ -58,7 +58,7 @@ Pictures of every screen: [`docs/SCREENS.md`](docs/SCREENS.md).
 | Mode | Screen | Keys |
 | --- | --- | --- |
 | **measure mode** | Buffer, clock drift, volume and level meters | Speaker and playback keys (below) |
-| **flight mode** | A flight over the music: the volume as terrain, a little fighter, a Showa-era graphic equalizer | Speaker and playback keys (below) |
+| **flight mode** | A flight over the music: the volume as terrain, a little fighter, a Showa-era graphic equalizer, and now and then a space monster that reaches for the fighter | Speaker and playback keys (below) |
 | **keyboard mode** | A slowly spinning Earth and a key cheat sheet | Every key goes to the computer |
 
 <p>

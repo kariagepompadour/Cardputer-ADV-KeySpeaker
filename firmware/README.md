@@ -4,7 +4,7 @@ Cardputer ADV firmware. Each stage is its own sketch folder with its app-only `.
 
 | Folder | Stage | Status |
 | --- | --- | --- |
-| [`KeySpeaker_S0/`](KeySpeaker_S0/) | S0: USB Audio Class 1 speaker only; measures the buffer and the clock drift. S0-3 adds a flight visualizer screen (`v`). S1 (now `S1-6`) corrects the clock drift and fixes two USB restarts | On a Mac and Windows 11: 8 hours with no dropouts (without the S1 correction, one every 1.4 hours); ten pause/resume cycles without a restart. Now `S5-13`: USB keyboard, media keys and a tilt mouse too, a spinning Earth on the keyboard screen, Media Jog's jog dial if it is plugged in, a BLE keyboard and mouse without USB as a spare (`BleHid.h`), and a start screen with a round-hole grille. Test plan: [`../docs/S0_TEST.md`](../docs/S0_TEST.md) |
+| [`KeySpeaker_S0/`](KeySpeaker_S0/) | S0: USB Audio Class 1 speaker only; measures the buffer and the clock drift. S0-3 adds a flight visualizer screen (`v`). S1 (now `S1-6`) corrects the clock drift and fixes two USB restarts | On a Mac and Windows 11: 8 hours with no dropouts (without the S1 correction, one every 1.4 hours); ten pause/resume cycles without a restart. Now `S9-1`: USB keyboard, media keys and a tilt mouse too, a spinning Earth on the keyboard screen, Media Jog's jog dial if it is plugged in, a BLE keyboard and mouse without USB as a spare (`BleHid.h`), a start screen with a round-hole grille, and, on the flight screen while music plays, a space monster that now and then reaches for the fighter (`FlightViz.h`). Test plan: [`../docs/S0_TEST.md`](../docs/S0_TEST.md) |
 
 ## Building
 

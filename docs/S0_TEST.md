@@ -560,13 +560,19 @@ after music starts and then one every 30 s or so, each going from walking to rea
 and viewed frame by frame. S9-1 is the S5-15 code plus `FlightViz.h` only: the USB audio, HID keyboard and BLE code are
 the same as in S5-15 (the S8-1 AUX input is on its own branch and is not in it).
 
-**S9-1 on the device (2026-11-04), by the user:** an earlier build of S9-1 that still carried the S8-1 AUX input was
-imported into the Cardputer ADV through M5Launcher: it started normally and the monster appeared on the device's screen.
-The web demo with the same monster was published and checked on its public page. **Still to check on the device**, with
-the build without the AUX input: that it starts, the MERGED image through M5Burner, USB audio and the HID keyboard (the
-code is S5-15's, so nothing should change), the game screen's drawing time (the monster adds a few thousand pixel writes
-a frame; the measure screen's `draw_max` should stay well under 33 ms), the memory left (`heap` in the log), and that
-nothing flickers where the arm crosses the bars and the fighter.
+**S9-1 on the device (2026-11-04), by the user:** first an earlier build of S9-1 that still carried the S8-1 AUX input
+was imported into the Cardputer ADV through M5Launcher: it started normally and the monster appeared on the device's
+screen. Then the build without the AUX input (the one in this repository: the S5-15 code plus `FlightViz.h`) was
+imported the same way and checked: **it starts normally, the monster appears, USB audio works and the HID keyboard
+works.** The web demo with the same monster was published and checked on its public page.
+
+**Not checked yet, for S9-1:** the MERGED image through M5Burner (`KeySpeaker_S9-1_MERGED.bin`: the S9-1 `.ino.bin` at
+0x10000 with the same bootloader, partition table and boot_app0 as the S5-15 image, compared byte for byte, but never
+burned: not tried). M5Burner's listing still carries S5-15 until that image is tried and uploaded. Also not checked: BLE
+keyboard and mouse, the game screen's drawing time (the monster adds a few thousand pixel writes a frame; the measure
+screen's `draw_max` should stay well under 33 ms), the memory left (`heap` in the log), and whether anything flickers
+where the arm crosses the bars and the fighter. The S8-1 AUX input is not part of S9-1 and stays unverified on its own
+branch.
 
 Design 5.2 (plan A: Media Jog's BLE identity and GATT table) and 5.3. Over USB nothing changes. Without USB (on the
 battery, or on a charger only) the Cardputer advertises as "KeySpeaker" after 3 seconds; the keyboard screen shows
