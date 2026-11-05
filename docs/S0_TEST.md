@@ -595,6 +595,27 @@ where an arm crosses the bars and the fighter.
 "Cardputer ADV KeySpeaker", version `S9-2`), burned from M5Burner onto the Cardputer ADV and
 checked: **confirmed ("確認しました").** The user did not list what was looked at beyond that, so only that is claimed here.
 
+**S9-3 (2026-11-05):** the monster, tried and settled in the web demo first, then ported to `FlightViz.h`. Every visit plays out
+differently: it may reach one to three times, may first make itself big (both arms up, or one up and one down), now and then only
+bluffs, and after a miss it waits a second or more and only sometimes does more (reach again, make itself big, or walk on). It
+comes in six colours (red, blue, green, purple, gold, ghost white; only three colours each, so nothing new is drawn), about half as
+often as before (24 to 56 s apart, the first after 10 s), and its arms and hands are drawn in the same 3 x 3 px dots as the body
+(the 1 px rim lines are gone). Built with `build.sh` (app image `eb82ee8b…`, 30 % of the flash, about 0.8 KB more than S9-2). The
+same `FlightViz.h` was run on the computer for 600 visits: 80 bluffs, 80 visits with no reach, 421 with one, 85 with two and 14 with
+three; the pause before a second reach was never under 1.0 s; the six colours came about as often as set. Frames were viewed.
+`KeySpeaker_S9-3_MERGED.bin` was made as for S9-2. Up to here it was only built and run on the computer; the device check follows.
+
+**S9-3 on the device (2026-11-05), by the user:** the S9-3 `.ino.bin` was tried on the Cardputer ADV and is **OK ("OKです")**; the user
+called it "New Challenger Arrival" and said there is **no flicker**. The USB log of the flight screen (`s0log.py`, 308 lines, about
+5 minutes, `s9-3.log`) was read: `draw_max` **15.1 to 20.2 ms** (median 16.4 ms, 95th percentile 19.4 ms), well under the 33 ms of a
+frame; `heap` **107124 bytes, the same on every line** (no sign of a leak); `under`, `over` and `drop` stayed **0**. The log does not say
+when the monster was on screen, so the higher values (18 to 20 ms, from about the 10:43:32 line on) are probably but not surely it; no
+S9-1 or S9-2 log of the same kind is kept to compare with. The MERGED image through M5Burner was tried next (below).
+
+**S9-3 from M5Burner (2026-11-05), by the user:** `KeySpeaker_S9-3_MERGED.bin` was uploaded to M5Burner (CARDPUTER, "Cardputer ADV
+KeySpeaker", version `S9-3`) and burned onto the Cardputer ADV with Share / Burn: **it works well ("動作良好").** The user did not list
+what was looked at beyond that, so only that is claimed here.
+
 Design 5.2 (plan A: Media Jog's BLE identity and GATT table) and 5.3. Over USB nothing changes. Without USB (on the
 battery, or on a charger only) the Cardputer advertises as "KeySpeaker" after 3 seconds; the keyboard screen shows
 `BLE wait` in yellow, then `BLE` in green once a computer is connected and ready.

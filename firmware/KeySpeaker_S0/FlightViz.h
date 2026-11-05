@@ -27,7 +27,10 @@
   bars, reaches for the fighter with a clawed hand that is drawn in front of everything, misses as the fighter slips
   away, and walks off (S9-1). Each reach comes from a different side (from the right, over the top, from below, or
   swinging past the fighter and hooking back), the other arm helps with a pose of its own, and about four visits in ten let
-  the fighter pass first and then reach back after it with the far arm (S9-2).
+  the fighter pass first and then reach back after it with the far arm (S9-2). In S9-3 every visit plays out
+  differently: it may reach one to three times, may first make itself big (arms up, or one up and one down), now and then only
+  bluffs, and after a miss it waits a second or more and only sometimes does more; it comes in six colours (red, blue, green,
+  purple, gold, ghost white), about half as often as before, and its arms are drawn in the same 3 px dots as the body.
 
   Plain C++ on a 240 x 135 RGB565 frame buffer laid out like M5Canvas's (16-bit pixels, high byte first), so the same
   code also runs on a computer for previews.
@@ -124,16 +127,20 @@ constexpr int ENGAGE_X = W - 80;        // the fighter holds fire until a target
 // in from the right with the terrain, only while music plays, reaches for the fighter, misses (the fighter slips away),
 // draws its arm back and walks off. The body is behind the terrain, both arms in front of everything.
 constexpr int KONG_W = 23, KONG_H = 30, KW = KONG_W * DOT, KH = KONG_H * DOT;
-enum KongPhase : uint8_t { K_IDLE, K_WALK, K_REACH, K_GRAB, K_MISS, K_LEAVE };
+enum KongPhase : uint8_t { K_IDLE, K_WALK, K_REACH, K_GRAB, K_MISS, K_LEAVE, K_THREAT };
 constexpr float K_REACH_S = 0.8f, K_GRAB_S = 0.22f, K_MISS_S = 0.45f, K_RETRACT_S = 0.5f;
+constexpr float K_THREAT_S = 1.3f;      // making itself big (S9-3): arms up, or one up and one down
+constexpr float K_GAP_MIN_S = 1.0f, K_GAP_VAR_S = 1.2f;  // after a miss it waits this long (1.0 to 2.2 s) before it maybe does more
+constexpr float K_RETRY_R = 55.0f;      // and goes for the fighter again only if it is still this close to a shoulder
+constexpr int K_NOTICE_DX = 84;         // it notices the fighter, and may make itself big, this far ahead
 constexpr float K_ARM = 26.0f;          // two links of this length: a short, thick arm (reach about 51 px)
 constexpr float K_HANG = 44.0f;         // where the hand hangs below the shoulder
 constexpr int K_START_DX = 44;          // it reaches when the fighter is this close
 constexpr int K_CHASE_DX = 36;          // a chasing monster reaches back while the fighter is this close behind its far shoulder
 constexpr uint32_t K_CHASE_PERCENT = 40;  // how many visits are chases
 constexpr float K_EVADE_PX = 17.0f;     // how far the fighter slips away as the fist closes
-constexpr uint32_t KONG_MS_MIN = 12000, KONG_MS_MAX = 28000;  // between two visits
-constexpr uint32_t KONG_FIRST_MS = 6000;     // the first visit, after the start
+constexpr uint32_t KONG_MS_MIN = 24000, KONG_MS_MAX = 56000;  // between two visits: about half as often as in S9-2
+constexpr uint32_t KONG_FIRST_MS = 10000;    // the first visit, after the start
 constexpr uint32_t KONG_MUSIC_MS = 3000;     // it appears only after this long of music,
 constexpr uint32_t KONG_GAP_MS = 2000;       // and a gap in the music up to this long does not count as silence
 // The silhouette: per row, up to two spans of columns {from, to, from, to} (-1: none). Horn ears, a small head sunk
@@ -233,6 +240,13 @@ struct Kong {
   uint8_t arm = 0;           // the arm that goes for the fighter: 0 the near one, 1 the far one (S9-2)
   uint8_t style = 0;         // the way in: 0 from the right, 1 over the top, 2 from below, 3 past the fighter and hooking back
   bool chase = false;        // this visit it lets the fighter pass first, then reaches back after it with the far arm
+  uint8_t pal = 0;           // this visit's colours (S9-3): 0 red, 1 blue, 2 green, 3 purple, 4 gold, 5 ghost white
+  uint8_t tries = 0, maxTries = 1;  // how many times it has gone for the fighter this visit, and how many it may
+  bool noReach = false;      // this visit it only bluffs: no reach at all
+  bool doThreat = false, threatDone = false;  // whether it makes itself big when it notices the fighter, and whether it has
+  uint8_t threat = 0;        // the pose: 0 both arms up, 1 the near arm up and the far one down, 2 the other way round
+  uint8_t nextAct = 0;       // after a miss: 0 walk on, 1 reach again, 2 make itself big (done when nextAt has passed)
+  float nextAt = 0;
 };
 
 struct State {
@@ -564,6 +578,7 @@ static inline float kongSpeed(uint8_t ph) {  // it slows down while it reaches, 
   switch (ph) {
     case K_REACH: return 0.6f;
     case K_GRAB: case K_MISS: return 0.3f;
+    case K_THREAT: return 0.4f;
     default: return 1.0f;
   }
 }
@@ -572,7 +587,27 @@ static inline void kongShoulder(int bx, float& sx, float& sy) { sx = (float)(bx 
 // The far arm's shoulder (right).
 static inline void kongShoulder2(int bx, float& sx, float& sy) { sx = (float)(bx + 21 * DOT); sy = (float)(H - KH + 7 * DOT + 2); }
 
+// The monster's colours (S9-3): six palettes of three colours (the lit edge, the dark body, the eyes), each visit draws one by lot.
+// The eyes are chosen to stand out from the body in every colour. Nothing new is drawn, so this costs a few numbers.
+static const uint16_t KPAL[6][3] = {
+  {swap(rgb(212, 38, 46)), swap(rgb(40, 20, 24)), swap(rgb(255, 226, 64))},    // 0 red, the original
+  {swap(rgb(70, 120, 235)), swap(rgb(16, 22, 46)), swap(rgb(120, 255, 255))},  // 1 blue
+  {swap(rgb(60, 190, 84)), swap(rgb(14, 34, 20)), swap(rgb(255, 90, 60))},     // 2 green
+  {swap(rgb(176, 76, 224)), swap(rgb(34, 16, 44)), swap(rgb(120, 255, 160))},  // 3 purple
+  {swap(rgb(240, 192, 56)), swap(rgb(54, 38, 10)), swap(rgb(255, 255, 255))},  // 4 gold, rare
+  {swap(rgb(222, 232, 255)), swap(rgb(38, 42, 62)), swap(rgb(255, 60, 90))},   // 5 ghost white
+};
+static const uint8_t KPAL_PERCENT[6] = {30, 16, 16, 16, 10, 12};  // how often each comes (sums to 100)
+static inline uint8_t pickKongPal(State& s) {
+  uint32_t r = nextRandom(s) % 100;
+  uint8_t i = 0;
+  while (i < 5 && r >= KPAL_PERCENT[i]) r -= KPAL_PERCENT[i++];
+  return i;
+}
+
 // Moves the monster. Returns how far (px, up or down) the fighter should slip away right now: 0 except while the fist closes.
+// Every visit plays out differently (S9-3): how many times it may reach (1 to 3), whether it first makes itself big, now and then
+// it only bluffs, and after a miss it waits a second or more and only sometimes does something more.
 static float updateKong(State& s, uint32_t nowMs, float dt, float shipCx, float shipCy) {
   Kong& k = s.k;
   k.t += dt;
@@ -588,23 +623,34 @@ static float updateKong(State& s, uint32_t nowMs, float dt, float shipCx, float 
     if (musicOk && (int32_t)(nowMs - k.nextMs) >= 0) {
       k.ph = K_WALK, k.t = 0, k.x = (float)(W + 4);
       k.chase = nextRandom(s) % 100 < K_CHASE_PERCENT;
+      k.pal = pickKongPal(s);
+      k.tries = 0, k.nextAct = 0, k.threatDone = false;
+      uint32_t r = nextRandom(s) % 100;
+      k.maxTries = r < 35 ? 1 : r < 75 ? 2 : 3;
+      k.doThreat = nextRandom(s) % 100 < 55;
+      k.noReach = nextRandom(s) % 100 < 12;
     }
     return 0;
   }
   k.x -= SCROLL_PX_S * kongSpeed(k.ph) * dt;
-  float shx, shy;
+  float shx, shy, s2x, s2y;
   kongShoulder((int)lrintf(k.x), shx, shy);
+  kongShoulder2((int)lrintf(k.x), s2x, s2y);
   float evade = 0;
-  if (k.ph == K_WALK) {  // close enough, and within reach: lock on to where the fighter is and reach
-    float dx = shx - shipCx, dy = shy - shipCy, s2x, s2y;
-    kongShoulder2((int)lrintf(k.x), s2x, s2y);
-    float d2x = s2x - shipCx, d2y = s2y - shipCy;
-    if (!k.chase && k.x < W - KW - 6 && dx <= K_START_DX && dx > -10 && sqrtf(dx * dx + dy * dy) <= 2 * K_ARM * 1.25f) {
-      k.ph = K_REACH, k.t = 0, k.tx = shipCx, k.ty = shipCy, k.arm = 0, k.style = nextRandom(s) % 4;
-    } else if (k.chase && d2x <= 4 && d2x >= -K_CHASE_DX && sqrtf(d2x * d2x + d2y * d2y) <= 2 * K_ARM - 1) {
-      // it let the fighter pass: now it reaches back after it with the far arm
-      k.ph = K_REACH, k.t = 0, k.tx = shipCx, k.ty = shipCy, k.arm = 1, k.style = nextRandom(s) % 4;
+  if (k.ph == K_WALK) {
+    float dx = shx - shipCx, dy = shy - shipCy, d2x = s2x - shipCx, d2y = s2y - shipCy;
+    if (k.doThreat && !k.threatDone && k.x < W - KW - 6 && dx <= K_NOTICE_DX && dx > -10) {
+      // It has noticed the fighter: before anything else it makes itself look big, once a visit.
+      k.ph = K_THREAT, k.t = 0, k.threatDone = true, k.threat = nextRandom(s) % 3;
+    } else if (!k.noReach && k.tries < k.maxTries && !k.chase && k.x < W - KW - 6 && dx <= K_START_DX && dx > -10 &&
+               sqrtf(dx * dx + dy * dy) <= 2 * K_ARM * 1.25f) {  // close enough, and within reach: lock on and reach
+      k.ph = K_REACH, k.t = 0, k.tx = shipCx, k.ty = shipCy, k.arm = 0, k.style = nextRandom(s) % 4, k.tries++;
+    } else if (!k.noReach && k.tries < k.maxTries && k.chase && d2x <= 4 && d2x >= -K_CHASE_DX &&
+               sqrtf(d2x * d2x + d2y * d2y) <= 2 * K_ARM - 1) {  // it let the fighter pass: now it reaches back after it
+      k.ph = K_REACH, k.t = 0, k.tx = shipCx, k.ty = shipCy, k.arm = 1, k.style = nextRandom(s) % 4, k.tries++;
     }
+  } else if (k.ph == K_THREAT) {
+    if (k.t >= K_THREAT_S) k.ph = K_WALK, k.t = 0;
   } else if (k.ph == K_REACH) {
     if (k.t >= K_REACH_S) k.ph = K_GRAB, k.t = 0;
   } else if (k.ph == K_GRAB) {
@@ -612,7 +658,24 @@ static float updateKong(State& s, uint32_t nowMs, float dt, float shipCx, float 
     if (k.t >= K_GRAB_S) k.ph = K_MISS, k.t = 0;
   } else if (k.ph == K_MISS) {
     evade = shipCy > 52 ? -K_EVADE_PX : K_EVADE_PX;
-    if (k.t >= K_MISS_S) k.ph = K_LEAVE, k.t = 0;  // no tantrum: it draws its arm back and walks on
+    if (k.t >= K_MISS_S) {
+      k.ph = K_LEAVE, k.t = 0;  // no tantrum: it draws its arm back, and then, maybe: 45 % reach again, 20 % make itself big, 35 % walk on
+      uint32_t r = nextRandom(s) % 100;
+      k.nextAct = k.tries >= k.maxTries ? (r < 20 ? 2 : 0) : r < 45 ? 1 : r < 65 ? 2 : 0;
+      k.nextAt = K_GAP_MIN_S + (nextRandom(s) % 1000) / 1000.0f * K_GAP_VAR_S;
+    }
+  } else if (k.ph == K_LEAVE && k.nextAct && k.t >= k.nextAt) {
+    // After the pause: reach again if the fighter is still close (with the nearer arm, the far one if it has slipped past on
+    // the right), or make itself big once more. Often it does neither and just walks on.
+    float d1 = sqrtf((shx - shipCx) * (shx - shipCx) + (shy - shipCy) * (shy - shipCy));
+    float d2 = sqrtf((s2x - shipCx) * (s2x - shipCx) + (s2y - shipCy) * (s2y - shipCy));
+    uint8_t act = k.nextAct;
+    k.nextAct = 0;
+    if (act == 1 && fminf(d1, d2) <= K_RETRY_R && k.x < W - KW - 6) {
+      k.ph = K_REACH, k.t = 0, k.tx = shipCx, k.ty = shipCy, k.style = nextRandom(s) % 4, k.arm = d2 < d1 ? 1 : 0, k.tries++;
+    } else if (act == 2) {
+      k.ph = K_THREAT, k.t = 0, k.threat = nextRandom(s) % 3;
+    }
   }
   if (k.x < -KW - 4) {
     k.ph = K_IDLE;
@@ -922,16 +985,13 @@ static inline void fillRect(uint16_t* fb, int x, int y, int w, int h, uint16_t c
     for (int xx = x; xx < x + w; xx++) px(fb, xx, yy, c);
 }
 
-// The monster's colors: a near-black red-brown body lit from the left by a red edge, glowing yellow eyes.
-static const uint16_t K_BODY = swap(rgb(40, 20, 24)), K_LIT = swap(rgb(212, 38, 46)), K_RIM = swap(rgb(190, 34, 42)),
-                      K_EYE = swap(rgb(255, 226, 64));
-
-// The monster's body, behind the terrain: a flat dark silhouette with a band of red light along each part's left edge
-// (wide on the shoulders and chest, thin on the waist), a thin line of light along the other outer edges (not on the far
-// shoulder), and two glowing yellow slanted eyes in the small head.
+// The monster's body, behind the terrain: a flat dark silhouette with a band of light along each part's left edge (wide on the
+// shoulders and chest, thin on the waist) and two glowing slanted eyes in the small head, in this visit's colours (KPAL).
+// Everything is drawn in the same 3 x 3 px dots as the other characters; the arms below follow the body's dot grid.
 static void drawKongBody(const State& s, uint16_t* fb, uint32_t nowMs) {
   const Kong& k = s.k;
   if (k.ph == K_IDLE) return;
+  const uint16_t* P = KPAL[k.pal < 6 ? k.pal : 0];
   int bx = (int)lrintf(k.x), by = H - KH;
   bool walking = k.ph == K_WALK || k.ph == K_LEAVE;
   int frame = (nowMs / 330) & 1;
@@ -945,31 +1005,30 @@ static void drawKongBody(const State& s, uint16_t* fb, uint32_t nowMs) {
       bool face = r >= 3 && r <= 6 && c >= 8 && c <= 14;
       bool eye = face && ((r == 4 && (c == 8 || c == 14)) || (r == 5 && (c == 9 || c == 10 || c == 12 || c == 13)));
       bool lit = !face && c - start < w;
-      dot(fb, bx + c * DOT, by + r * DOT, eye ? K_EYE : lit ? K_LIT : K_BODY);
-      if (!lit && !face && !(r <= 9 && c >= 15)) {  // a thin line of light along the outer edge
-        bool top = kongSeg(r - 1, c) < 0, bot = kongSeg(r + 1, c) < 0, rgt = kongSeg(r, c + 1) < 0;
-        for (int q = 0; q < DOT; q++) {
-          if (rgt) px(fb, bx + c * DOT + DOT - 1, by + r * DOT + q, K_RIM);
-          if (top) px(fb, bx + c * DOT + q, by + r * DOT, K_RIM);
-          if (bot) px(fb, bx + c * DOT + q, by + r * DOT + DOT - 1, K_RIM);
-        }
-      }
+      dot(fb, bx + c * DOT, by + r * DOT, eye ? P[2] : lit ? P[0] : P[1]);
     }
 }
 
-// A thick limb as a chain of squares of radius r.
-static void kongLimb(uint16_t* fb, float x0, float y0, float x1, float y1, uint16_t c, int r) {
+// A block of n x n dots whose middle dot sits on the body's dot grid point nearest to x, y (gx, gy: where the grid starts);
+// dxDots shifts it right by that many dots.
+static void kongBlk(uint16_t* fb, int gx, int gy, float x, float y, int n, uint16_t c, int dxDots = 0) {
+  int o = DOT * (n >> 1);
+  fillRect(fb, gx + DOT * (int)lrintf((x - gx) / DOT) - o + dxDots * DOT, gy + DOT * (int)lrintf((y - gy) / DOT) - o, n * DOT, n * DOT, c);
+}
+// A thick limb as a chain of such blocks.
+static void kongLimb(uint16_t* fb, int gx, int gy, float x0, float y0, float x1, float y1, uint16_t c, int n, int dxDots = 0) {
   float len = sqrtf((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0));
-  int n = (int)ceilf(len / 2);
-  if (n < 1) n = 1;
-  for (int i = 0; i <= n; i++)
-    fillRect(fb, (int)floorf(x0 + (x1 - x0) * i / n + 0.5f) - r, (int)floorf(y0 + (y1 - y0) * i / n + 0.5f) - r, 2 * r + 1, 2 * r + 1, c);
+  int steps = (int)ceilf(len / DOT);
+  if (steps < 1) steps = 1;
+  for (int i = 0; i <= steps; i++) kongBlk(fb, gx, gy, x0 + (x1 - x0) * i / steps, y0 + (y1 - y0) * i / steps, n, c, dxDots);
 }
 
 // A two-link arm from the shoulder to the hand (clamped to its reach), the elbow bent out and down, never toward the body
-// (side -1: the arm toward the fighter, +1: the far arm). Red outline on the lit side with a dark core shifted right; the
-// shoulder of the far arm stays dark. Then the hand: a rounded dark palm and three claws along the arm.
-static void drawKongArm(uint16_t* fb, float sx, float sy, float hx, float hy, int side, bool open) {
+// (side -1: the arm toward the fighter, +1: the far arm), all in 3 x 3 px dots on the body's grid. Lit colour first, then a dark
+// core shifted right so the light shows on the left; the shoulder of the far arm stays dark. Then the hand: a dark palm of
+// 3 x 3 dots and three claws of one or two dots along the arm, spread wide when the hand is open.
+static void drawKongArm(uint16_t* fb, float sx, float sy, float hx, float hy, int side, bool open, int gx, int gy, const uint16_t* P) {
+  const uint16_t lit = P[0], body = P[1];
   float dx = hx - sx, dy = hy - sy, d = sqrtf(dx * dx + dy * dy);
   if (d > 2 * K_ARM - 1) hx = sx + dx * (2 * K_ARM - 1) / d, hy = sy + dy * (2 * K_ARM - 1) / d, dx = hx - sx, dy = hy - sy, d = 2 * K_ARM - 1;
   if (d < 1) d = 1;
@@ -977,22 +1036,17 @@ static void drawKongArm(uint16_t* fb, float sx, float sy, float hx, float hy, in
   float nx = -uy, ny = ux;
   if (nx * side * 0.7f + ny * 0.7f < 0) nx = -nx, ny = -ny;
   float ex = sx + ux * d / 2 + nx * h, ey = sy + uy * d / 2 + ny * h;
-  kongLimb(fb, sx, sy, ex, ey, side > 0 ? K_BODY : K_LIT, 4);
-  kongLimb(fb, ex, ey, hx, hy, K_LIT, 5);  // the forearm is the thicker one
-  kongLimb(fb, sx + 2, sy, ex + 2, ey, K_BODY, 2);
-  kongLimb(fb, ex + 2, ey, hx + 2, hy, K_BODY, 3);
-  int x = (int)floorf(hx + 0.5f), y = (int)floorf(hy + 0.5f);
-  fillRect(fb, x - 4, y - 3, 9, 7, K_BODY);  // a rounded palm
-  fillRect(fb, x - 3, y - 4, 7, 9, K_BODY);
+  kongLimb(fb, gx, gy, sx, sy, ex, ey, side > 0 ? body : lit, 3);
+  kongLimb(fb, gx, gy, ex, ey, hx, hy, lit, 4);  // the forearm is the thicker one
+  kongLimb(fb, gx, gy, sx, sy, ex, ey, body, 2, 1);
+  kongLimb(fb, gx, gy, ex, ey, hx, hy, body, 3);
+  kongBlk(fb, gx, gy, hx, hy, 3, body);
   float spread = open ? 0.8f : 0.42f, a0 = atan2f(uy, ux);
-  int len = open ? 11 : 8;
-  for (int f = -1; f <= 1; f++) {  // claws: three curved spikes, spread wide when the hand is open
+  for (int f = -1; f <= 1; f++) {
     float a = a0 + f * spread;
-    for (int t = 4; t <= len; t++) {
+    for (int t = 7; t <= (open ? 10 : 7); t += 3) {
       float bend = f * 0.05f * (t - 4);
-      int cx = (int)floorf(x + cosf(a + bend) * t + 0.5f), cy = (int)floorf(y + sinf(a + bend) * t + 0.5f);
-      int sz = t > len - 3 ? 2 : 3;
-      fillRect(fb, cx - 1, cy - 1, sz, sz, K_LIT);
+      kongBlk(fb, gx, gy, hx + cosf(a + bend) * t, hy + sinf(a + bend) * t, 1, lit);
     }
   }
 }
@@ -1000,11 +1054,13 @@ static void drawKongArm(uint16_t* fb, float sx, float sy, float hx, float hy, in
 // Both arms, in front of everything. While it waits they hang still. Each reach goes for the fighter with one arm (k.arm: 0 the
 // near one, 1 the far one, which catches the fighter as the monster walks past it) from the side drawn by lot (k.style: 0 from the
 // right, straight in; 1 over the top, a smash; 2 from below, a scoop; 3 past the fighter and hooking back). The other arm helps
-// with a pose of its own (st): 1 claws too, 2 pounds its chest, 3 goes high and smashes down, 4 stays down (S9-2).
+// with a pose of its own (st): 1 claws too, 2 pounds its chest, 3 goes high and smashes down, 4 stays down. While it makes itself
+// big (K_THREAT) both arms go up, or one up and one down (k.threat) (S9-2, S9-3).
 static inline float kongMix(float a, float b, float u) { return a + (b - a) * u; }
 static void drawKongArms(const State& s, uint16_t* fb, uint32_t nowMs) {
   const Kong& k = s.k;
   if (k.ph == K_IDLE) return;
+  const uint16_t* P = KPAL[k.pal < 6 ? k.pal : 0];
   int bx = (int)lrintf(k.x), by = H - KH;
   const float sy0 = (float)(by + 7 * DOT + 2);
   const float sx[2] = {(float)(bx + 7), (float)(bx + 21 * DOT)}, sy[2] = {sy0, sy0}, ds[2] = {-1.0f, 1.0f};
@@ -1022,6 +1078,14 @@ static void drawKongArms(const State& s, uint16_t* fb, uint32_t nowMs) {
   for (int i = 0; i < 2; i++) {
     const float d = ds[i], gx = sx[i] + 4 * d, gy = sy[i] + K_HANG;  // where the hand hangs
     hx[i] = gx, hy[i] = gy;
+    if (k.ph == K_THREAT) {  // making itself big
+      float e = ease3(fminf(1.0f, fminf(k.t / 0.3f, (K_THREAT_S - k.t) / 0.3f)));
+      bool up = k.threat == 0 || (k.threat == 1 ? i == 0 : i == 1);
+      float goalx = up ? sx[i] + 10 * d : sx[i] + 16 * d, goaly = (up ? sy[i] - 46 : sy[i] + 34) + 2.5f * sinf(nowMs * 0.012f + i * 1.7f);
+      hx[i] = kongMix(gx, goalx, e), hy[i] = kongMix(gy, goaly, e);
+      open[i] = true;
+      continue;
+    }
     if (i == k.arm) {  // the arm that goes for the fighter
       if (reaching) {
         if (k.ph == K_REACH) {
@@ -1058,7 +1122,7 @@ static void drawKongArms(const State& s, uint16_t* fb, uint32_t nowMs) {
       }
     }
   }
-  for (int i = 1; i >= 0; i--) drawKongArm(fb, sx[i], sy[i], hx[i], hy[i], (int)ds[i], open[i]);
+  for (int i = 1; i >= 0; i--) drawKongArm(fb, sx[i], sy[i], hx[i], hy[i], (int)ds[i], open[i], bx, by, P);
 }
 
 // Draws the whole frame (black sky with stars, terrain, bursts, targets, mines, their bullets, laser beams, bombs, fighter) into fb.
