@@ -441,8 +441,8 @@ static std::atomic<int> micLevel{2};
 // (S10-2) Diagnosis: the microphone showed no signal (peak stuck at 64 = one count of noise). Fn+L steps through ways to
 // set M5.Mic up, until one shows a real signal in the log (raw = before the software gain).
 struct MicVariant { uint32_t rate; uint8_t os; bool left; };
-static constexpr MicVariant MIC_VARIANTS[] = {{48000, 1, false}, {48000, 1, true}, {16000, 2, false}, {16000, 2, true},
-                                              {48000, 2, false}, {48000, 2, true}};
+static constexpr MicVariant MIC_VARIANTS[] = {{16000, 2, false}, {48000, 1, false}, {16000, 2, true}, {48000, 1, true},
+                                              {48000, 2, false}, {48000, 2, true}};  // 0: M5Unified's own defaults
 static constexpr int MIC_NVAR = sizeof MIC_VARIANTS / sizeof MIC_VARIANTS[0];
 static std::atomic<int> micVar{0};
 static std::atomic<int16_t> micRawMax{0};
@@ -1076,6 +1076,7 @@ static bool setMic(bool on) {
     delay(30);
     xStreamBufferReset(ring);
     M5.Speaker.end();
+    delay(50);  // (S10-5) the CoreS3 project (KariPom/cores3-main) waits 50 ms after Speaker.end() before Mic.begin()
     auto mc = M5.Mic.config();
     mc.sample_rate = MIC_VARIANTS[micVar].rate;
     mc.over_sampling = MIC_VARIANTS[micVar].os;
