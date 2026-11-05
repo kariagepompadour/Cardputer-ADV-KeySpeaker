@@ -172,7 +172,7 @@
 #define KS_BLE 1  // (S5-5) 0: build without BLE, to compare
 #include "BleHid.h"
 
-#define BUILD_TAG "S9-3"
+#define BUILD_TAG "S10-1"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -215,6 +215,7 @@ USBHIDConsumerControl media;
 USBHIDMouse mouse;  // (S2.5-1) the air mouse, after the keyboard
 
 static StreamBufferHandle_t ring = nullptr;   // writer: uacReceiveTask (onSpkData), reader: playTask
+static std::atomic<bool> micOn{false};         // (S10-1) the built-in microphone is the input: it moves the screen only, no sound out
 
 // ---- Counters, written by the audio tasks and read once a second by loop()
 static std::atomic<uint32_t> rxFrames{0};      // stereo frames received from USB (= mono samples)
@@ -369,6 +370,11 @@ static bool ringWasFull = false;
 
 static void onSpkData(void* data, uint16_t len) {
   diagMark(diagRx, 1);
+  if (micOn) {  // (S10-1) the microphone is the input: USB audio is dropped, and the speaker is off
+    lastRxMs = millis();
+    diagMark(diagRx, 0);
+    return;
+  }
   // Visualizer level (S0-3): measured before the host volume, so the bars follow the music, not the volume knob.
   static float vizAcc = 0;
   static size_t vizN = 0;
@@ -423,6 +429,66 @@ static void onSpkData(void* data, uint16_t len) {
   if (peak > SOUND_MIN) lastSoundMs = lastRxMs.load();
   if (peak > beatPeak) beatPeak = peak;
   diagMark(diagRx, 0);
+}
+
+// ---- Built-in microphone -> screen only (S10-1). The Cardputer ADV's ES8311 codec serves the speaker and the microphone
+// on the same BCK / WS pins, and M5Unified's own mic example stops the speaker before starting the microphone, so
+// this mode is "speaker off, microphone on" (setMic below). Nothing goes to the ring: the screen's inputs are the same
+// as for USB audio (vizPcm for the equalizer, vizSum / vizCount for the terrain, beatPeak / lastSoundMs / rxPeak).
+static constexpr float MIC_GAIN[] = {0.5f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f};  // software gain on top of M5.Mic's own
+static constexpr int MIC_GAINS = sizeof MIC_GAIN / sizeof MIC_GAIN[0];
+static std::atomic<int> micLevel{2};
+static std::atomic<bool> micRun{false};
+static TaskHandle_t micTaskH = nullptr;
+static std::atomic<uint32_t> micChunks{0};
+static std::atomic<int16_t> micPeakLog{0};
+
+static void micProcess(const int16_t* in, size_t n) {
+  float g = MIC_GAIN[micLevel];
+  static float vizAcc = 0;
+  static size_t vizN = 0;
+  int16_t peak = 0;
+  uint32_t pos = vizPcmPos.load(std::memory_order_relaxed);
+  for (size_t i = 0; i < n; i++) {
+    float v = in[i] * g;
+    int16_t m = v > 32767.0f ? 32767 : v < -32768.0f ? -32768 : (int16_t)v;
+    int16_t a = m < 0 ? (int16_t)(m == INT16_MIN ? INT16_MAX : -m) : m;
+    if (a > peak) peak = a;
+    vizAcc += (float)m * m;
+    vizPcm[pos++ & (VIZ_PCM_N - 1)] = m;
+  }
+  vizPcmPos.store(pos, std::memory_order_release);
+  vizN += n;
+  if (vizN >= CHUNK) {
+    vizSum += (uint32_t)sqrtf(vizAcc / vizN);
+    vizCount++;
+    vizAcc = 0;
+    vizN = 0;
+  }
+  uint32_t now = millis();
+  if (peak > rxPeak) rxPeak = peak;
+  if (peak > micPeakLog) micPeakLog = peak;
+  if (peak > SOUND_MIN) lastSoundMs = now;
+  if (peak > beatPeak) beatPeak = peak;
+  micChunks++;
+}
+
+// M5.Mic.record() only queues a buffer (two slots) and a background task fills it. Three buffers in rotation: after
+// queueing buffer i, buffer i - 2 is certainly full, because queueing i needed a free slot.
+static void micTask(void*) {
+  static int16_t buf[3][CHUNK];
+  memset(buf, 0, sizeof buf);
+  int idx = 0;
+  while (micRun) {
+    if (!M5.Mic.record(buf[idx], CHUNK, RATE)) {
+      vTaskDelay(1);
+      continue;
+    }
+    micProcess(buf[(idx + 1) % 3], CHUNK);
+    idx = (idx + 1) % 3;
+  }
+  micTaskH = nullptr;
+  vTaskDelete(nullptr);
 }
 
 // ---- ring -> M5.Speaker (core 1)
@@ -675,8 +741,12 @@ static void drawScreen(uint32_t fillNow, uint32_t elapsedS) {
            (unsigned long)(elapsedS % 60), (unsigned long)diagBoots, diagReset);
   canvas.drawString(l, 4, 88);
 
-  snprintf(l, sizeof l, "PC vol %d dB%s  L%d R%d", (int)uac.volume(UAC_CHAN_MASTER), uac.mute(UAC_CHAN_MASTER) ? " MUTE" : "",
-           (int)uac.volume(UAC_CHAN_LEFT), (int)uac.volume(UAC_CHAN_RIGHT));
+  if (micOn) {  // (S10-1)
+    snprintf(l, sizeof l, "MIC (no sound out)  sens x%.1f  [- =]", MIC_GAIN[micLevel]);
+  } else {
+    snprintf(l, sizeof l, "PC vol %d dB%s  L%d R%d", (int)uac.volume(UAC_CHAN_MASTER), uac.mute(UAC_CHAN_MASTER) ? " MUTE" : "",
+             (int)uac.volume(UAC_CHAN_LEFT), (int)uac.volume(UAC_CHAN_RIGHT));
+  }
   canvas.drawString(l, 4, 100);
 
   // Level meters: what arrives from USB (after the host volume) and what goes to the speaker (after the limiter)
@@ -716,13 +786,17 @@ static void drawViz(uint32_t now) {
   // connected, muted, or dropouts counted. The rest (boost, bass cut) is on the data screen, so the terrain stays alone.
   char l[48];
   uint32_t u = underruns, o = overruns;
-  bool mute = uac.mute(UAC_CHAN_MASTER);
+  bool mute = !micOn && uac.mute(UAC_CHAN_MASTER);
   canvas.setTextSize(1);
-  if (!(bool)USB) {
+  if (micOn) {  // (S10-1)
+    canvas.setTextColor(COL_DIM);
+    snprintf(l, sizeof l, "MIC (no sound out)  x%.1f", MIC_GAIN[micLevel]);
+    canvas.drawString(l, 4, 2);
+  } else if (!(bool)USB) {
     canvas.setTextColor(COL_BAD);
     canvas.drawString("not connected", 4, 2);
   }
-  if (mute || u || o) {
+  if (!micOn && (mute || u || o)) {
     canvas.setTextColor(u || o ? COL_BAD : COL_WARN);
     snprintf(l, sizeof l, "%sU%lu O%lu", mute ? "MUTE " : "", (unsigned long)u, (unsigned long)o);
     canvas.drawRightString(l, 236, 2);
@@ -752,7 +826,8 @@ static bool uacStarted = false;  // (S5-5) uac.begin() succeeded
 
 static bool usbUp() { return (bool)USB && usbSawHost && millis() - usbLastSofMs < 1000; }
 
-static uint8_t viewMode() { return usbUp() ? mode : (uint8_t)MODE_KEYS; }
+// (S10-1) With the microphone as the input, the speaker screens are there without USB too.
+static uint8_t viewMode() { return usbUp() || micOn ? mode : (uint8_t)MODE_KEYS; }
 
 // ---- Emblem screen (S1-7, S2-6, design 8.3): shown at start for SPLASH_MS or until a key, and, in the measurement
 // mode (not the game screen since S5-14), after IDLE_MS with no key and no sound, until a key (splashIdle). That key only closes it.
@@ -982,6 +1057,42 @@ static void setMode(uint8_t m) {
   Serial.printf("[KEY] mode %s\n", MODE_NAME[mode]);
 }
 
+// (S10-1) Input: USB audio (plays on the speaker), or the built-in microphone (moves the screen, no sound out). The
+// speaker and the microphone cannot run together on the ADV (shared BCK / WS), so one is stopped for the other.
+static bool setMic(bool on) {
+  if (on == micOn) return true;
+  if (on) {
+    micOn = true;  // onSpkData stops feeding the ring
+    delay(30);
+    xStreamBufferReset(ring);
+    M5.Speaker.end();
+    auto mc = M5.Mic.config();
+    mc.sample_rate = RATE;
+    mc.over_sampling = 1;
+    mc.stereo = false;
+    M5.Mic.config(mc);
+    if (!M5.Mic.begin()) {
+      Serial.println("[MIC] Mic.begin failed, back to USB");
+      M5.Speaker.begin();
+      M5.Speaker.setVolume(SPK_MASTER_UNITY);
+      micOn = false;
+      return false;
+    }
+    micRun = true;
+    xTaskCreatePinnedToCore(micTask, "mic", 4096, nullptr, 3, &micTaskH, PRO_CPU_NUM);
+  } else {
+    micRun = false;
+    while (micTaskH) delay(5);
+    M5.Mic.end();
+    M5.Speaker.begin();
+    M5.Speaker.setVolume(SPK_MASTER_UNITY);
+    micOn = false;
+  }
+  prefs.putBool("mic", on);
+  Serial.printf("[MIC] input: %s\n", on ? "microphone (speaker off)" : "USB audio");
+  return true;
+}
+
 // ---- Keys
 static uint8_t heldLabels[16];  // unshifted labels of the keys held at the last change
 static int heldCount = 0;
@@ -1022,12 +1133,16 @@ static void keyService() {
     if (!fresh && !fnLate) continue;
     if (ks.fn) {  // the Cardputer's own Fn keys, in every mode
       if (c == 'm') {
-        if (usbUp()) setMode((uint8_t)((mode + 1) % MODE_COUNT));
+        if (usbUp() || micOn) setMode((uint8_t)((mode + 1) % MODE_COUNT));
         else Serial.println("[KEY] Fn+M before USB is up: no mode change");
         if (!fresh) Serial.println("[KEY] Fn+M: Fn came after M");
         acted = true;
       } else if (keysMode && (c == '[' || c == ']')) {
         inputKana = c == ']';
+      } else if (c == 'i') {  // (S10-1) input: USB audio / microphone
+        setMic(!micOn);
+        keysRedraw = true;
+        acted = true;
       } else if (c == 'o') {
         osWin = !osWin;
         prefs.putBool("osWin", osWin);
@@ -1049,6 +1164,15 @@ static void keyService() {
       case '/': media.press(CONSUMER_CONTROL_SCAN_NEXT); media.release(); acted = true; break;
       case '-':
       case '=': {
+        if (micOn) {  // (S10-1) with the microphone as the input, - and = set its sensitivity
+          int l = micLevel + (c == '=' ? 1 : -1);
+          if (l < 0) l = 0;
+          if (l >= MIC_GAINS) l = MIC_GAINS - 1;
+          micLevel = l;
+          Serial.printf("[KEY] mic sensitivity x%.1f\n", MIC_GAIN[l]);
+          acted = true;
+          break;
+        }
         int v = boostDb + (c == '=' ? BOOST_STEP_DB : -BOOST_STEP_DB);
         if (v < 0) v = 0;
         if (v > BOOST_MAX_DB) v = BOOST_MAX_DB;
@@ -1426,8 +1550,8 @@ static void drawSpeakerHelp() {
   canvas.drawRightString(BUILD_TAG, 236, 4);
   static const KeyHelp LEFT[] = {{"[ ]", "volume"}, {"\\", "mute"}, {"space", "play/pause"},
                                  {", /", "prev/next"}, {"- =", "boost"}, {"b", "bass cut"}};
-  static const KeyHelp RIGHT[] = {{"v", "measure/flight"}, {"r", "reset counts"}, {"h", "close help"},
-                                  {"Fn+M", "next mode"}, {"Fn+O", "Mac/Win"}};
+  const KeyHelp RIGHT[] = {{"v", "measure/flight"}, {"r", "reset counts"}, {"h", "close help"},
+                           {"Fn+M", "next mode"}, {"Fn+O", "Mac/Win"}, {"Fn+I", micOn ? "input: MIC" : "input: USB"}};
   int y = 30;
   for (const KeyHelp& h : LEFT) {
     drawHelp(h.key, h.meaning, 6, y, 44);
@@ -1441,7 +1565,7 @@ static void drawSpeakerHelp() {
   char l[32];
   snprintf(l, sizeof l, "+%ddB %s  %s", boostDb.load(), bassCut ? "cut" : "full", uac.mute(UAC_CHAN_MASTER) ? "MUTE" : "");
   canvas.setTextColor(COL_DIM);
-  canvas.drawString(l, 124, 30 + 5 * 15);
+  canvas.drawString(l, 124, 30 + 6 * 15);
   canvas.pushSprite(0, 0);
 }
 
@@ -1455,7 +1579,7 @@ void setup() {
   auto cfg = M5.config();
   cfg.internal_imu = true;  // (S2.5-1) for the air mouse
   cfg.internal_spk = true;
-  cfg.internal_mic = false;
+  cfg.internal_mic = true;  // (S10-1) set up, not started: M5.Mic runs only in the microphone input
   cfg.serial_baudrate = 0;  // Serial is USB CDC, already started
   M5Cardputer.begin(cfg, true);
   M5Cardputer.Display.setRotation(1);
@@ -1483,6 +1607,7 @@ void setup() {
   M5.Speaker.begin();
   M5.Speaker.setVolume(SPK_MASTER_UNITY);
   hpf.highPass(HPF_HZ, RATE);
+  bool micWanted = prefs.getBool("mic", false);
 
   xTaskCreatePinnedToCore(playTask, "play", 4096, nullptr, 3, nullptr, APP_CPU_NUM);
   uac.onEvent(onUsbEvent);
@@ -1493,6 +1618,7 @@ void setup() {
   media.begin();
   mouse.begin();
   Wire.begin(2, 1, 200000);  // (S2.5-10) the Grove port, for a jog dial: SDA G2, SCL G1, as in Media Jog
+  if (micWanted) setMic(true);
   Serial.printf("[BOOT] IMU %s\n", M5.Imu.isEnabled() ? "on" : "not found");
   Serial.printf("[BOOT] ready, heap %u\n", (unsigned)ESP.getFreeHeap());
 }
@@ -1591,6 +1717,7 @@ void loop() {
                   (unsigned long)diagPrevRx, (unsigned long)diagPrevLoop, (unsigned long)diagPrevUptimeS, (unsigned long)diagOns,
                   (unsigned long)diagOffs, (unsigned long)diagSuspends, (unsigned long)diagPulses,
                   (unsigned long)isoKeptCount.load(), (unsigned long)isoPassedCount.load());
+    if (micOn) Serial.printf("[MIC] chunks=%lu peak=%d x%.1f heap=%u\n", (unsigned long)micChunks.exchange(0), (int)micPeakLog.exchange(0), MIC_GAIN[micLevel], (unsigned)ESP.getFreeHeap());
     static uint32_t crashLogs = 0;
     if (crashLogs++ % 10 == 0) Serial.printf("[CRASH] saved dump: %s\n", crashInfo);
   }
