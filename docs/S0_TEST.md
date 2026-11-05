@@ -595,6 +595,17 @@ where an arm crosses the bars and the fighter.
 "Cardputer ADV KeySpeaker", version `S9-2`), burned from M5Burner onto the Cardputer ADV and
 checked: **confirmed ("確認しました").** The user did not list what was looked at beyond that, so only that is claimed here.
 
+**S9-3 (2026-11-05):** the monster, tried and settled in the web demo first, then ported to `FlightViz.h`. Every visit plays out
+differently: it may reach one to three times, may first make itself big (both arms up, or one up and one down), now and then only
+bluffs, and after a miss it waits a second or more and only sometimes does more (reach again, make itself big, or walk on). It
+comes in six colours (red, blue, green, purple, gold, ghost white; only three colours each, so nothing new is drawn), about half as
+often as before (24 to 56 s apart, the first after 10 s), and its arms and hands are drawn in the same 3 x 3 px dots as the body
+(the 1 px rim lines are gone). Built with `build.sh` (app image `eb82ee8b…`, 30 % of the flash, about 0.8 KB more than S9-2). The
+same `FlightViz.h` was run on the computer for 600 visits: 80 bluffs, 80 visits with no reach, 421 with one, 85 with two and 14 with
+three; the pause before a second reach was never under 1.0 s; the six colours came about as often as set. Frames were viewed.
+`KeySpeaker_S9-3_MERGED.bin` was made as for S9-2. **Not tried on the device yet**, so nothing is claimed about the drawing time,
+the memory left, flicker, or how it looks on the small screen.
+
 Design 5.2 (plan A: Media Jog's BLE identity and GATT table) and 5.3. Over USB nothing changes. Without USB (on the
 battery, or on a charger only) the Cardputer advertises as "KeySpeaker" after 3 seconds; the keyboard screen shows
 `BLE wait` in yellow, then `BLE` in green once a computer is connected and ready.
