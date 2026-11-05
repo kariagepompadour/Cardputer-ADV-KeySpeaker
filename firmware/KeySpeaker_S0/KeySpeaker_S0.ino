@@ -438,6 +438,14 @@ static void onSpkData(void* data, uint16_t len) {
 static constexpr float MIC_GAIN[] = {0.5f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f};  // software gain on top of M5.Mic's own
 static constexpr int MIC_GAINS = sizeof MIC_GAIN / sizeof MIC_GAIN[0];
 static std::atomic<int> micLevel{2};
+// (S10-2) Diagnosis: the microphone showed no signal (peak stuck at 64 = one count of noise). Fn+L steps through ways to
+// set M5.Mic up, until one shows a real signal in the log (raw = before the software gain).
+struct MicVariant { uint32_t rate; uint8_t os; bool left; };
+static constexpr MicVariant MIC_VARIANTS[] = {{48000, 1, false}, {48000, 1, true}, {16000, 2, false}, {16000, 2, true},
+                                              {48000, 2, false}, {48000, 2, true}};
+static constexpr int MIC_NVAR = sizeof MIC_VARIANTS / sizeof MIC_VARIANTS[0];
+static std::atomic<int> micVar{0};
+static std::atomic<int16_t> micRawMax{0};
 static std::atomic<bool> micRun{false};
 static TaskHandle_t micTaskH = nullptr;
 static std::atomic<uint32_t> micChunks{0};
@@ -450,6 +458,8 @@ static void micProcess(const int16_t* in, size_t n) {
   int16_t peak = 0;
   uint32_t pos = vizPcmPos.load(std::memory_order_relaxed);
   for (size_t i = 0; i < n; i++) {
+    int16_t ra = in[i] < 0 ? (int16_t)(in[i] == INT16_MIN ? INT16_MAX : -in[i]) : in[i];
+    if (ra > micRawMax) micRawMax = ra;
     float v = in[i] * g;
     int16_t m = v > 32767.0f ? 32767 : v < -32768.0f ? -32768 : (int16_t)v;
     int16_t a = m < 0 ? (int16_t)(m == INT16_MIN ? INT16_MAX : -m) : m;
@@ -480,7 +490,7 @@ static void micTask(void*) {
   memset(buf, 0, sizeof buf);
   int idx = 0;
   while (micRun) {
-    if (!M5.Mic.record(buf[idx], CHUNK, RATE)) {
+    if (!M5.Mic.record(buf[idx], CHUNK, MIC_VARIANTS[micVar].rate)) {
       vTaskDelay(1);
       continue;
     }
@@ -1067,9 +1077,10 @@ static bool setMic(bool on) {
     xStreamBufferReset(ring);
     M5.Speaker.end();
     auto mc = M5.Mic.config();
-    mc.sample_rate = RATE;
-    mc.over_sampling = 1;
+    mc.sample_rate = MIC_VARIANTS[micVar].rate;
+    mc.over_sampling = MIC_VARIANTS[micVar].os;
     mc.stereo = false;
+    mc.left_channel = MIC_VARIANTS[micVar].left;
     M5.Mic.config(mc);
     if (!M5.Mic.begin()) {
       Serial.println("[MIC] Mic.begin failed, back to USB");
@@ -1089,6 +1100,8 @@ static bool setMic(bool on) {
     micOn = false;
   }
   prefs.putBool("mic", on);
+  Serial.printf("[MIC] variant %d: %lu Hz os%d %s\n", micVar.load(), (unsigned long)MIC_VARIANTS[micVar].rate, MIC_VARIANTS[micVar].os,
+                MIC_VARIANTS[micVar].left ? "left" : "right");
   Serial.printf("[MIC] input: %s\n", on ? "microphone (speaker off)" : "USB audio");
   return true;
 }
@@ -1139,6 +1152,13 @@ static void keyService() {
         acted = true;
       } else if (keysMode && (c == '[' || c == ']')) {
         inputKana = c == ']';
+      } else if (c == 'l') {  // (S10-2) next way to set the microphone up
+        if (micOn) {
+          setMic(false);
+          micVar = (micVar + 1) % MIC_NVAR;
+          setMic(true);
+        }
+        acted = true;
       } else if (c == 'i') {  // (S10-1) input: USB audio / microphone
         setMic(!micOn);
         keysRedraw = true;
@@ -1717,7 +1737,7 @@ void loop() {
                   (unsigned long)diagPrevRx, (unsigned long)diagPrevLoop, (unsigned long)diagPrevUptimeS, (unsigned long)diagOns,
                   (unsigned long)diagOffs, (unsigned long)diagSuspends, (unsigned long)diagPulses,
                   (unsigned long)isoKeptCount.load(), (unsigned long)isoPassedCount.load());
-    if (micOn) Serial.printf("[MIC] chunks=%lu peak=%d x%.1f heap=%u\n", (unsigned long)micChunks.exchange(0), (int)micPeakLog.exchange(0), MIC_GAIN[micLevel], (unsigned)ESP.getFreeHeap());
+    if (micOn) Serial.printf("[MIC] chunks=%lu peak=%d raw=%d var=%d x%.1f heap=%u\n", (unsigned long)micChunks.exchange(0), (int)micPeakLog.exchange(0), (int)micRawMax.exchange(0), micVar.load(), MIC_GAIN[micLevel], (unsigned)ESP.getFreeHeap());
     static uint32_t crashLogs = 0;
     if (crashLogs++ % 10 == 0) Serial.printf("[CRASH] saved dump: %s\n", crashInfo);
   }
