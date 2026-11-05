@@ -1101,6 +1101,13 @@ static bool setMic(bool on) {
                   M5.In_I2C.readRegister8(0x18, 0x14, 100000), M5.In_I2C.readRegister8(0x18, 0x17, 100000),
                   M5.In_I2C.readRegister8(0x18, 0x09, 100000), M5.In_I2C.readRegister8(0x18, 0x0A, 100000),
                   M5.In_I2C.readRegister8(0x18, 0x01, 100000), M5.In_I2C.readRegister8(0x18, 0x00, 100000));
+    Serial.printf("[MIC] codec regs 16=%02X 15=%02X 1B=%02X 1C=%02X 44=%02X 03=%02X 05=%02X 06=%02X 07=%02X 08=%02X FD=%02X FE=%02X\n",
+                  M5.In_I2C.readRegister8(0x18, 0x16, 100000), M5.In_I2C.readRegister8(0x18, 0x15, 100000),
+                  M5.In_I2C.readRegister8(0x18, 0x1B, 100000), M5.In_I2C.readRegister8(0x18, 0x1C, 100000),
+                  M5.In_I2C.readRegister8(0x18, 0x44, 100000), M5.In_I2C.readRegister8(0x18, 0x03, 100000),
+                  M5.In_I2C.readRegister8(0x18, 0x05, 100000), M5.In_I2C.readRegister8(0x18, 0x06, 100000),
+                  M5.In_I2C.readRegister8(0x18, 0x07, 100000), M5.In_I2C.readRegister8(0x18, 0x08, 100000),
+                  M5.In_I2C.readRegister8(0x18, 0xFD, 100000), M5.In_I2C.readRegister8(0x18, 0xFE, 100000));
     micRun = true;
     xTaskCreatePinnedToCore(micTask, "mic", 4096, nullptr, 3, &micTaskH, PRO_CPU_NUM);
   } else {
@@ -1164,6 +1171,23 @@ static void keyService() {
         acted = true;
       } else if (keysMode && (c == '[' || c == ']')) {
         inputKana = c == ']';
+      } else if (c == 'g') {  // (S10-4) codec input gain, step 0..7: analog PGA (0x14) and digital scale (0x16)
+        if (micOn) {
+          static int gstep = 0;
+          gstep = (gstep + 1) % 8;
+          M5.In_I2C.writeRegister8(0x18, 0x14, gstep ? 0x1A : 0x10, 100000);  // 0x1A: PGA 0xA (the maximum), as in Espressif's driver
+          M5.In_I2C.writeRegister8(0x18, 0x16, gstep, 100000);
+          Serial.printf("[MIC] codec gain step %d: 14=%02X 16=%02X\n", gstep, gstep ? 0x1A : 0x10, gstep);
+        }
+        acted = true;
+      } else if (c == 'h') {  // (S10-4) toggle codec register 0x44 between 0x00 and 0x08 (Espressif's driver writes 0x08)
+        if (micOn) {
+          static bool h44 = false;
+          h44 = !h44;
+          M5.In_I2C.writeRegister8(0x18, 0x44, h44 ? 0x08 : 0x00, 100000);
+          Serial.printf("[MIC] codec 44=%02X\n", h44 ? 0x08 : 0x00);
+        }
+        acted = true;
       } else if (c == 'l') {  // (S10-2) next way to set the microphone up
         if (micOn) {
           setMic(false);
