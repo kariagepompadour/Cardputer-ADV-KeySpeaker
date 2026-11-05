@@ -610,7 +610,11 @@ called it "New Challenger Arrival" and said there is **no flicker**. The USB log
 5 minutes, `s9-3.log`) was read: `draw_max` **15.1 to 20.2 ms** (median 16.4 ms, 95th percentile 19.4 ms), well under the 33 ms of a
 frame; `heap` **107124 bytes, the same on every line** (no sign of a leak); `under`, `over` and `drop` stayed **0**. The log does not say
 when the monster was on screen, so the higher values (18 to 20 ms, from about the 10:43:32 line on) are probably but not surely it; no
-S9-1 or S9-2 log of the same kind is kept to compare with. Still not tried: the MERGED image through M5Burner (not uploaded there yet).
+S9-1 or S9-2 log of the same kind is kept to compare with. The MERGED image through M5Burner was tried next (below).
+
+**S9-3 from M5Burner (2026-11-05), by the user:** `KeySpeaker_S9-3_MERGED.bin` was uploaded to M5Burner (CARDPUTER, "Cardputer ADV
+KeySpeaker", version `S9-3`) and burned onto the Cardputer ADV with Share / Burn: **it works well ("動作良好").** The user did not list
+what was looked at beyond that, so only that is claimed here.
 
 Design 5.2 (plan A: Media Jog's BLE identity and GATT table) and 5.3. Over USB nothing changes. Without USB (on the
 battery, or on a charger only) the Cardputer advertises as "KeySpeaker" after 3 seconds; the keyboard screen shows
