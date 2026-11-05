@@ -606,8 +606,11 @@ three; the pause before a second reach was never under 1.0 s; the six colours ca
 `KeySpeaker_S9-3_MERGED.bin` was made as for S9-2. Up to here it was only built and run on the computer; the device check follows.
 
 **S9-3 on the device (2026-11-05), by the user:** the S9-3 `.ino.bin` was tried on the Cardputer ADV and is **OK ("OKです")**; the user
-called it "New Challenger Arrival". Not reported, so not claimed: the drawing time (`draw_max`), the memory left, any flicker where
-an arm crosses the bars and the fighter, and the MERGED image through M5Burner (not uploaded there yet).
+called it "New Challenger Arrival" and said there is **no flicker**. The USB log of the flight screen (`s0log.py`, 308 lines, about
+5 minutes, `s9-3.log`) was read: `draw_max` **15.1 to 20.2 ms** (median 16.4 ms, 95th percentile 19.4 ms), well under the 33 ms of a
+frame; `heap` **107124 bytes, the same on every line** (no sign of a leak); `under`, `over` and `drop` stayed **0**. The log does not say
+when the monster was on screen, so the higher values (18 to 20 ms, from about the 10:43:32 line on) are probably but not surely it; no
+S9-1 or S9-2 log of the same kind is kept to compare with. Still not tried: the MERGED image through M5Burner (not uploaded there yet).
 
 Design 5.2 (plan A: Media Jog's BLE identity and GATT table) and 5.3. Over USB nothing changes. Without USB (on the
 battery, or on a charger only) the Cardputer advertises as "KeySpeaker" after 3 seconds; the keyboard screen shows
