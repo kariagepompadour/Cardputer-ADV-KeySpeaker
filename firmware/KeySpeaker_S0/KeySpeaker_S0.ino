@@ -1089,6 +1089,18 @@ static bool setMic(bool on) {
       micOn = false;
       return false;
     }
+    // (S10-3) M5Unified's StopWatch code says the ES8311 arms its capture path only through a 0x0D write made while the I2S
+    // clock is already running (a write before the clock is absorbed silently), and that the analog stage then warms up
+    // for about a second. The ADV's callback writes 0x0D only before the clock, so write it again now (a guess to try).
+    for (int i = 0; i < 3; i++) {
+      delay(30);
+      M5.In_I2C.writeRegister8(0x18, 0x0D, 0x01, 100000);
+    }
+    Serial.printf("[MIC] codec regs 0D=%02X 0E=%02X 14=%02X 17=%02X 09=%02X 0A=%02X 01=%02X 00=%02X\n",
+                  M5.In_I2C.readRegister8(0x18, 0x0D, 100000), M5.In_I2C.readRegister8(0x18, 0x0E, 100000),
+                  M5.In_I2C.readRegister8(0x18, 0x14, 100000), M5.In_I2C.readRegister8(0x18, 0x17, 100000),
+                  M5.In_I2C.readRegister8(0x18, 0x09, 100000), M5.In_I2C.readRegister8(0x18, 0x0A, 100000),
+                  M5.In_I2C.readRegister8(0x18, 0x01, 100000), M5.In_I2C.readRegister8(0x18, 0x00, 100000));
     micRun = true;
     xTaskCreatePinnedToCore(micTask, "mic", 4096, nullptr, 3, &micTaskH, PRO_CPU_NUM);
   } else {
