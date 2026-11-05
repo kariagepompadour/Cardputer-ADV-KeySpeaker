@@ -603,8 +603,11 @@ often as before (24 to 56 s apart, the first after 10 s), and its arms and hands
 (the 1 px rim lines are gone). Built with `build.sh` (app image `eb82ee8b…`, 30 % of the flash, about 0.8 KB more than S9-2). The
 same `FlightViz.h` was run on the computer for 600 visits: 80 bluffs, 80 visits with no reach, 421 with one, 85 with two and 14 with
 three; the pause before a second reach was never under 1.0 s; the six colours came about as often as set. Frames were viewed.
-`KeySpeaker_S9-3_MERGED.bin` was made as for S9-2. **Not tried on the device yet**, so nothing is claimed about the drawing time,
-the memory left, flicker, or how it looks on the small screen.
+`KeySpeaker_S9-3_MERGED.bin` was made as for S9-2. Up to here it was only built and run on the computer; the device check follows.
+
+**S9-3 on the device (2026-11-05), by the user:** the S9-3 `.ino.bin` was tried on the Cardputer ADV and is **OK ("OKです")**; the user
+called it "New Challenger Arrival". Not reported, so not claimed: the drawing time (`draw_max`), the memory left, any flicker where
+an arm crosses the bars and the fighter, and the MERGED image through M5Burner (not uploaded there yet).
 
 Design 5.2 (plan A: Media Jog's BLE identity and GATT table) and 5.3. Over USB nothing changes. Without USB (on the
 battery, or on a charger only) the Cardputer advertises as "KeySpeaker" after 3 seconds; the keyboard screen shows
