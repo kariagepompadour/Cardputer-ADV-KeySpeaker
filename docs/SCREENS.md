@@ -23,8 +23,8 @@ made during development, so small details can differ from the current build; the
 ## Modes
 
 `Fn+M` cycles **measure mode → flight mode → keyboard mode**, the names the help screen uses; the last one is
-remembered. Without USB, only the keyboard screen is
-shown and `Fn+M` does nothing.
+remembered. Without USB, the keyboard screen is shown first, and `Fn+M` then moves to the others (S10-7); with the
+microphone as the input (`Fn+I`) they are there from the start.
 
 ## Start screen and the resting emblem
 
@@ -120,7 +120,10 @@ Quiet on purpose: flight mode is busy, so this one is calm. Nothing flashes when
 
 **Right side (9 px between lines)**
 
-- `Fn+M mode` at the top right, since it works in every mode, shown only over USB (the user's idea).
+- `Fn+M mode` at the top right, since it works in every mode (the user's idea; S10-7: also without USB), and `Fn+I USB/MIC`
+  under it (S10-8).
+- While the microphone is the input, a green `MIC` in the bottom left corner, just above the connection, where the round
+  Earth leaves room (S10-9). The green `USB` below it only says the cable is connected.
 - The cheat sheet of the keyboard mode's own keys: arrows, PgUp/End, Esc, F1-F12, Delete, `alt` / `opt` with
   their role for the chosen OS, copy/paste, and `G0+tilt Move`.
 - Next to Command and Option, 7 x 7 px icons: ⌘ and ⌥ on a Mac, four window panes next to Win on Windows (not the

@@ -73,13 +73,19 @@ Pictures of every screen: [`docs/SCREENS.md`](docs/SCREENS.md).
 
 *Flight mode on the device, 3 seconds (recorded on an earlier build, which still showed the status line at the top).*
 
-Without USB (over Bluetooth LE), only keyboard mode is shown.
+Without USB (over Bluetooth LE), the keyboard screen is shown first; `Fn+M` then moves to the other screens.
+
+**Microphone input (`Fn+I`):** the built-in microphone listens to the sound around you and moves the screen (the fighter, the
+terrain, the equalizer). Nothing is played, so the speaker is silent. It works without USB, and `-` / `=` set the sensitivity
+(the default is usually enough). While it is on, a green `MIC` shows at the bottom left of the keyboard screen. `Fn+I` again
+returns to the USB sound. The green `USB` there only says the cable is connected.
 
 In every mode:
 
 | Key | Does |
 | --- | --- |
-| `Fn+M` | Next mode (over USB) |
+| `Fn+M` | Next mode (works without USB too) |
+| `Fn+I` | Input: USB sound ↔ the built-in microphone (see below) |
 | `Fn+O` | Mac ↔ Windows profile (remembered) |
 
 Speaker and playback keys (measure mode and flight mode):
@@ -89,7 +95,7 @@ Speaker and playback keys (measure mode and flight mode):
 | `[` / `]` / `\` | Volume down / up / mute on the computer |
 | `Space` | Play / pause |
 | `,` / `/` | Previous / next track |
-| `-` / `=` | Boost down / up |
+| `-` / `=` | Boost down / up (microphone input: sensitivity down / up) |
 | `b` | Bass cut on / off |
 | `r` | Reset the counters |
 | `v` | measure mode ↔ flight mode |
