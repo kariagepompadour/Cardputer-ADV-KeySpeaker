@@ -198,6 +198,8 @@ While AUX is selected, USB audio is dropped and only AUX sound enters the ring.
 
 ## 10. Not confirmed
 
+✅ Confirmed 2026-11-07: I²S reception from the PCM1808 board on the Pico 2 H. On a breadboard, wired directly with no resistors, on USB power, with `firmware/aux_pico2_check/aux_pico2_check.uf2`: `n=96000 mis=0 ovf=0 fft/s=25`.
+
 1. ⛔ Whether Grove can carry sound continuously at 2,000,000 bps, including the effect of G1's TVS and pull-up.
 2. ⛔ Sound quality. Karipom Ear only analysed sound and nobody listened to it. Listen for Pico noise.
 3. ⛔ Grove 5 V on battery.
