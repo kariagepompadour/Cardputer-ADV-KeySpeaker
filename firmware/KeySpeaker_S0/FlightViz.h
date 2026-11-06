@@ -230,6 +230,20 @@ struct Star {
   bool near = false;        // near stars are 2 x 2 px and move faster
 };
 
+// Searchlights (S11-2): a city on alert. They stand on the ground, each with a small base, and flow from right to left with the terrain,
+// sweeping the sky with a slim beam that widens and fades toward the top. Added to the light already there; in front of the monsters'
+// bodies and the terrain, behind the equalizer. A beam stops at the monster's centre line and on the fighter. Only while music plays
+// (the ones already out carry on). Designed in the web demo first.
+constexpr int MAX_LIGHTS = 3;
+constexpr uint32_t LIGHT_MS_MIN = 10000, LIGHT_MS_MAX = 35000;  // between two new ones
+constexpr uint32_t LIGHT_FIRST_MS = 6000;
+constexpr int LIGHT_LEN = 150;          // px
+struct Light {
+  bool on = false;
+  float x = 0;                          // the base's middle, px
+  float base = 0, amp = 0, w = 0, ph = 0, a = 0;  // the beam's angle from straight up (rad): base + amp * sin(t * w + ph), now a
+};
+
 struct Kong {
   uint8_t ph = K_IDLE;
   float t = 0, x = W;        // time in this phase; the left edge of the body
@@ -288,6 +302,8 @@ struct State {
   uint16_t eqCol[2][EQ_BANDS];  // equalizer bar colors, bass to treble: aqua, KariPom
   uint8_t pattern = 0;       // 0 terrain alone, 1 aqua equalizer, 2 KariPom equalizer
   uint8_t next = 0;          // the pattern a sinking equalizer gives way to
+  Light lt[MAX_LIGHTS];
+  uint32_t nextLightMs = 0;
   Kong k;
   int8_t kongForce = -1;     // for previews on a computer: 0 only the ape, 1 only the squid, -1 by lot
   float evadeCur = 0;        // how far the fighter has slipped away from the monster's hand
@@ -368,6 +384,8 @@ static void init(State& s, uint32_t nowMs) {
   for (int j = 0; j < EQ_BANDS; j++) s.eqH[j] = s.eqPeak[j] = 0, s.eqHold[j] = 0;
   s.k = Kong();
   s.k.nextMs = nowMs + KONG_FIRST_MS;
+  for (auto& l : s.lt) l = Light();
+  s.nextLightMs = nowMs + LIGHT_FIRST_MS;
   s.evadeCur = 0;
   for (auto& st : s.star) placeStar(s, st, (float)(nextRandom(s) % W));
   s.ready = true;
@@ -776,6 +794,30 @@ static float updateKong(State& s, uint32_t nowMs, float dt, float shipCx, float 
   return evade;
 }
 
+// Moves the searchlights and brings in a new one now and then (only while music plays).
+static void updateLights(State& s, uint32_t nowMs, float dt) {
+  int n = 0;
+  for (auto& l : s.lt) {
+    if (!l.on) continue;
+    l.x -= SCROLL_PX_S * dt;
+    l.a = l.base + l.amp * sinf(nowMs * 0.001f * l.w + l.ph);
+    if (l.x <= -LIGHT_LEN) l.on = false;
+    else n++;
+  }
+  if (s.prevDb > DB_SILENT && n < MAX_LIGHTS && (int32_t)(nowMs - s.nextLightMs) >= 0) {
+    const float d = (float)M_PI / 180.0f;
+    for (auto& l : s.lt) {
+      if (l.on) continue;
+      l.on = true, l.x = (float)(W + 24);
+      l.base = ((int)(nextRandom(s) % 21) - 10) * d, l.amp = (20 + nextRandom(s) % 22) * d;
+      l.w = 0.45f + (nextRandom(s) % 40) / 100.0f, l.ph = (nextRandom(s) % 628) / 100.0f;
+      l.a = l.base;
+      break;
+    }
+    s.nextLightMs = nowMs + LIGHT_MS_MIN + nextRandom(s) % (LIGHT_MS_MAX - LIGHT_MS_MIN);
+  }
+}
+
 // Moves the fighter, laser shots, targets, bombs and bursts to nowMs.
 static void update(State& s, uint32_t nowMs) {
   float dt = (nowMs - s.lastFrameMs) * 0.001f;
@@ -833,6 +875,7 @@ static void update(State& s, uint32_t nowMs) {
   if (!threat) s.dodging = false;
   if (target < TOP + 4) target = TOP + 4;
   s.shipY += (target - s.shipY) * (1.0f - expf(-dt / ease));
+  updateLights(s, nowMs, dt);
   float evadeTgt = updateKong(s, nowMs, dt, sx + SHIP_W / 2.0f, s.shipY + bobY(nowMs) + SHIP_H / 2.0f);
   s.evadeCur += (evadeTgt - s.evadeCur) * (1.0f - expf(-dt / (evadeTgt != 0 ? 0.07f : 0.5f)));
   int sy = (int)lrintf(s.shipY + bobY(nowMs) + s.evadeCur);
@@ -1171,6 +1214,69 @@ static void drawSquid(const State& s, uint16_t* fb, uint32_t nowMs, bool front) 
   }
 }
 
+// A 3 x 3 px dot whose light is added to what is behind it (the stars show through). r, g, b: how much to add, 0 .. 255.
+static void addDot(uint16_t* fb, int x, int y, int r, int g, int b) {
+  int ar = r * 31 / 255, ag = g * 63 / 255, ab = b * 31 / 255;
+  for (int dy = 0; dy < DOT; dy++)
+    for (int dx = 0; dx < DOT; dx++) {
+      int xx = x + dx, yy = y + dy;
+      if ((unsigned)xx >= (unsigned)W || (unsigned)yy >= (unsigned)H) continue;
+      uint16_t c = swap(fb[yy * W + xx]);
+      int cr = ((c >> 11) & 31) + ar, cg = ((c >> 5) & 63) + ag, cb = (c & 31) + ab;
+      if (cr > 31) cr = 31;
+      if (cg > 63) cg = 63;
+      if (cb > 31) cb = 31;
+      fb[yy * W + xx] = swap((uint16_t)((cr << 11) | (cg << 5) | cb));
+    }
+}
+// Is there a part of the monster at the screen point x, y? The ape's silhouette, or the squid's head (its tentacles let light through).
+static bool monsterAt(const Kong& k, float x, float y) {
+  if (k.ph == K_IDLE) return false;
+  int bx = (int)lrintf(k.x), by = k.kind == 1 ? squidTop(k) : H - KH;
+  int c = (int)floorf((x - bx) / DOT), r = (int)floorf((y - by) / DOT);
+  if (c < 0 || c >= KONG_W || r < 0) return false;
+  if (k.kind == 1) {
+    if (r >= 15) return false;
+    int w = SQ_WID[r];
+    if (!w) return false;
+    int m = (KONG_W - w) / 2;
+    return c >= m && c < m + w;
+  }
+  return kongSeg(r, c) >= 0;
+}
+// The beams, in front of the monsters' bodies and the terrain (the monster's arms and the equalizer are drawn over them).
+static void drawSearchlights(const State& s, uint16_t* fb, uint32_t nowMs) {
+  const Kong& k = s.k;
+  float midX = (float)((int)lrintf(k.x) + KONG_W * DOT / 2);  // the monster's centre line
+  int fx = shipX(nowMs) + (int)lrintf(s.lunge), fy = (int)lrintf(s.shipY + bobY(nowMs) + s.evadeCur);  // where the fighter is drawn
+  for (const auto& l : s.lt) {
+    if (!l.on) continue;
+    float sn = sinf(l.a), cs = cosf(l.a);
+    int side = l.x < midX ? -1 : 1;  // which side of the monster the light stands on
+    for (int t = 0; t < LIGHT_LEN; t += DOT) {
+      float fade = 1.0f - (float)t / LIGHT_LEN, cx = l.x + sn * t, y = (float)(H - 1) - cs * t;
+      int hw = 1 + t / 42;  // the beam widens: dots either side of its middle
+      if (monsterAt(k, cx, y) && (cx - midX) * side <= 0) break;  // it runs on over the monster up to its centre line, and stops there
+      if (cx >= fx && cx < fx + SHIP_W && y >= fy && y < fy + SHIP_H) break;  // and on the fighter
+      float f = powf(fade, 0.6f) * 0.95f;
+      for (int j = -hw; j <= hw; j++) {
+        float kf = f * (abs(j) == hw ? 0.5f : 1.0f);
+        addDot(fb, DOT * roundi((cx + j * DOT) / DOT), DOT * roundi(y / DOT), (int)lrintf(150 * kf), (int)lrintf(190 * kf), (int)lrintf(255 * kf));
+      }
+    }
+  }
+}
+// The searchlights' bases: a 3 x 3 dot square of light grey with a blue window in the middle, where each beam starts (always seen).
+static void drawLightBases(const State& s, uint16_t* fb) {
+  static const uint16_t GREY = swap(rgb(206, 208, 214)), SHADE = swap(rgb(168, 170, 178)), WIN = swap(rgb(70, 140, 255));
+  for (const auto& l : s.lt) {
+    if (!l.on) continue;
+    int gx = (int)lrintf(l.x) - 4, gy = H - 3 * DOT;
+    for (int j = 0; j < 3; j++)
+      for (int i = 0; i < 3; i++) dot(fb, gx + i * DOT, gy + j * DOT, (i == 1 && j == 1) ? WIN : (j == 2 || i == 2) ? SHADE : GREY);
+  }
+}
+
 // The monster's body, behind the terrain: a flat dark silhouette with a band of light along each part's left edge (wide on the
 // shoulders and chest, thin on the waist) and two glowing slanted eyes in the small head, in this visit's colours (KPAL).
 // Everything is drawn in the same 3 x 3 px dots as the other characters; the arms below follow the body's dot grid.
@@ -1343,6 +1449,7 @@ static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
       for (int k = 0; k < h; k++) fb[(H - 1 - k) * W + x] = s.lit[k];  // the sky above stays black
     }
   }
+  drawSearchlights(s, fb, nowMs);  // in front of the terrain and the monster's body, behind the equalizer
   if (s.eq) {  // the equalizer in front: its own gap rows black, so it reads as LEDs over the terrain
     static const uint16_t PEAK = swap(rgb(255, 255, 255));
     for (int j = 0; j < EQ_BANDS; j++) {
@@ -1438,6 +1545,7 @@ static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
   // Engine flame behind the hull (dot row 2), flickering between one and two dots.
   dot(fb, sx - DOT, sy + 2 * DOT, F2);
   if ((nowMs / 90) & 1) dot(fb, sx - 2 * DOT, sy + 2 * DOT, F1);
+  drawLightBases(s, fb);       // the searchlights' bases, on the ground
   drawKongArms(s, fb, nowMs);  // both arms: in front of the terrain, the equalizer and the fighter
 }
 

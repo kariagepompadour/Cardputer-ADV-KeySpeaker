@@ -1,1 +1,1 @@
-458b1a3fcf73843945f9495111ceee387cd0d19fd557ccb459d61a478a1433cc  KeySpeaker_S0.ino.bin
+2c694439abea3d030bb4afb4e225ebe815429995482cca72b4c5593ba2a2401f  KeySpeaker_S0.ino.bin

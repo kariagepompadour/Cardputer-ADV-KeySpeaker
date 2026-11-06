@@ -108,6 +108,13 @@
       a game's demo when left up (the user's call).
       Also left over and gone: the S5-5 / S5-6 diagnostics at the keyboard and mouse screens' bottom right, and "S0"
       in the data screen's title, now just "KeySpeaker" (the user noticed both).
+    - (S11-2) Searchlights on the game screen (FlightViz.h): a city on alert. Up to three stand on the ground, each with a small base (a
+      3 x 3 dot light grey square with a blue window), flow from right to left with the terrain and sweep the sky with a slim beam that
+      widens and fades toward the top, in a cool blue-white added to the stars' light. A new one comes every 10 to 35 s, only while
+      music plays (those already out carry on); on screen about 60 % of the time, two at once only now and then. The beams are drawn in
+      front of the monsters' bodies and the terrain and behind the equalizer; a beam stops at the monster's centre line (it runs on over
+      the body up to it) and on the fighter, with no lock-on and no bright spot. The squid's tentacles let light through. Designed with
+      the user in the web demo first (KeySpeaker-WEB-DEMO, feature/searchlights); not yet tried on the device.
     - (S11-1) A second big monster on the game screen (FlightViz.h), a Space Invaders squid, 23 x 30 dots like the ape: a pointed
       bell of a head with slanted eyes and a small grumpy mouth, over seven tentacles that hang side by side from a narrow base,
       flare out like a trumpet and lie along the ground. Each visit is the ape or the squid, by lot, half and half; the timing
@@ -181,7 +188,7 @@
 #define KS_BLE 1  // (S5-5) 0: build without BLE, to compare
 #include "BleHid.h"
 
-#define BUILD_TAG "S11-1"
+#define BUILD_TAG "S11-2"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
