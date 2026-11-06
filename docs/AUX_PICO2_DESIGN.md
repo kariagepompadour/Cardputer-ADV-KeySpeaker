@@ -74,7 +74,7 @@ Why the design moved to the Pico 2:
 | | Grove to jumper wire cable | 1 | |
 | | Jumper wires | About 15 | Male-male and male-female |
 | | 3.5 mm stereo cable | 1 | |
-| U3 | M5Stack Unit Encoder (U135) | 1 | Optional. The existing dial |
+| U3 | M5Stack Unit Encoder (U135) | 1 | Optional |
 | R3, R4 | Resistor 10 kΩ 1/4 W | 2 | Optional |
 | | Grove to jumper wire cable (dial) | 1 | Optional |
 
