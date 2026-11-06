@@ -172,7 +172,7 @@
 #define KS_BLE 1  // (S5-5) 0: build without BLE, to compare
 #include "BleHid.h"
 
-#define BUILD_TAG "S10-8"
+#define BUILD_TAG "S10-9"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -1475,6 +1475,10 @@ static void drawKeys() {
   const char* link = mounted ? "USB" : BleHid::ready() ? "BLE" : BleHid::on ? "BLE wait" : "NO USB";
   canvas.setTextColor(mounted || BleHid::ready() ? COL_OK : COL_WARN);
   canvas.drawString(link, x, 99);
+  if (micOn) {  // (S10-9) the microphone is the input (it moves the other screens): just above the connection, in the
+    canvas.setTextColor(COL_OK);  // bottom left corner, which the round Earth leaves empty. Three letters only: "MIC ON" would touch the disc.
+    canvas.drawString("MIC", x, 90);
+  }
   x += canvas.textWidth(link) + 6;
   canvas.setTextColor(COL_FG);
   canvas.drawString(osWin ? "Win" : "Mac", x, 99);
@@ -1519,10 +1523,6 @@ static void drawKeys() {
     canvas.drawString("let go of G0: keys", 110, 125);
   } else {
     drawHelp("Fn+M", "mode", sx, y, mx);  // (S10-7) works without USB too
-    if (micOn) {  // (S10-7) the microphone moves the other screens: a reminder here, since this screen does not react
-      canvas.setTextColor(COL_OK);
-      canvas.drawString("MIC ON", 198, y);
-    }
     y += 9;
     drawHelp("Fn+I", "USB/MIC", sx, y, mx);  // (S10-8) the input switch: it was only on the other screens' help
     y += 12;
