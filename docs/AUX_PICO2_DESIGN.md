@@ -81,7 +81,7 @@ Why the design moved to the Pico 2:
 ### Why these resistors
 
 - The three I²S lines are direct, as in the real Karipom Ear. The Pico only receives, so no two outputs meet. The 220 Ω in Karipom's documents is advice to readers and is not in the author's unit.
-- The two Grove lines get 330 Ω because the other end changes from a CoreS3 to a Cardputer. 🟡 A bit at 2,000,000 bps lasts 500 ns. Assuming 30 pF of wiring, the time constant is about 10 ns.
+- The two Grove lines get 330 Ω because the other end changes from a CoreS3 to a Cardputer. The AI first designed the circuit with 220 Ω, following the Karipom manual. The author had 330 Ω on hand, so it was changed to 330 Ω. 🟡 A bit at 2,000,000 bps lasts 500 ns. Assuming 30 pF of wiring, the time constant is about 10 ns.
 
 R3 and R4 match the pull-ups on the Cardputer's board. ✅ Today's dial works with G1 and G2 pulled to 3.3 V through 10 kΩ. The Pico side recreates that condition.
 
