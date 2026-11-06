@@ -151,11 +151,11 @@ Cardputer につなぐ前に、Pico と基板だけで確かめます。
 | レール | 本数 | 線 |
 |---|---|---|
 | ＋レール | 1本 | PCM1808 基板の VDD |
-| −レール | 3本 | Pico の GND（j3）、PCM1808 基板の GND 2か所 |
+| −レール | 3本 | Pico の GND（38番ピン、j3 の線）、PCM1808 基板の GND 2か所 |
 
 本数が違うときは、手順3と手順4に戻って配線を見直します。
 
-1. 赤いジャンパー線で、**j1（VBUS）と＋レールをつなぎます。**
+1. 赤いジャンパー線で、**j1（Pico の40番ピン VBUS とつながる穴）と＋レールをつなぎます。**
 2. Grove のケーブルは、まだつなぎません。
 3. Pico を USB でパソコンにつなぎます。
 4. Arduino IDE で、確認用のスケッチ `karipom_pico2.ino` を書き込みます。ボードは Raspberry Pi Pico 2 用（arduino-pico）、ライブラリは arduinoFFT が必要です。スケッチの場所：`https://github.com/kariagepompadour/KariPom/blob/master/pico2-pcm1808/karipom_pico2/karipom_pico2.ino`
@@ -189,7 +189,7 @@ Cardputer につなぐ前に、Pico と基板だけで確かめます。
 ### 手順8　Grove の線を挿す
 
 1. Cardputer の電源を切り、USB も抜きます。
-2. 赤いジャンパー線で、**j2（VSYS）と＋レールをつなぎます。**
+2. 赤いジャンパー線で、**j2（Pico の39番ピン VSYS とつながる穴）と＋レールをつなぎます。**
 3. 変換ケーブルを次のようにつなぎます。
 
 | ケーブルの線 | ブレッドボード |
