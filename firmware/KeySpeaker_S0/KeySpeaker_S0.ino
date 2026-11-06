@@ -108,6 +108,22 @@
       a game's demo when left up (the user's call).
       Also left over and gone: the S5-5 / S5-6 diagnostics at the keyboard and mouse screens' bottom right, and "S0"
       in the data screen's title, now just "KeySpeaker" (the user noticed both).
+    - (S11-2) Searchlights on the game screen (FlightViz.h): a city on alert. Up to three stand on the ground, each with a small base (a
+      3 x 3 dot light grey square with a blue window), flow from right to left with the terrain and sweep the sky with a slim beam that
+      widens and fades toward the top, in a cool blue-white added to the stars' light. A new one comes every 10 to 35 s, only while
+      music plays (those already out carry on); on screen about 60 % of the time, two at once only now and then. The beams are drawn in
+      front of the monsters' bodies and the terrain and behind the equalizer; a beam stops at the monster's centre line (it runs on over
+      the body up to it) and on the fighter, with no lock-on and no bright spot. The squid's tentacles let light through. Designed with
+      the user in the web demo first (KeySpeaker-WEB-DEMO, feature/searchlights); not yet tried on the device.
+    - (S11-1) A second big monster on the game screen (FlightViz.h), a Space Invaders squid, 23 x 30 dots like the ape: a pointed
+      bell of a head with slanted eyes and a small grumpy mouth, over seven tentacles that hang side by side from a narrow base,
+      flare out like a trumpet and lie along the ground. Each visit is the ape or the squid, by lot, half and half; the timing
+      is the same (24 to 56 s apart, only while music plays). The squid floats in with the terrain, rises a little while the
+      fighter is ahead of it and sinks back once it has passed. Before the fighter passes (6 visits in 10) and again after it
+      has passed (5 in 10) the two tentacles on the fighter's side stretch out for it (half of the reaches also the two on
+      the other side), up to about 100 px away, and the fighter slips away. Resting tentacles are drawn with the body behind
+      the terrain, stretching ones in front. Designed with the user in the web demo (KeySpeaker-WEB-DEMO, feature/tentacle-invader)
+      and run on a computer with the same FlightViz.h before building; not yet tried on the device.
     - (S9-1) A space monster on the game screen (FlightViz.h), the beast from the Space Invaders cabinet art, 69 x 90 px,
       feet on the bottom edge, only while music plays (after 3 s of sound; a gap of up to 2 s is not silence). It walks in
       from the right with the terrain, reaches for the fighter with a clawed hand, misses as the fighter slips away, draws
@@ -172,7 +188,7 @@
 #define KS_BLE 1  // (S5-5) 0: build without BLE, to compare
 #include "BleHid.h"
 
-#define BUILD_TAG "S10-9"
+#define BUILD_TAG "S11-2"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
