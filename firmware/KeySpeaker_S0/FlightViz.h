@@ -247,6 +247,11 @@ struct Kong {
   uint8_t threat = 0;        // the pose: 0 both arms up, 1 the near arm up and the far one down, 2 the other way round
   uint8_t nextAct = 0;       // after a miss: 0 walk on, 1 reach again, 2 make itself big (done when nextAt has passed)
   float nextAt = 0;
+  uint8_t kind = 0;          // which monster this visit: 0 the ape, 1 the squid (S11-1)
+  bool doPre = false, doPost = false, preDone = false, postDone = false;  // the squid: a reach before the fighter passes, and one after
+  uint8_t sc = 0, flip = 0;  // the squid's reach: 0 up its side (fighter above), 1 ahead, 2 behind; flip: 1 up its right side
+  uint8_t legs = 0;          // bit i: tentacle i is stretching out (7 tentacles)
+  float rise = 0;            // how far the squid has risen (0 .. 1): up while the fighter is ahead of it, down once it has passed
 };
 
 struct State {
@@ -284,6 +289,7 @@ struct State {
   uint8_t pattern = 0;       // 0 terrain alone, 1 aqua equalizer, 2 KariPom equalizer
   uint8_t next = 0;          // the pattern a sinking equalizer gives way to
   Kong k;
+  int8_t kongForce = -1;     // for previews on a computer: 0 only the ape, 1 only the squid, -1 by lot
   float evadeCur = 0;        // how far the fighter has slipped away from the monster's hand
   bool ready = false;
 };
@@ -605,6 +611,84 @@ static inline uint8_t pickKongPal(State& s) {
   return i;
 }
 
+
+// ---- The second big monster (S11-1): a squid from the Space Invaders cabinet art, 23 x 30 dots like the ape. A pointed bell of a head with
+// slanted eyes and a small grumpy mouth, over seven tentacles that hang side by side from a narrow base, flare out like a trumpet and lie
+// along the ground. It floats in with the terrain. Now and then, before the fighter passes and again after it has passed, the two tentacles
+// on the fighter's side stretch out for it (sometimes the two on the other side too) and the fighter slips away. Each visit is the ape or
+// the squid, by lot, half and half.
+constexpr int SQ_NECK_X = 11, SQ_NECK_Y = 15;       // where the tentacles leave the head, in dots from the body's top left
+constexpr float SQ_REACH_DOTS = 34.0f;              // it goes for the fighter when it is this close (dots) to the neck
+constexpr float SQ_RISE_PX = 6.0f;                  // two dots
+static const uint8_t SQ_WID[15] = {0, 0, 3, 5, 7, 9, 11, 13, 15, 17, 19, 19, 17, 13, 11};  // the head and its base: width of each row, centred
+static const float SQ_ROOT[7] = {-3, -2, -1, 0, 1, 2, 3};     // where each tentacle starts, in dots from the neck's middle
+static const float SQ_FLARE[7] = {15, 11, 7, 3, 7, 11, 15};   // how high (px) above the ground it starts to bend outward
+static const float SQ_ENDX[7] = {-14, -10, -6, 2, 6, 10, 14};  // and where it ends on the ground (dots from the root, sideways) ...
+static const float SQ_ENDY[7] = {-1, 2, -2, 2, -2, 2, -1};     // ... and (dots) toward or away from us, as if lying around it like rays
+static const uint8_t SQ_PAL_PERCENT[6] = {10, 10, 25, 10, 35, 10};  // yellow and green most often (sums to 100)
+// A tentacle that stretches: its first control point's offset from the neck (d1), its second one's from the tip (d2), and where the tip
+// lands relative to the fighter (o), all in dots. Four per scenario: the two on the fighter's side first, then the other two.
+struct SqReach { int8_t leg; float d1x, d1y, d2x, d2y, ox, oy; };
+static const SqReach SQ_SC[4][4] = {
+  {{0, -20, -2, -6, 4, -6, -3}, {1, -16, 2, -6, 5, -5, 3}, {6, 20, -2, 6, 4, 7, 2}, {5, 16, 2, 6, 5, 6, 8}},   // fighter above, on its left
+  {{0, -8, 5, 6, 0, -2, 0}, {1, -8, 9, 6, -2, -3, 3}, {6, 2, 12, 8, 2, -1, 6}, {5, 0, 14, 8, 4, -2, 9}},         // ahead (left)
+  {{6, 8, 5, -6, 0, 2, 0}, {5, 8, 9, -6, -2, 3, 3}, {0, -2, 12, -8, 2, 1, 6}, {1, 0, 14, -8, 4, 2, 9}},         // behind (right)
+  {{6, 20, -2, 6, 4, 6, -3}, {5, 16, 2, 6, 5, 5, 3}, {0, -20, -2, -6, 4, -7, 2}, {1, -16, 2, -6, 5, -6, 8}},   // fighter above, on its right
+};
+static inline uint8_t pickSquidPal(State& s) {
+  uint32_t r = nextRandom(s) % 100;
+  uint8_t i = 0;
+  while (i < 5 && r >= SQ_PAL_PERCENT[i]) r -= SQ_PAL_PERCENT[i++];
+  return i;
+}
+static inline int squidTop(const Kong& k) { return H - KH - 2 - (int)lrintf(SQ_RISE_PX * k.rise); }
+static inline void squidNeck(const Kong& k, float& nx, float& ny) { nx = (float)((int)lrintf(k.x) + SQ_NECK_X * DOT + 1); ny = (float)(squidTop(k) + SQ_NECK_Y * DOT); }
+
+static inline bool squidNear(const Kong& k, float dxd, float dyd) {
+  return sqrtf(dxd * dxd + dyd * dyd) <= SQ_REACH_DOTS && fabsf(dxd) <= SQ_REACH_DOTS && k.x < W - KW - 6;
+}
+static void squidStart(State& s, float shipCx, float shipCy, float nx, float ny) {
+  Kong& k = s.k;
+  k.ph = K_REACH, k.t = 0, k.tx = shipCx, k.ty = shipCy, k.tries++;
+  float dxd = (shipCx - nx) / DOT, dyd = (shipCy - ny) / DOT;
+  k.sc = (dyd < -13 && fabsf(dxd) <= 12) ? 0 : dxd < 0 ? 1 : 2;   // above it, ahead of it, or behind it
+  k.flip = fabsf(dxd) < 4 ? (nextRandom(s) % 2) : dxd < 0 ? 0 : 1;  // above it: up the side the fighter is on
+  bool aimLeft = k.sc == 1 || (k.sc == 0 && !k.flip);
+  uint8_t mine = aimLeft ? 0x03 : 0x60, other = aimLeft ? 0x60 : 0x03;  // the left pair is tentacles 0 and 1, the right pair 5 and 6
+  k.legs = (nextRandom(s) % 100 < 50) ? (mine | other) : mine;   // half of the reaches use both sides, half only the fighter's side
+}
+
+// Moves the squid. Returns how far (px) the fighter should slip away right now, as for the ape.
+static float updateSquid(State& s, uint32_t nowMs, float dt, float shipCx, float shipCy) {
+  Kong& k = s.k;
+  float evade = 0;
+  k.x -= SCROLL_PX_S * kongSpeed(k.ph) * dt;
+  float nx, ny;
+  squidNeck(k, nx, ny);
+  k.rise += ((shipCx < nx ? 1.0f : 0.0f) - k.rise) * (1.0f - expf(-dt));   // slowly up while the fighter is to its left, slowly down once it has passed
+  squidNeck(k, nx, ny);
+  float dxd = (shipCx - nx) / DOT, dyd = (shipCy - ny) / DOT;
+  if (k.ph == K_WALK || (k.ph == K_LEAVE && k.t >= 0.6f)) {  // (once the tentacles are back from a reach it may reach again)
+    if (squidNear(k, dxd, dyd)) {
+      if (dxd < 4 && k.doPre && !k.preDone) k.preDone = true, squidStart(s, shipCx, shipCy, nx, ny);        // the fighter is still ahead
+      else if (dxd >= 4 && k.doPost && !k.postDone) k.postDone = true, squidStart(s, shipCx, shipCy, nx, ny);  // the fighter has passed
+    }
+  } else if (k.ph == K_REACH) {
+    if (k.t >= K_REACH_S) k.ph = K_GRAB, k.t = 0;
+  } else if (k.ph == K_GRAB) {
+    evade = shipCy > 52 ? -K_EVADE_PX : K_EVADE_PX;  // the fighter slips away
+    if (k.t >= K_GRAB_S) k.ph = K_MISS, k.t = 0;
+  } else if (k.ph == K_MISS) {
+    evade = shipCy > 52 ? -K_EVADE_PX : K_EVADE_PX;
+    if (k.t >= K_MISS_S) k.ph = K_LEAVE, k.t = 0;  // the tentacles are drawn back
+  }
+  if (k.x < -KW - 4) {
+    k.ph = K_IDLE;
+    k.nextMs = nowMs + KONG_MS_MIN + nextRandom(s) % (KONG_MS_MAX - KONG_MS_MIN);
+  }
+  return evade;
+}
+
 // Moves the monster. Returns how far (px, up or down) the fighter should slip away right now: 0 except while the fist closes.
 // Every visit plays out differently (S9-3): how many times it may reach (1 to 3), whether it first makes itself big, now and then
 // it only bluffs, and after a miss it waits a second or more and only sometimes does something more.
@@ -629,9 +713,17 @@ static float updateKong(State& s, uint32_t nowMs, float dt, float shipCx, float 
       k.maxTries = r < 35 ? 1 : r < 75 ? 2 : 3;
       k.doThreat = nextRandom(s) % 100 < 55;
       k.noReach = nextRandom(s) % 100 < 12;
+      k.kind = s.kongForce >= 0 ? (uint8_t)s.kongForce : (uint8_t)(nextRandom(s) % 100 < 50 ? 1 : 0);  // this visit: the ape or the squid, half and half
+      if (k.kind == 1) {
+        k.doThreat = false, k.chase = false, k.noReach = false;
+        k.pal = pickSquidPal(s);
+        k.doPre = nextRandom(s) % 100 < 60, k.doPost = nextRandom(s) % 100 < 50, k.preDone = k.postDone = false;
+        k.sc = 0, k.flip = 0, k.legs = 0, k.rise = 0;
+      }
     }
     return 0;
   }
+  if (k.kind == 1) return updateSquid(s, nowMs, dt, shipCx, shipCy);
   k.x -= SCROLL_PX_S * kongSpeed(k.ph) * dt;
   float shx, shy, s2x, s2y;
   kongShoulder((int)lrintf(k.x), shx, shy);
@@ -985,12 +1077,107 @@ static inline void fillRect(uint16_t* fb, int x, int y, int w, int h, uint16_t c
     for (int xx = x; xx < x + w; xx++) px(fb, xx, yy, c);
 }
 
+// A colour between a and b (both byte-swapped RGB565, as in the frame buffer): t 0 is a, 1 is b.
+static inline uint16_t mix565(uint16_t a, uint16_t b, float t) {
+  a = swap(a), b = swap(b);
+  int ar = (a >> 11) & 31, ag = (a >> 5) & 63, ab = a & 31, br = (b >> 11) & 31, bg = (b >> 5) & 63, bb = b & 31;
+  int r = (int)lrintf(ar + (br - ar) * t), g = (int)lrintf(ag + (bg - ag) * t), bl = (int)lrintf(ab + (bb - ab) * t);
+  return swap((uint16_t)((r << 11) | (g << 5) | bl));
+}
+struct Pt { float x, y; };
+static inline Pt bez3(const Pt* p, float u) {  // a point on a cubic Bezier curve
+  float v = 1 - u, a = v * v * v, b = 3 * u * v * v, c = 3 * u * u * v, d = u * u * u;
+  return {a * p[0].x + b * p[1].x + c * p[2].x + d * p[3].x, a * p[0].y + b * p[1].y + c * p[2].y + d * p[3].y};
+}
+static inline int roundi(float v) { return (int)floorf(v + 0.5f); }
+
+// One tentacle along a curve, on the body's own 3 px dot grid (gx, gy). Resting ones are three dots thick where they hang side by side
+// (shadow in straight vertical lines, one in three columns) and two along the ground, ending in a one dot tip; stretched ones are four
+// dots thick, then three, then two. A lit edge, a half tone and the dark body colour, and a fleck of shadow here and there.
+static void drawSquidLeg(uint16_t* fb, const Pt* p, int gx, int gy, bool rest, const uint16_t* P) {
+  const uint16_t lit = P[0], dark = P[1], mid = mix565(lit, dark, 0.55f);
+  float len = 0;
+  for (int i = 0; i < 3; i++) len += sqrtf((p[i + 1].x - p[i].x) * (p[i + 1].x - p[i].x) + (p[i + 1].y - p[i].y) * (p[i + 1].y - p[i].y));
+  int steps = (int)ceilf(len / DOT * 1.6f);
+  if (steps < 8) steps = 8;
+  for (int i = 0; i <= steps; i++) {
+    float u = (float)i / steps;
+    Pt q = bez3(p, u);
+    int w = rest ? (u < 0.88f ? 3 : u < 0.96f ? 2 : 1) : (u < 0.3f ? 4 : u < 0.5f ? 3 : u < 0.8f ? 2 : 1);
+    Pt q1 = bez3(p, fminf(1.0f, u + 0.02f)), q0 = bez3(p, fmaxf(0.0f, u - 0.02f));
+    bool flat = fabsf(q1.x - q0.x) > fabsf(q1.y - q0.y);  // going sideways: the thickness is across, in y
+    int cx = gx + DOT * roundi((q.x - gx) / DOT), cy = gy + DOT * roundi((q.y - gy) / DOT);
+    for (int j = w - 1; j >= 0; j--) {
+      int o = (j - (w >> 1)) * DOT, ox = flat ? cx : cx + o, oy = flat ? cy + o : cy;
+      uint16_t col = j == 0 ? lit : (j == 1 && w > 2) ? mid : dark;
+      int cc = (ox - gx) / DOT, rr = (oy - gy) / DOT;
+      uint32_t h = ((uint32_t)(int32_t)cc * 73856093u) ^ ((uint32_t)(int32_t)rr * 19349663u);
+      if (rest && !flat) {
+        int m = ((cc - SQ_NECK_X) % 3 + 3) % 3;
+        col = m == 0 ? dark : m == 1 ? mid : lit;
+      } else if (h % 5 == 0 && col != dark) {
+        col = col == lit ? mid : dark;
+      }
+      dot(fb, ox, oy, col);
+    }
+  }
+}
+
+// The squid. back pass (front false): the body and the tentacles that rest, behind the terrain; front pass: the tentacles that stretch,
+// in front of everything. The body is a pointed bell of a head (widths in SQ_WID, a lit band two dots wide on its left edge), two
+// glowing slanted eyes (one dot above and two below on each side, like the ape's) and a small mouth, 5 dots with its corners turned down,
+// in the eyes' colour toned down. All in this visit's colours (KPAL).
+static void drawSquid(const State& s, uint16_t* fb, uint32_t nowMs, bool front) {
+  const Kong& k = s.k;
+  if (k.ph == K_IDLE) return;
+  const uint16_t* P = KPAL[k.pal < 6 ? k.pal : 0];
+  int bx = (int)lrintf(k.x), by = squidTop(k);
+  if (!front) {
+    const uint16_t mouth = mix565(P[2], P[1], 0.4f);
+    for (int r = 0; r < 15; r++) {
+      int w = SQ_WID[r];
+      if (!w) continue;
+      int m = (KONG_W - w) / 2;
+      for (int c = m; c < m + w; c++) {
+        bool eye = (r == 9 && (c == 7 || c == 15)) || (r == 10 && (c == 8 || c == 9 || c == 13 || c == 14));
+        bool mo = (r == 12 && c >= 9 && c <= 13) || (r == 13 && (c == 8 || c == 14));
+        dot(fb, bx + c * DOT, by + r * DOT, eye ? P[2] : mo ? mouth : (c - m < 2 ? P[0] : P[1]));
+      }
+    }
+  }
+  float nx = (float)(bx + SQ_NECK_X * DOT + 1), ny = (float)(by + SQ_NECK_Y * DOT);
+  bool reaching = k.ph == K_REACH || k.ph == K_GRAB || k.ph == K_MISS;
+  float w = k.ph == K_REACH ? ease3(k.t / K_REACH_S) : reaching ? 1.0f : k.ph == K_LEAVE ? 1.0f - ease3(k.t / K_RETRACT_S) : 0.0f;  // 0 at rest ... 1 stretched out
+  const SqReach* tab = SQ_SC[(k.sc == 0 && k.flip) ? 3 : k.sc];
+  float gy = (float)(H - 8);
+  for (int i = 0; i < 7; i++) {
+    bool moving = w > 0 && ((k.legs >> i) & 1);
+    if (moving != front) continue;  // resting tentacles are drawn with the body (behind), stretching ones in front
+    Pt R0 = {nx + SQ_ROOT[i] * DOT, ny};
+    // at rest: a packed bundle hanging down, flaring out like a trumpet (the outer ones start higher) and lying along the ground
+    Pt p[4] = {R0, {R0.x, gy - SQ_FLARE[i]}, {R0.x + SQ_ENDX[i] * 0.2f * DOT, gy}, {R0.x + SQ_ENDX[i] * DOT, gy + SQ_ENDY[i] * DOT}};
+    if (moving) {
+      const SqReach* sc = nullptr;
+      for (int j = 0; j < 4; j++)
+        if (tab[j].leg == i) sc = &tab[j];
+      if (sc) {
+        Pt q2 = {k.tx + sc->ox * DOT, k.ty + sc->oy * DOT};
+        float wob = sinf(nowMs * 0.009f + i) * 0.8f * DOT * w;
+        Pt r[4] = {R0, {nx + sc->d1x * DOT, ny + sc->d1y * DOT}, {q2.x + sc->d2x * DOT + wob, q2.y + sc->d2y * DOT}, q2};
+        for (int n = 0; n < 4; n++) p[n].x += (r[n].x - p[n].x) * w, p[n].y += (r[n].y - p[n].y) * w;
+      }
+    }
+    drawSquidLeg(fb, p, bx, by, !moving, P);
+  }
+}
+
 // The monster's body, behind the terrain: a flat dark silhouette with a band of light along each part's left edge (wide on the
 // shoulders and chest, thin on the waist) and two glowing slanted eyes in the small head, in this visit's colours (KPAL).
 // Everything is drawn in the same 3 x 3 px dots as the other characters; the arms below follow the body's dot grid.
 static void drawKongBody(const State& s, uint16_t* fb, uint32_t nowMs) {
   const Kong& k = s.k;
   if (k.ph == K_IDLE) return;
+  if (k.kind == 1) return drawSquid(s, fb, nowMs, false);  // the squid (S11-1)
   const uint16_t* P = KPAL[k.pal < 6 ? k.pal : 0];
   int bx = (int)lrintf(k.x), by = H - KH;
   bool walking = k.ph == K_WALK || k.ph == K_LEAVE;
@@ -1060,6 +1247,7 @@ static inline float kongMix(float a, float b, float u) { return a + (b - a) * u;
 static void drawKongArms(const State& s, uint16_t* fb, uint32_t nowMs) {
   const Kong& k = s.k;
   if (k.ph == K_IDLE) return;
+  if (k.kind == 1) return drawSquid(s, fb, nowMs, true);  // the squid's stretching tentacles
   const uint16_t* P = KPAL[k.pal < 6 ? k.pal : 0];
   int bx = (int)lrintf(k.x), by = H - KH;
   const float sy0 = (float)(by + 7 * DOT + 2);

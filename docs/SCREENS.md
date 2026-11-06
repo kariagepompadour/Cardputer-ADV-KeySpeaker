@@ -76,6 +76,9 @@ A screen saver to watch while music plays, not a game: no score, nothing to lose
   (black and red, lit from the left, glowing yellow eyes, 69 x 90 px), now and then walks in from the right behind the
   terrain and reaches for the fighter with a clawed hand drawn in front of everything. The fighter slips away, the hand
   closes on nothing, and the monster draws its arm back and walks off (S9-1; designed in the web demo first).
+  Half of the visits are a second monster instead (S11-1), a Space Invaders squid of the same size: a pointed head with slanted eyes and a
+  small grumpy mouth over seven tentacles that hang side by side and lie out along the ground. It floats in, and before the fighter passes
+  and again after it has passed it may stretch the two tentacles on the fighter's side (now and then the other two as well) toward it.
 - Now and then a graphic equalizer like an old hi-fi's rises in front of the terrain: 30 bands with falling peak
   dots, in the aqua of a fluorescent display or in KariPom's colors. The patterns take turns every minute.
 - Nothing else on it while all is well: a line at the top shows only when something is wrong (`not connected` in
