@@ -172,7 +172,7 @@
 #define KS_BLE 1  // (S5-5) 0: build without BLE, to compare
 #include "BleHid.h"
 
-#define BUILD_TAG "S10-1"
+#define BUILD_TAG "S10-6"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -1638,6 +1638,9 @@ void setup() {
   cfg.internal_spk = true;
   cfg.internal_mic = true;  // (S10-1) set up, not started: M5.Mic runs only in the microphone input
   cfg.serial_baudrate = 0;  // Serial is USB CDC, already started
+  // (S10-6) Init the display BEFORE M5Cardputer.begin(): otherwise M5Unified drives GPIO46
+  // (the internal mic's data-in) as an output-high "power hold" and the mic reads a flat line.
+  M5.Display.init();
   M5Cardputer.begin(cfg, true);
   M5Cardputer.Display.setRotation(1);
   M5Cardputer.Display.setBrightness(128);
