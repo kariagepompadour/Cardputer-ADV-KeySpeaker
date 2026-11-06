@@ -172,7 +172,7 @@
 #define KS_BLE 1  // (S5-5) 0: build without BLE, to compare
 #include "BleHid.h"
 
-#define BUILD_TAG "S9-3"
+#define BUILD_TAG "S10-9"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -215,6 +215,7 @@ USBHIDConsumerControl media;
 USBHIDMouse mouse;  // (S2.5-1) the air mouse, after the keyboard
 
 static StreamBufferHandle_t ring = nullptr;   // writer: uacReceiveTask (onSpkData), reader: playTask
+static std::atomic<bool> micOn{false};         // (S10-1) the built-in microphone is the input: it moves the screen only, no sound out
 
 // ---- Counters, written by the audio tasks and read once a second by loop()
 static std::atomic<uint32_t> rxFrames{0};      // stereo frames received from USB (= mono samples)
@@ -369,6 +370,11 @@ static bool ringWasFull = false;
 
 static void onSpkData(void* data, uint16_t len) {
   diagMark(diagRx, 1);
+  if (micOn) {  // (S10-1) the microphone is the input: USB audio is dropped, and the speaker is off
+    lastRxMs = millis();
+    diagMark(diagRx, 0);
+    return;
+  }
   // Visualizer level (S0-3): measured before the host volume, so the bars follow the music, not the volume knob.
   static float vizAcc = 0;
   static size_t vizN = 0;
@@ -423,6 +429,63 @@ static void onSpkData(void* data, uint16_t len) {
   if (peak > SOUND_MIN) lastSoundMs = lastRxMs.load();
   if (peak > beatPeak) beatPeak = peak;
   diagMark(diagRx, 0);
+}
+
+// ---- Built-in microphone -> screen only (S10-1). The Cardputer ADV's ES8311 codec serves the speaker and the microphone
+// on the same BCK / WS pins, and M5Unified's own mic example stops the speaker before starting the microphone, so
+// this mode is "speaker off, microphone on" (setMic below). Nothing goes to the ring: the screen's inputs are the same
+// as for USB audio (vizPcm for the equalizer, vizSum / vizCount for the terrain, beatPeak / lastSoundMs / rxPeak).
+static constexpr float MIC_GAIN[] = {0.5f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f};  // software gain on top of M5.Mic's own
+static constexpr int MIC_GAINS = sizeof MIC_GAIN / sizeof MIC_GAIN[0];
+static std::atomic<int> micLevel{2};  // the default (x2) was enough on the device (S10-6)
+static constexpr uint32_t MIC_RATE = 16000;  // M5Unified's default capture rate, which worked as it is
+static std::atomic<bool> micRun{false};
+static TaskHandle_t micTaskH = nullptr;
+
+static void micProcess(const int16_t* in, size_t n) {
+  float g = MIC_GAIN[micLevel];
+  static float vizAcc = 0;
+  static size_t vizN = 0;
+  int16_t peak = 0;
+  uint32_t pos = vizPcmPos.load(std::memory_order_relaxed);
+  for (size_t i = 0; i < n; i++) {
+    float v = in[i] * g;
+    int16_t m = v > 32767.0f ? 32767 : v < -32768.0f ? -32768 : (int16_t)v;
+    int16_t a = m < 0 ? (int16_t)(m == INT16_MIN ? INT16_MAX : -m) : m;
+    if (a > peak) peak = a;
+    vizAcc += (float)m * m;
+    vizPcm[pos++ & (VIZ_PCM_N - 1)] = m;
+  }
+  vizPcmPos.store(pos, std::memory_order_release);
+  vizN += n;
+  if (vizN >= CHUNK) {
+    vizSum += (uint32_t)sqrtf(vizAcc / vizN);
+    vizCount++;
+    vizAcc = 0;
+    vizN = 0;
+  }
+  uint32_t now = millis();
+  if (peak > rxPeak) rxPeak = peak;
+  if (peak > SOUND_MIN) lastSoundMs = now;
+  if (peak > beatPeak) beatPeak = peak;
+}
+
+// M5.Mic.record() only queues a buffer (two slots) and a background task fills it. Three buffers in rotation: after
+// queueing buffer i, buffer i - 2 is certainly full, because queueing i needed a free slot.
+static void micTask(void*) {
+  static int16_t buf[3][CHUNK];
+  memset(buf, 0, sizeof buf);
+  int idx = 0;
+  while (micRun) {
+    if (!M5.Mic.record(buf[idx], CHUNK, MIC_RATE)) {
+      vTaskDelay(1);
+      continue;
+    }
+    micProcess(buf[(idx + 1) % 3], CHUNK);
+    idx = (idx + 1) % 3;
+  }
+  micTaskH = nullptr;
+  vTaskDelete(nullptr);
 }
 
 // ---- ring -> M5.Speaker (core 1)
@@ -675,8 +738,12 @@ static void drawScreen(uint32_t fillNow, uint32_t elapsedS) {
            (unsigned long)(elapsedS % 60), (unsigned long)diagBoots, diagReset);
   canvas.drawString(l, 4, 88);
 
-  snprintf(l, sizeof l, "PC vol %d dB%s  L%d R%d", (int)uac.volume(UAC_CHAN_MASTER), uac.mute(UAC_CHAN_MASTER) ? " MUTE" : "",
-           (int)uac.volume(UAC_CHAN_LEFT), (int)uac.volume(UAC_CHAN_RIGHT));
+  if (micOn) {  // (S10-1)
+    snprintf(l, sizeof l, "MIC (no sound out)  sens x%.1f  [- =]", MIC_GAIN[micLevel]);
+  } else {
+    snprintf(l, sizeof l, "PC vol %d dB%s  L%d R%d", (int)uac.volume(UAC_CHAN_MASTER), uac.mute(UAC_CHAN_MASTER) ? " MUTE" : "",
+             (int)uac.volume(UAC_CHAN_LEFT), (int)uac.volume(UAC_CHAN_RIGHT));
+  }
   canvas.drawString(l, 4, 100);
 
   // Level meters: what arrives from USB (after the host volume) and what goes to the speaker (after the limiter)
@@ -716,13 +783,17 @@ static void drawViz(uint32_t now) {
   // connected, muted, or dropouts counted. The rest (boost, bass cut) is on the data screen, so the terrain stays alone.
   char l[48];
   uint32_t u = underruns, o = overruns;
-  bool mute = uac.mute(UAC_CHAN_MASTER);
+  bool mute = !micOn && uac.mute(UAC_CHAN_MASTER);
   canvas.setTextSize(1);
-  if (!(bool)USB) {
+  if (micOn) {  // (S10-1)
+    canvas.setTextColor(COL_DIM);
+    snprintf(l, sizeof l, "MIC (no sound out)  x%.1f", MIC_GAIN[micLevel]);
+    canvas.drawString(l, 4, 2);
+  } else if (!(bool)USB) {
     canvas.setTextColor(COL_BAD);
     canvas.drawString("not connected", 4, 2);
   }
-  if (mute || u || o) {
+  if (!micOn && (mute || u || o)) {
     canvas.setTextColor(u || o ? COL_BAD : COL_WARN);
     snprintf(l, sizeof l, "%sU%lu O%lu", mute ? "MUTE " : "", (unsigned long)u, (unsigned long)o);
     canvas.drawRightString(l, 236, 2);
@@ -752,7 +823,14 @@ static bool uacStarted = false;  // (S5-5) uac.begin() succeeded
 
 static bool usbUp() { return (bool)USB && usbSawHost && millis() - usbLastSofMs < 1000; }
 
-static uint8_t viewMode() { return usbUp() ? mode : (uint8_t)MODE_KEYS; }
+// (S10-1, S10-7) Without USB the keyboard screen is shown (Bluetooth), until Fn+M is pressed: then the screens follow Fn+M
+// as they do over USB, so the microphone (or nothing) can drive the other two without a cable. With the microphone as the
+// input they are there from the start. Once USB is up the choice is forgotten, so unplugging returns to the keyboard screen.
+static bool navFree = false;
+static uint8_t viewMode() {
+  if (usbUp()) navFree = false;
+  return usbUp() || micOn || navFree ? mode : (uint8_t)MODE_KEYS;
+}
 
 // ---- Emblem screen (S1-7, S2-6, design 8.3): shown at start for SPLASH_MS or until a key, and, in the measurement
 // mode (not the game screen since S5-14), after IDLE_MS with no key and no sound, until a key (splashIdle). That key only closes it.
@@ -982,6 +1060,38 @@ static void setMode(uint8_t m) {
   Serial.printf("[KEY] mode %s\n", MODE_NAME[mode]);
 }
 
+// (S10-1) Input: USB audio (plays on the speaker), or the built-in microphone (moves the screen, no sound out). The
+// speaker and the microphone cannot run together on the ADV (shared BCK / WS), so one is stopped for the other.
+static bool setMic(bool on) {
+  if (on == micOn) return true;
+  if (on) {
+    micOn = true;  // onSpkData stops feeding the ring
+    delay(30);
+    xStreamBufferReset(ring);
+    M5.Speaker.end();
+    delay(50);  // as the CoreS3 project (KariPom/cores3-main) does: wait after Speaker.end() before Mic.begin()
+    if (!M5.Mic.begin()) {
+      Serial.println("[MIC] Mic.begin failed, back to USB");
+      M5.Speaker.begin();
+      M5.Speaker.setVolume(SPK_MASTER_UNITY);
+      micOn = false;
+      return false;
+    }
+    micRun = true;
+    xTaskCreatePinnedToCore(micTask, "mic", 4096, nullptr, 3, &micTaskH, PRO_CPU_NUM);
+  } else {
+    micRun = false;
+    while (micTaskH) delay(5);
+    M5.Mic.end();
+    M5.Speaker.begin();
+    M5.Speaker.setVolume(SPK_MASTER_UNITY);
+    micOn = false;
+  }
+  prefs.putBool("mic", on);
+  Serial.printf("[MIC] input: %s\n", on ? "microphone (speaker off)" : "USB audio");
+  return true;
+}
+
 // ---- Keys
 static uint8_t heldLabels[16];  // unshifted labels of the keys held at the last change
 static int heldCount = 0;
@@ -1022,12 +1132,17 @@ static void keyService() {
     if (!fresh && !fnLate) continue;
     if (ks.fn) {  // the Cardputer's own Fn keys, in every mode
       if (c == 'm') {
-        if (usbUp()) setMode((uint8_t)((mode + 1) % MODE_COUNT));
-        else Serial.println("[KEY] Fn+M before USB is up: no mode change");
+        uint8_t shown = viewMode();  // the screen the user sees now: the next one is counted from it
+        navFree = true;
+        setMode((uint8_t)((shown + 1) % MODE_COUNT));
         if (!fresh) Serial.println("[KEY] Fn+M: Fn came after M");
         acted = true;
       } else if (keysMode && (c == '[' || c == ']')) {
         inputKana = c == ']';
+      } else if (c == 'i') {  // (S10-1) input: USB audio / microphone
+        setMic(!micOn);
+        keysRedraw = true;
+        acted = true;
       } else if (c == 'o') {
         osWin = !osWin;
         prefs.putBool("osWin", osWin);
@@ -1049,6 +1164,15 @@ static void keyService() {
       case '/': media.press(CONSUMER_CONTROL_SCAN_NEXT); media.release(); acted = true; break;
       case '-':
       case '=': {
+        if (micOn) {  // (S10-1) with the microphone as the input, - and = set its sensitivity
+          int l = micLevel + (c == '=' ? 1 : -1);
+          if (l < 0) l = 0;
+          if (l >= MIC_GAINS) l = MIC_GAINS - 1;
+          micLevel = l;
+          Serial.printf("[KEY] mic sensitivity x%.1f\n", MIC_GAIN[l]);
+          acted = true;
+          break;
+        }
         int v = boostDb + (c == '=' ? BOOST_STEP_DB : -BOOST_STEP_DB);
         if (v < 0) v = 0;
         if (v > BOOST_MAX_DB) v = BOOST_MAX_DB;
@@ -1351,6 +1475,10 @@ static void drawKeys() {
   const char* link = mounted ? "USB" : BleHid::ready() ? "BLE" : BleHid::on ? "BLE wait" : "NO USB";
   canvas.setTextColor(mounted || BleHid::ready() ? COL_OK : COL_WARN);
   canvas.drawString(link, x, 99);
+  if (micOn) {  // (S10-9) the microphone is the input (it moves the other screens): just above the connection, in the
+    canvas.setTextColor(COL_OK);  // bottom left corner, which the round Earth leaves empty. Three letters only: "MIC ON" would touch the disc.
+    canvas.drawString("MIC", x, 90);
+  }
   x += canvas.textWidth(link) + 6;
   canvas.setTextColor(COL_FG);
   canvas.drawString(osWin ? "Win" : "Mac", x, 99);
@@ -1394,7 +1522,9 @@ static void drawKeys() {
     canvas.setTextColor(COL_DIM);
     canvas.drawString("let go of G0: keys", 110, 125);
   } else {
-    if (mounted) drawHelp("Fn+M", "mode", sx, y, mx);
+    drawHelp("Fn+M", "mode", sx, y, mx);  // (S10-7) works without USB too
+    y += 9;
+    drawHelp("Fn+I", "USB/MIC", sx, y, mx);  // (S10-8) the input switch: it was only on the other screens' help
     y += 12;
     for (const KeyHelp& h : SHEET) {
       drawHelp(h.key, h.meaning, sx, y, mx);
@@ -1424,10 +1554,10 @@ static void drawSpeakerHelp() {
   canvas.setTextColor(COL_DIM);
   canvas.drawString(mode == MODE_GAME ? "flight mode" : "measure mode", 60, 10);
   canvas.drawRightString(BUILD_TAG, 236, 4);
-  static const KeyHelp LEFT[] = {{"[ ]", "volume"}, {"\\", "mute"}, {"space", "play/pause"},
-                                 {", /", "prev/next"}, {"- =", "boost"}, {"b", "bass cut"}};
-  static const KeyHelp RIGHT[] = {{"v", "measure/flight"}, {"r", "reset counts"}, {"h", "close help"},
-                                  {"Fn+M", "next mode"}, {"Fn+O", "Mac/Win"}};
+  const KeyHelp LEFT[] = {{"[ ]", "volume"}, {"\\", "mute"}, {"space", "play/pause"},
+                          {", /", "prev/next"}, {"- =", micOn ? "mic sens" : "boost"}, {"b", "bass cut"}};  // (S10-7) - = sets the mic's sensitivity
+  const KeyHelp RIGHT[] = {{"v", "measure/flight"}, {"r", "reset counts"}, {"h", "close help"},
+                           {"Fn+M", "next mode"}, {"Fn+O", "Mac/Win"}, {"Fn+I", micOn ? "input: MIC" : "input: USB"}};
   int y = 30;
   for (const KeyHelp& h : LEFT) {
     drawHelp(h.key, h.meaning, 6, y, 44);
@@ -1441,7 +1571,7 @@ static void drawSpeakerHelp() {
   char l[32];
   snprintf(l, sizeof l, "+%ddB %s  %s", boostDb.load(), bassCut ? "cut" : "full", uac.mute(UAC_CHAN_MASTER) ? "MUTE" : "");
   canvas.setTextColor(COL_DIM);
-  canvas.drawString(l, 124, 30 + 5 * 15);
+  canvas.drawString(l, 124, 30 + 6 * 15);
   canvas.pushSprite(0, 0);
 }
 
@@ -1455,8 +1585,11 @@ void setup() {
   auto cfg = M5.config();
   cfg.internal_imu = true;  // (S2.5-1) for the air mouse
   cfg.internal_spk = true;
-  cfg.internal_mic = false;
+  cfg.internal_mic = true;  // (S10-1) set up, not started: M5.Mic runs only in the microphone input
   cfg.serial_baudrate = 0;  // Serial is USB CDC, already started
+  // (S10-6) Init the display BEFORE M5Cardputer.begin(): otherwise M5Unified drives GPIO46
+  // (the internal mic's data-in) as an output-high "power hold" and the mic reads a flat line.
+  M5.Display.init();
   M5Cardputer.begin(cfg, true);
   M5Cardputer.Display.setRotation(1);
   M5Cardputer.Display.setBrightness(128);
@@ -1483,6 +1616,7 @@ void setup() {
   M5.Speaker.begin();
   M5.Speaker.setVolume(SPK_MASTER_UNITY);
   hpf.highPass(HPF_HZ, RATE);
+  bool micWanted = prefs.getBool("mic", false);
 
   xTaskCreatePinnedToCore(playTask, "play", 4096, nullptr, 3, nullptr, APP_CPU_NUM);
   uac.onEvent(onUsbEvent);
@@ -1493,6 +1627,7 @@ void setup() {
   media.begin();
   mouse.begin();
   Wire.begin(2, 1, 200000);  // (S2.5-10) the Grove port, for a jog dial: SDA G2, SCL G1, as in Media Jog
+  if (micWanted) setMic(true);
   Serial.printf("[BOOT] IMU %s\n", M5.Imu.isEnabled() ? "on" : "not found");
   Serial.printf("[BOOT] ready, heap %u\n", (unsigned)ESP.getFreeHeap());
 }
