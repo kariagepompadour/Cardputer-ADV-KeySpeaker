@@ -157,11 +157,12 @@ Cardputer につなぐ前に、Pico と基板だけで確かめます。
 
 1. 赤いジャンパー線で、**j1（Pico の40番ピン VBUS とつながる穴）と＋レールをつなぎます。**
 2. Grove のケーブルは、まだつなぎません。
-3. Pico を USB でパソコンにつなぎます。
-4. Arduino IDE で、確認用のスケッチ `karipom_pico2.ino` を書き込みます。ボードは Raspberry Pi Pico 2 用（arduino-pico）、ライブラリは arduinoFFT が必要です。スケッチの場所：`https://github.com/kariagepompadour/KariPom/blob/master/pico2-pcm1808/karipom_pico2/karipom_pico2.ino`
-5. シリアルモニターに `[ OK ] I2S begin` が出ることを確かめます。
-6. 音を流し、`FFT:` の行の数字が音に合わせて動くことを確かめます。
-7. USB を抜き、**j1 の線を外します。**
+3. Pico の BOOTSEL ボタン（基板の白い小さなボタン）を押したまま、USB でパソコンにつなぎます。つないだらボタンを離します。
+4. パソコンに `RP2350` という名前のドライブが出ます。確認用ファイル `aux_pico2_check.uf2` を、そのドライブへドラッグします。リポジトリの `firmware/aux_pico2_check/` にあります。
+5. ドライブが自動で消えて、Pico が再起動します。これで書き込みは完了です。「ディスクが正しく取り出されませんでした」と出ても、問題ありません。
+6. Arduino IDE などのシリアルモニターを、速度 115200 で開きます。`[ OK ] I2S begin` が出ることを確かめます。
+7. 音を流し、`FFT:` の行の数字が音に合わせて動くことを確かめます。
+8. USB を抜き、**j1 の線を外します。**
 
 動かないときは、「9. うまくいかないとき」を見てください。
 
