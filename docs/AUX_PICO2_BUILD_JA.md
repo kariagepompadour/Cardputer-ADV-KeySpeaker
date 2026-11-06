@@ -164,6 +164,10 @@ Cardputer につなぐ前に、Pico と基板だけで確かめます。
 7. 音を流し、`FFT:` の行の数字が音に合わせて動くことを確かめます。
 8. USB を抜き、**j1 の線を外します。**
 
+書き込みは Mac でも Windows でも同じ方法でできます。結果を見るためのシリアルモニターは、Arduino IDE のほか、Tera Term や PuTTY でもかまいません。
+
+**別の書き込み方：** Arduino IDE から書き込むこともできます。ボードに Raspberry Pi Pico 2（arduino-pico）を選び、ライブラリ arduinoFFT を入れて、`karipom_pico2.ino` を書き込みます。スケッチの場所：`https://github.com/kariagepompadour/KariPom/blob/master/pico2-pcm1808/karipom_pico2/karipom_pico2.ino`
+
 動かないときは、「9. うまくいかないとき」を見てください。
 
 ## 7. Grove の確認（手順7）
