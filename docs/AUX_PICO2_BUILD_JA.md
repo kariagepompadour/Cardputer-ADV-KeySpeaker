@@ -166,7 +166,7 @@ Cardputer につなぐ前に、Pico と基板だけで確かめます。
 
 書き込みは Mac でも Windows でも同じ方法でできます。結果を見るためのシリアルモニターは、Arduino IDE のほか、Tera Term や PuTTY でもかまいません。
 
-**別の書き込み方：** Arduino IDE から書き込むこともできます。ボードに Raspberry Pi Pico 2（arduino-pico）を選び、ライブラリ arduinoFFT を入れて、`karipom_pico2.ino` を書き込みます。スケッチの場所：`https://github.com/kariagepompadour/KariPom/blob/master/pico2-pcm1808/karipom_pico2/karipom_pico2.ino`
+**別の書き込み方：** Arduino IDE から書き込むこともできます。「付録　Arduino IDE の準備」を見てください。
 
 動かないときは、「9. うまくいかないとき」を見てください。
 
@@ -265,6 +265,28 @@ PCM1808 基板の CN3 に LINE OUT を増設している場合は、そのまま
 - CN3 の 470Ω はそのまま残します。
 - LINE OUT は基板の中で音の入口から分かれるので、Pico と Cardputer の配線は変わりません。
 - アクティブスピーカーと Cardputer を同時に鳴らすと、Cardputer の音が少し遅れて聞こえることがあります。
+
+## 付録　Arduino IDE の準備
+
+`.uf2` をドラッグで書き込むなら、この準備はいりません。Arduino IDE から書き込みたいときだけ行います。
+
+1. 環境設定を開きます。Arduino IDE 1.8 系は **ファイル → 環境設定**、2 系は **ファイル → 基本設定** です（Mac は Arduino IDE のメニューの中です）。
+2. 「追加のボードマネージャの URL」に、次の1行を入れて OK を押します。すでに別の URL があれば、新しい行に足します。
+
+`https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json`
+
+3. **ツール → ボード → ボードマネージャ** を開き、`pico` で検索します。**Raspberry Pi Pico/RP2040/RP2350**（作者 Earle F. Philhower, III）を入れます。出てこないときは、IDE を再起動します。
+4. **ツール → ボード** で **Raspberry Pi Pico 2** を選びます。
+5. **ツール → ライブラリを管理** で `arduinoFFT`（作者 kosme）を入れます。
+6. 次のスケッチを開いて、書き込みます。
+
+`https://github.com/kariagepompadour/KariPom/blob/master/pico2-pcm1808/karipom_pico2/karipom_pico2.ino`
+
+⚠️ よく似た名前の **Arduino Mbed OS RP2040 Boards** は、Pico 2 には使えません。追加の URL を入れる前は、これしか出てきません。
+
+💡 URL は長いので、手で打たずにコピーして貼り付けます。別のパソコンで作業するときは、ブラウザで `arduino-pico github` と検索すると、同じ URL が公式のページに載っています。
+
+💡 つまずいたときは、画面の写真やエラーの文章と、この説明書を、Claude などの AI に見せて質問すると解決しやすくなります。
 
 ## 付録　回路図
 
