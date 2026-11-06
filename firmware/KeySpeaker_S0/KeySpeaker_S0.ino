@@ -172,7 +172,7 @@
 #define KS_BLE 1  // (S5-5) 0: build without BLE, to compare
 #include "BleHid.h"
 
-#define BUILD_TAG "S10-6"
+#define BUILD_TAG "S10-7"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -437,19 +437,10 @@ static void onSpkData(void* data, uint16_t len) {
 // as for USB audio (vizPcm for the equalizer, vizSum / vizCount for the terrain, beatPeak / lastSoundMs / rxPeak).
 static constexpr float MIC_GAIN[] = {0.5f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f};  // software gain on top of M5.Mic's own
 static constexpr int MIC_GAINS = sizeof MIC_GAIN / sizeof MIC_GAIN[0];
-static std::atomic<int> micLevel{2};
-// (S10-2) Diagnosis: the microphone showed no signal (peak stuck at 64 = one count of noise). Fn+L steps through ways to
-// set M5.Mic up, until one shows a real signal in the log (raw = before the software gain).
-struct MicVariant { uint32_t rate; uint8_t os; bool left; };
-static constexpr MicVariant MIC_VARIANTS[] = {{16000, 2, false}, {48000, 1, false}, {16000, 2, true}, {48000, 1, true},
-                                              {48000, 2, false}, {48000, 2, true}};  // 0: M5Unified's own defaults
-static constexpr int MIC_NVAR = sizeof MIC_VARIANTS / sizeof MIC_VARIANTS[0];
-static std::atomic<int> micVar{0};
-static std::atomic<int16_t> micRawMax{0};
+static std::atomic<int> micLevel{2};  // the default (x2) was enough on the device (S10-6)
+static constexpr uint32_t MIC_RATE = 16000;  // M5Unified's default capture rate, which worked as it is
 static std::atomic<bool> micRun{false};
 static TaskHandle_t micTaskH = nullptr;
-static std::atomic<uint32_t> micChunks{0};
-static std::atomic<int16_t> micPeakLog{0};
 
 static void micProcess(const int16_t* in, size_t n) {
   float g = MIC_GAIN[micLevel];
@@ -458,8 +449,6 @@ static void micProcess(const int16_t* in, size_t n) {
   int16_t peak = 0;
   uint32_t pos = vizPcmPos.load(std::memory_order_relaxed);
   for (size_t i = 0; i < n; i++) {
-    int16_t ra = in[i] < 0 ? (int16_t)(in[i] == INT16_MIN ? INT16_MAX : -in[i]) : in[i];
-    if (ra > micRawMax) micRawMax = ra;
     float v = in[i] * g;
     int16_t m = v > 32767.0f ? 32767 : v < -32768.0f ? -32768 : (int16_t)v;
     int16_t a = m < 0 ? (int16_t)(m == INT16_MIN ? INT16_MAX : -m) : m;
@@ -477,10 +466,8 @@ static void micProcess(const int16_t* in, size_t n) {
   }
   uint32_t now = millis();
   if (peak > rxPeak) rxPeak = peak;
-  if (peak > micPeakLog) micPeakLog = peak;
   if (peak > SOUND_MIN) lastSoundMs = now;
   if (peak > beatPeak) beatPeak = peak;
-  micChunks++;
 }
 
 // M5.Mic.record() only queues a buffer (two slots) and a background task fills it. Three buffers in rotation: after
@@ -490,7 +477,7 @@ static void micTask(void*) {
   memset(buf, 0, sizeof buf);
   int idx = 0;
   while (micRun) {
-    if (!M5.Mic.record(buf[idx], CHUNK, MIC_VARIANTS[micVar].rate)) {
+    if (!M5.Mic.record(buf[idx], CHUNK, MIC_RATE)) {
       vTaskDelay(1);
       continue;
     }
@@ -836,8 +823,14 @@ static bool uacStarted = false;  // (S5-5) uac.begin() succeeded
 
 static bool usbUp() { return (bool)USB && usbSawHost && millis() - usbLastSofMs < 1000; }
 
-// (S10-1) With the microphone as the input, the speaker screens are there without USB too.
-static uint8_t viewMode() { return usbUp() || micOn ? mode : (uint8_t)MODE_KEYS; }
+// (S10-1, S10-7) Without USB the keyboard screen is shown (Bluetooth), until Fn+M is pressed: then the screens follow Fn+M
+// as they do over USB, so the microphone (or nothing) can drive the other two without a cable. With the microphone as the
+// input they are there from the start. Once USB is up the choice is forgotten, so unplugging returns to the keyboard screen.
+static bool navFree = false;
+static uint8_t viewMode() {
+  if (usbUp()) navFree = false;
+  return usbUp() || micOn || navFree ? mode : (uint8_t)MODE_KEYS;
+}
 
 // ---- Emblem screen (S1-7, S2-6, design 8.3): shown at start for SPLASH_MS or until a key, and, in the measurement
 // mode (not the game screen since S5-14), after IDLE_MS with no key and no sound, until a key (splashIdle). That key only closes it.
@@ -1076,13 +1069,7 @@ static bool setMic(bool on) {
     delay(30);
     xStreamBufferReset(ring);
     M5.Speaker.end();
-    delay(50);  // (S10-5) the CoreS3 project (KariPom/cores3-main) waits 50 ms after Speaker.end() before Mic.begin()
-    auto mc = M5.Mic.config();
-    mc.sample_rate = MIC_VARIANTS[micVar].rate;
-    mc.over_sampling = MIC_VARIANTS[micVar].os;
-    mc.stereo = false;
-    mc.left_channel = MIC_VARIANTS[micVar].left;
-    M5.Mic.config(mc);
+    delay(50);  // as the CoreS3 project (KariPom/cores3-main) does: wait after Speaker.end() before Mic.begin()
     if (!M5.Mic.begin()) {
       Serial.println("[MIC] Mic.begin failed, back to USB");
       M5.Speaker.begin();
@@ -1090,25 +1077,6 @@ static bool setMic(bool on) {
       micOn = false;
       return false;
     }
-    // (S10-3) M5Unified's StopWatch code says the ES8311 arms its capture path only through a 0x0D write made while the I2S
-    // clock is already running (a write before the clock is absorbed silently), and that the analog stage then warms up
-    // for about a second. The ADV's callback writes 0x0D only before the clock, so write it again now (a guess to try).
-    for (int i = 0; i < 3; i++) {
-      delay(30);
-      M5.In_I2C.writeRegister8(0x18, 0x0D, 0x01, 100000);
-    }
-    Serial.printf("[MIC] codec regs 0D=%02X 0E=%02X 14=%02X 17=%02X 09=%02X 0A=%02X 01=%02X 00=%02X\n",
-                  M5.In_I2C.readRegister8(0x18, 0x0D, 100000), M5.In_I2C.readRegister8(0x18, 0x0E, 100000),
-                  M5.In_I2C.readRegister8(0x18, 0x14, 100000), M5.In_I2C.readRegister8(0x18, 0x17, 100000),
-                  M5.In_I2C.readRegister8(0x18, 0x09, 100000), M5.In_I2C.readRegister8(0x18, 0x0A, 100000),
-                  M5.In_I2C.readRegister8(0x18, 0x01, 100000), M5.In_I2C.readRegister8(0x18, 0x00, 100000));
-    Serial.printf("[MIC] codec regs 16=%02X 15=%02X 1B=%02X 1C=%02X 44=%02X 03=%02X 05=%02X 06=%02X 07=%02X 08=%02X FD=%02X FE=%02X\n",
-                  M5.In_I2C.readRegister8(0x18, 0x16, 100000), M5.In_I2C.readRegister8(0x18, 0x15, 100000),
-                  M5.In_I2C.readRegister8(0x18, 0x1B, 100000), M5.In_I2C.readRegister8(0x18, 0x1C, 100000),
-                  M5.In_I2C.readRegister8(0x18, 0x44, 100000), M5.In_I2C.readRegister8(0x18, 0x03, 100000),
-                  M5.In_I2C.readRegister8(0x18, 0x05, 100000), M5.In_I2C.readRegister8(0x18, 0x06, 100000),
-                  M5.In_I2C.readRegister8(0x18, 0x07, 100000), M5.In_I2C.readRegister8(0x18, 0x08, 100000),
-                  M5.In_I2C.readRegister8(0x18, 0xFD, 100000), M5.In_I2C.readRegister8(0x18, 0xFE, 100000));
     micRun = true;
     xTaskCreatePinnedToCore(micTask, "mic", 4096, nullptr, 3, &micTaskH, PRO_CPU_NUM);
   } else {
@@ -1120,8 +1088,6 @@ static bool setMic(bool on) {
     micOn = false;
   }
   prefs.putBool("mic", on);
-  Serial.printf("[MIC] variant %d: %lu Hz os%d %s\n", micVar.load(), (unsigned long)MIC_VARIANTS[micVar].rate, MIC_VARIANTS[micVar].os,
-                MIC_VARIANTS[micVar].left ? "left" : "right");
   Serial.printf("[MIC] input: %s\n", on ? "microphone (speaker off)" : "USB audio");
   return true;
 }
@@ -1166,36 +1132,13 @@ static void keyService() {
     if (!fresh && !fnLate) continue;
     if (ks.fn) {  // the Cardputer's own Fn keys, in every mode
       if (c == 'm') {
-        if (usbUp() || micOn) setMode((uint8_t)((mode + 1) % MODE_COUNT));
-        else Serial.println("[KEY] Fn+M before USB is up: no mode change");
+        uint8_t shown = viewMode();  // the screen the user sees now: the next one is counted from it
+        navFree = true;
+        setMode((uint8_t)((shown + 1) % MODE_COUNT));
         if (!fresh) Serial.println("[KEY] Fn+M: Fn came after M");
         acted = true;
       } else if (keysMode && (c == '[' || c == ']')) {
         inputKana = c == ']';
-      } else if (c == 'g') {  // (S10-4) codec input gain, step 0..7: analog PGA (0x14) and digital scale (0x16)
-        if (micOn) {
-          static int gstep = 0;
-          gstep = (gstep + 1) % 8;
-          M5.In_I2C.writeRegister8(0x18, 0x14, gstep ? 0x1A : 0x10, 100000);  // 0x1A: PGA 0xA (the maximum), as in Espressif's driver
-          M5.In_I2C.writeRegister8(0x18, 0x16, gstep, 100000);
-          Serial.printf("[MIC] codec gain step %d: 14=%02X 16=%02X\n", gstep, gstep ? 0x1A : 0x10, gstep);
-        }
-        acted = true;
-      } else if (c == 'h') {  // (S10-4) toggle codec register 0x44 between 0x00 and 0x08 (Espressif's driver writes 0x08)
-        if (micOn) {
-          static bool h44 = false;
-          h44 = !h44;
-          M5.In_I2C.writeRegister8(0x18, 0x44, h44 ? 0x08 : 0x00, 100000);
-          Serial.printf("[MIC] codec 44=%02X\n", h44 ? 0x08 : 0x00);
-        }
-        acted = true;
-      } else if (c == 'l') {  // (S10-2) next way to set the microphone up
-        if (micOn) {
-          setMic(false);
-          micVar = (micVar + 1) % MIC_NVAR;
-          setMic(true);
-        }
-        acted = true;
       } else if (c == 'i') {  // (S10-1) input: USB audio / microphone
         setMic(!micOn);
         keysRedraw = true;
@@ -1575,7 +1518,11 @@ static void drawKeys() {
     canvas.setTextColor(COL_DIM);
     canvas.drawString("let go of G0: keys", 110, 125);
   } else {
-    if (mounted) drawHelp("Fn+M", "mode", sx, y, mx);
+    drawHelp("Fn+M", "mode", sx, y, mx);  // (S10-7) works without USB too
+    if (micOn) {  // (S10-7) the microphone moves the other screens: a reminder here, since this screen does not react
+      canvas.setTextColor(COL_OK);
+      canvas.drawString("MIC ON", 198, y);
+    }
     y += 12;
     for (const KeyHelp& h : SHEET) {
       drawHelp(h.key, h.meaning, sx, y, mx);
@@ -1605,8 +1552,8 @@ static void drawSpeakerHelp() {
   canvas.setTextColor(COL_DIM);
   canvas.drawString(mode == MODE_GAME ? "flight mode" : "measure mode", 60, 10);
   canvas.drawRightString(BUILD_TAG, 236, 4);
-  static const KeyHelp LEFT[] = {{"[ ]", "volume"}, {"\\", "mute"}, {"space", "play/pause"},
-                                 {", /", "prev/next"}, {"- =", "boost"}, {"b", "bass cut"}};
+  const KeyHelp LEFT[] = {{"[ ]", "volume"}, {"\\", "mute"}, {"space", "play/pause"},
+                          {", /", "prev/next"}, {"- =", micOn ? "mic sens" : "boost"}, {"b", "bass cut"}};  // (S10-7) - = sets the mic's sensitivity
   const KeyHelp RIGHT[] = {{"v", "measure/flight"}, {"r", "reset counts"}, {"h", "close help"},
                            {"Fn+M", "next mode"}, {"Fn+O", "Mac/Win"}, {"Fn+I", micOn ? "input: MIC" : "input: USB"}};
   int y = 30;
@@ -1777,7 +1724,6 @@ void loop() {
                   (unsigned long)diagPrevRx, (unsigned long)diagPrevLoop, (unsigned long)diagPrevUptimeS, (unsigned long)diagOns,
                   (unsigned long)diagOffs, (unsigned long)diagSuspends, (unsigned long)diagPulses,
                   (unsigned long)isoKeptCount.load(), (unsigned long)isoPassedCount.load());
-    if (micOn) Serial.printf("[MIC] chunks=%lu peak=%d raw=%d var=%d x%.1f heap=%u\n", (unsigned long)micChunks.exchange(0), (int)micPeakLog.exchange(0), (int)micRawMax.exchange(0), micVar.load(), MIC_GAIN[micLevel], (unsigned)ESP.getFreeHeap());
     static uint32_t crashLogs = 0;
     if (crashLogs++ % 10 == 0) Serial.printf("[CRASH] saved dump: %s\n", crashInfo);
   }
