@@ -27,7 +27,7 @@ Why the design moved to the Pico 2:
 - ✅ Launcher 2.9.1's `_setup_gpio()` drives G3, G4, G5, G6, G13 and G15 high. A PCM1808 wired straight to EXT would fight those outputs.
 - ✅ Grove's G1 and G2 are not on that list.
 - A Pico can stay silent until it is asked. Preventing the fight moves from parts into software.
-- ✅ The wiring between the PCM1808 board and the Pico 2 H already worked in Karipom Ear.
+- ✅ The wiring between the PCM1808 board and the Pico 2 H already worked in Karipom Ear. The author's unit has all five signal lines connected directly, with no resistors.
 
 ## 3. Overview
 
@@ -49,16 +49,16 @@ Why the design moved to the Pico 2:
 
 | Line | Goes to |
 |---|---|
-| Grove white (G1) | R4, then Pico GP0 (pin 1, UART TX) |
-| Grove yellow (G2) | R5, then Pico GP1 (pin 2, UART RX) |
+| Grove white (G1) | R1, then Pico GP0 (pin 1, UART TX) |
+| Grove yellow (G2) | R2, then Pico GP1 (pin 2, UART RX) |
 | Grove red (5 V) | Pico VSYS (pin 39), PCM1808 board VDD |
 | Grove black (GND) | Pico GND (pin 38), PCM1808 board GND (two places) |
-| PCM1808 DATA | R1, then Pico GP2 (pin 4) |
-| PCM1808 BCLK | R2, then Pico GP3 (pin 5) |
-| PCM1808 LRCK | R3, then Pico GP4 (pin 6) |
+| PCM1808 DATA | Direct to Pico GP2 (pin 4) |
+| PCM1808 BCLK | Direct to Pico GP3 (pin 5) |
+| PCM1808 LRCK | Direct to Pico GP4 (pin 6) |
 | PCM1808 MCLK | Not connected |
-| Dial SDA (optional) | Pico GP6 (pin 9), R6 to 3V3(OUT) (pin 36) |
-| Dial SCL (optional) | Pico GP7 (pin 10), R7 to 3V3(OUT) (pin 36) |
+| Dial SDA (optional) | Pico GP6 (pin 9), R3 to 3V3(OUT) (pin 36) |
+| Dial SCL (optional) | Pico GP7 (pin 10), R4 to 3V3(OUT) (pin 36) |
 | Dial 5 V and GND (optional) | The same lines as Grove red and black |
 
 ✅ The order GP2, GP3, GP4 is fixed by the I²S library used in Karipom Ear.
@@ -69,16 +69,21 @@ Why the design moved to the Pico 2:
 |---|---|---|---|
 | U1 | Raspberry Pi Pico 2 H | 1 | With pin headers |
 | U2 | PCM1808 board | 1 | The same board as Karipom Ear |
-| R1 to R5 | Resistor 220 Ω 1/4 W | 5 | The same protection as Karipom Ear |
+| R1, R2 | Resistor 330 Ω 1/4 W | 2 | Protection on Grove |
 | | Breadboard, 400 holes | 1 | |
 | | Grove to jumper wire cable | 1 | |
 | | Jumper wires | About 15 | Male-male and male-female |
 | | 3.5 mm stereo cable | 1 | |
 | U3 | M5Stack Unit Encoder (U135) | 1 | Optional. The existing dial |
-| R6, R7 | Resistor 10 kΩ 1/4 W | 2 | Optional |
+| R3, R4 | Resistor 10 kΩ 1/4 W | 2 | Optional |
 | | Grove to jumper wire cable (dial) | 1 | Optional |
 
-R6 and R7 match the pull-ups on the Cardputer's board. ✅ Today's dial works with G1 and G2 pulled to 3.3 V through 10 kΩ. The Pico side recreates that condition.
+### Why these resistors
+
+- The three I²S lines are direct, as in the real Karipom Ear. The Pico only receives, so no two outputs meet. The 220 Ω in Karipom's documents is advice to readers and is not in the author's unit.
+- The two Grove lines get 330 Ω because the other end changes from a CoreS3 to a Cardputer. 🟡 A bit at 2,000,000 bps lasts 500 ns. Assuming 30 pF of wiring, the time constant is about 10 ns.
+
+R3 and R4 match the pull-ups on the Cardputer's board. ✅ Today's dial works with G1 and G2 pulled to 3.3 V through 10 kΩ. The Pico side recreates that condition.
 
 ## 5. Power
 
@@ -121,7 +126,7 @@ The Cardputer repeats the command for its current state every 200 ms.
 - It becomes a UART output only after a valid `KS?`.
 - If commands stop for 500 ms, GP0 returns to an input.
 
-Launcher sends no commands, so the Pico puts nothing on G1 while Launcher starts. When the Cardputer restarts, the Pico's output can stay on for up to 500 ms. 🟡 Launcher's `_setup_gpio()` leaves G1 alone, so nothing fights it. ⛔ Whether other Launcher code uses G1 or G2 is not confirmed. The 220 Ω in R4 and R5 also protects against that.
+Launcher sends no commands, so the Pico puts nothing on G1 while Launcher starts. When the Cardputer restarts, the Pico's output can stay on for up to 500 ms. 🟡 Launcher's `_setup_gpio()` leaves G1 alone, so nothing fights it. ⛔ Whether other Launcher code uses G1 or G2 is not confirmed. The 330 Ω in R1 and R2 also protects against that.
 
 While the Cardputer probes I²C, meaningless signals reach the Pico's RX. The Pico ignores anything but a valid command.
 
