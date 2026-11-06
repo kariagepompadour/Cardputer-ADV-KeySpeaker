@@ -172,7 +172,7 @@
 #define KS_BLE 1  // (S5-5) 0: build without BLE, to compare
 #include "BleHid.h"
 
-#define BUILD_TAG "S10-7"
+#define BUILD_TAG "S10-8"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -1523,6 +1523,8 @@ static void drawKeys() {
       canvas.setTextColor(COL_OK);
       canvas.drawString("MIC ON", 198, y);
     }
+    y += 9;
+    drawHelp("Fn+I", "USB/MIC", sx, y, mx);  // (S10-8) the input switch: it was only on the other screens' help
     y += 12;
     for (const KeyHelp& h : SHEET) {
       drawHelp(h.key, h.meaning, sx, y, mx);
