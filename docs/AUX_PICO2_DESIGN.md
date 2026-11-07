@@ -2,7 +2,7 @@
 
 Written 2026-11-07. Status: **working on the author's hardware (2026-11-07). Sound plays with the unit powered only by the Cardputer. The dial on the Pico is not yet tried.**
 
-Japanese version: [AUX_PICO2_DESIGN_JA.md](AUX_PICO2_DESIGN_JA.md). Build guide (Japanese): [AUX_PICO2_BUILD_JA.md](AUX_PICO2_BUILD_JA.md)
+Japanese version: [AUX_PICO2_DESIGN_JA.md](AUX_PICO2_DESIGN_JA.md). Build guide: [AUX_PICO2_BUILD.md](AUX_PICO2_BUILD.md)
 
 Marks: ✅ confirmed in a document, 🟡 calculated or expected, ⛔ not confirmed.
 

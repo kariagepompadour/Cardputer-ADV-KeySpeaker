@@ -82,7 +82,7 @@ there only says the cable is connected.
 
 **AUX input (`Fn+I`):** with the optional Pico 2 AUX unit on the Grove port, sound from a computer's earphone jack or any other
 player comes out of the Cardputer's speaker. The unit runs on the Cardputer's power and can stay connected. See the
-[build guide (Japanese)](docs/AUX_PICO2_BUILD_JA.md) and the [design](docs/AUX_PICO2_DESIGN.md).
+[build guide](docs/AUX_PICO2_BUILD.md) and the [design](docs/AUX_PICO2_DESIGN.md).
 
 Each press of `Fn+I` moves on to the next input: USB, MIC, then AUX when the unit is there. The fighter crosses the screen and
 leaves the input in big letters behind it, or `NO USB` or `NO AUX` in red when that source is missing.
