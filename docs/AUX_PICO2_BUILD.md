@@ -54,7 +54,9 @@ If you put the jog dial on the Pico, you also need these:
 | Grove to male jumper cable | 1 |
 | Jumper wires, male to male | 4 |
 
-Stock and prices are not checked. Ask your shop.
+The PCM1808 board the author bought: https://www.aliexpress.com/item/1005009056060069.html Before you buy, check in the shop's photos that the pin headers are on the board. Without them, you need to solder.
+
+Stock and prices are not checked and may change. Ask your shop.
 
 ## 4. Pins used
 
