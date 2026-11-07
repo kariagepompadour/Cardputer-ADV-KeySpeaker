@@ -1,6 +1,6 @@
 # KeySpeaker Pico 2 AUX Unit: Design
 
-Written 2026-11-07. Status: **a prototype design. Not tried on hardware. Firmware not written.**
+Written 2026-11-07. Status: **a prototype design. Firmware S12-1 is written and runs on the Pico. The Grove link and the sound are not yet tried on hardware.**
 
 Japanese version: [AUX_PICO2_DESIGN_JA.md](AUX_PICO2_DESIGN_JA.md). Build guide (Japanese): [AUX_PICO2_BUILD_JA.md](AUX_PICO2_BUILD_JA.md)
 
@@ -8,7 +8,7 @@ Marks: ✅ confirmed in a document, 🟡 calculated or expected, ⛔ not confirm
 
 ## 1. Purpose
 
-Play analog sound from an MD player or similar through the Cardputer ADV's built-in speaker. Neither the Cardputer nor Launcher is modified. The unit stays connected while Launcher starts. There is no switch to operate by hand.
+Play analog sound from a computer, phone or other player through the Cardputer ADV's built-in speaker. Neither the Cardputer nor Launcher is modified. The unit stays connected while Launcher starts. There is no switch to operate by hand.
 
 A Pico 2 H is more than this job needs. Its value is that it also makes a Grove audio input unit that other projects can reuse.
 
@@ -148,7 +148,7 @@ Sound goes out as 240 samples (480 bytes) every 5 ms. A frame is 492 bytes, 200 
 
 While sound is stopped, type 2 goes out every 20 ms. A frame with a bad CRC is dropped and its time is filled with silence.
 
-## 7. KeySpeaker's side (not written)
+## 7. KeySpeaker's side
 
 ### Detection
 
@@ -179,7 +179,7 @@ While AUX is selected, USB audio is dropped and only AUX sound enters the ring.
 
 🟡 The PCM1808 board and the ESP32-S3 have separate crystals. `RateAdjust`'s ±200 ppm should absorb the difference.
 
-## 8. The Pico's side (not written)
+## 8. The Pico's side
 
 - ✅ I²S reception starts from `KariPom/pico2-pcm1808/karipom_pico2/karipom_pico2.ino` (setSlave, 32-bit, sync check).
 - FFT and text output are replaced by the FIR (63 taps, flat to 20 kHz, -64 dB at 28 kHz) and UART frames.
