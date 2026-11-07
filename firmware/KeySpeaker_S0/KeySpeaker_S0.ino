@@ -114,6 +114,8 @@
     - (S12-2) Fn+I shows what it did: the fighter crosses the screen and leaves the input in big letters behind it, USB,
       MIC or AUX, in red NO USB when no computer is there and NO AUX when the unit is missing. The small lines did not say
       whether a press had counted (the user's idea).
+    - (S12-3) No NO AUX while a jog dial is on the Grove port: the unit cannot be there too, and the dial is the everyday use,
+      so the red word would come up on every round of Fn+I (the user's call). The dial's turning, its button and NO AUX were seen working on S12-2.
     - (S11-2) Searchlights on the game screen (FlightViz.h): a city on alert. Up to three stand on the ground, each with a small base (a
       3 x 3 dot light grey square with a blue window), flow from right to left with the terrain and sweep the sky with a slim beam that
       widens and fades toward the top, in a cool blue-white added to the stars' light. A new one comes every 10 to 35 s, only while
@@ -195,7 +197,7 @@
 #define KS_BLE 1  // (S5-5) 0: build without BLE, to compare
 #include "BleHid.h"
 
-#define BUILD_TAG "S12-2"
+#define BUILD_TAG "S12-3"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -807,6 +809,7 @@ static constexpr uint16_t COL_BG = 0x0000, COL_FG = 0xFFFF, COL_DIM = 0x8410, CO
 static constexpr uint32_t FX_FLY_MS = 800, FX_TOTAL_MS = 2000;
 static constexpr int FX_TOP = 32, FX_H = 71, FX_TEXT_Y = 40, FX_SUB_Y = 87, FX_TEXT_SIZE = 5;
 static bool usbUp();
+static bool dialFound = false;  // (S12-3) a jog dial answers straight on the Grove port
 static const char* fxText = nullptr;
 static const char* fxSub = nullptr;
 static uint16_t fxColor = 0;
@@ -1345,7 +1348,7 @@ static void keyService() {
             setAux(true);
             auxSend();
           } else {
-            noAux = true;
+            noAux = !dialFound;
           }
         } else {
           setMic(true);
@@ -1664,7 +1667,6 @@ static void auxService(uint32_t now) {
 }
 
 static void dialService(uint32_t now) {
-  static bool found = false;
   static uint32_t last = 0, lastProbe = 0;
   static uint8_t misses = 0;
   if (auxOpen) {
@@ -1674,7 +1676,7 @@ static void dialService(uint32_t now) {
   if (now - last < DIAL_MS) return;
   last = now;
   uint8_t d[2];
-  if (!found) {
+  if (!dialFound) {
     if (lastProbe && now - lastProbe < 1000) return;
     lastProbe = now;
     if (!dialRead(DIAL_REG_COUNT, d, 2)) {
@@ -1683,12 +1685,12 @@ static void dialService(uint32_t now) {
     }
     uint8_t b;
     dialStart((int16_t)(d[0] | (d[1] << 8)), dialRead(DIAL_REG_BUTTON, &b, 1) && b == 0);
-    found = true;
+    dialFound = true;
     Serial.println("[DIAL] Unit Encoder found");
     return;
   }
   if (!dialRead(DIAL_REG_COUNT, d, 2)) {
-    found = false;
+    dialFound = false;
     Serial.println("[DIAL] Unit Encoder lost");
     return;
   }
