@@ -32,6 +32,11 @@
   bluffs, and after a miss it waits a second or more and only sometimes does more; it comes in six colours (red, blue, green,
   purple, gold, ghost white), about half as often as before, and its arms are drawn in the same 3 px dots as the body.
 
+  A meteor zone comes every few minutes while music plays (S13-1): the targets, the monsters and the searchlights fall behind, the
+  terrain sinks low but keeps moving with the music, and meteors stream from right to left while the fighter weaves through them
+  without firing. The louder the music, the more meteors, and a beat brings a big one. Each meteor is placed to miss the fighter's
+  path, so the fighter always slips past.
+
   Plain C++ on a 240 x 135 RGB565 frame buffer laid out like M5Canvas's (16-bit pixels, high byte first), so the same
   code also runs on a computer for previews.
 */
@@ -244,6 +249,32 @@ struct Light {
   float base = 0, amp = 0, w = 0, ph = 0, a = 0;  // the beam's angle from straight up (rad): base + amp * sin(t * w + ph), now a
 };
 
+// The meteor zone (S13-1). See the top of this file.
+constexpr float MZ_IN_S = 1.5f, MZ_RUN_S = 17.0f, MZ_OUT_S = 2.0f;
+constexpr uint32_t MZ_FIRST_MS = 90000, MZ_MS_MIN = 120000, MZ_MS_MAX = 240000;
+constexpr int MZ_SEG = 7;               // the tallest the terrain gets in the zone, in segments
+constexpr float MZ_WARP_PX_S = 260.0f;  // what was on screen falls behind this fast
+constexpr int MZ_MAX = 40, MZ_DUST_MAX = 18;
+constexpr float MZ_RATE_MIN = 3.0f, MZ_RATE_MAX = 12.0f, MZ_DUST_RATE = 14.0f;  // per second, quiet to loud
+constexpr float MZ_GAP = 8.0f;          // px kept between a meteor and the fighter's path
+struct MeteorSize { int r, vMin, vMax, tail; };  // radius px, speed px/s, tail in dots
+static const MeteorSize MZ_SIZE[3] = {{2, 170, 240, 6}, {4, 220, 300, 10}, {6, 280, 360, 15}};
+struct Meteor {
+  bool on = false, warm = false;
+  float x = 0, y = 0, v = 0, vy = 0;
+  uint8_t size = 0;
+};
+struct Dust {  // thin streaks far behind, only for the sense of speed
+  bool on = false;
+  float x = 0, y = 0, v = 0;
+  uint8_t len = 0;
+};
+struct MeteorZone {
+  uint8_t ph = 0;                       // 0 none, 1 coming in, 2 running, 3 going out
+  float t = 0, u = 0, acc = 0, dustAcc = 0, ph0 = 0;  // u: 0 normal world ... 1 full zone
+  uint32_t nextMs = 0, startMs = 0;
+};
+
 struct Kong {
   uint8_t ph = K_IDLE;
   float t = 0, x = W;        // time in this phase; the left edge of the body
@@ -304,6 +335,9 @@ struct State {
   uint8_t next = 0;          // the pattern a sinking equalizer gives way to
   Light lt[MAX_LIGHTS];
   uint32_t nextLightMs = 0;
+  MeteorZone mz;
+  Meteor met[MZ_MAX];
+  Dust dust[MZ_DUST_MAX];
   Kong k;
   int8_t kongForce = -1;     // for previews on a computer: 0 only the ape, 1 only the squid, -1 by lot
   float evadeCur = 0;        // how far the fighter has slipped away from the monster's hand
@@ -386,6 +420,10 @@ static void init(State& s, uint32_t nowMs) {
   s.k.nextMs = nowMs + KONG_FIRST_MS;
   for (auto& l : s.lt) l = Light();
   s.nextLightMs = nowMs + LIGHT_FIRST_MS;
+  s.mz = MeteorZone();
+  s.mz.nextMs = nowMs + MZ_FIRST_MS;
+  for (auto& m : s.met) m = Meteor();
+  for (auto& d : s.dust) d = Dust();
   s.evadeCur = 0;
   for (auto& st : s.star) placeStar(s, st, (float)(nextRandom(s) % W));
   s.ready = true;
@@ -426,14 +464,20 @@ static inline int colAt(int x, int offset) {
   int d = W - offset - x;
   return d < 0 ? -1 : (d + PITCH - 1) / PITCH;
 }
+// A bar's height in the meteor zone: lower, in whole segments, still moving with the music.
+static inline int mzHeight(const State& s, int h) {
+  if (s.mz.u <= 0) return h;
+  int n = (int)lrintf(h * (1.0f - s.mz.u * (1.0f - (float)MZ_SEG / NSEG)) / SEG_PITCH) * SEG_PITCH;
+  return n < GROUND ? GROUND : n;
+}
 // Graphic-equalizer bar j in px (0 while it is not showing), scaled while it rises or sinks.
 static inline int eqHeight(const State& s, int j) {
-  return s.eq ? (int)lrintf(s.eqH[j] * s.scale) * SEG_PITCH : 0;
+  return s.eq ? mzHeight(s, (int)lrintf(s.eqH[j] * s.scale) * SEG_PITCH) : 0;
 }
 // Height of the ground under screen column x: the terrain, or the equalizer where it stands taller.
 static inline int heightAt(const State& s, int x, int offset) {
   int i = colAt(x, offset);
-  int h = i < 0 ? 0 : i < COLS ? s.h[i] : GROUND;
+  int h = i < 0 ? 0 : i < COLS ? mzHeight(s, s.h[i]) : GROUND;
   if (s.eq && x >= 0 && x < EQ_BANDS * PITCH) {
     int e = eqHeight(s, x / PITCH);
     if (e > h) h = e;
@@ -804,7 +848,7 @@ static void updateLights(State& s, uint32_t nowMs, float dt) {
     if (l.x <= -LIGHT_LEN) l.on = false;
     else n++;
   }
-  if (s.prevDb > DB_SILENT && n < MAX_LIGHTS && (int32_t)(nowMs - s.nextLightMs) >= 0) {
+  if (!s.mz.ph && s.prevDb > DB_SILENT && n < MAX_LIGHTS && (int32_t)(nowMs - s.nextLightMs) >= 0) {
     const float d = (float)M_PI / 180.0f;
     for (auto& l : s.lt) {
       if (l.on) continue;
@@ -816,6 +860,100 @@ static void updateLights(State& s, uint32_t nowMs, float dt) {
     }
     s.nextLightMs = nowMs + LIGHT_MS_MIN + nextRandom(s) % (LIGHT_MS_MAX - LIGHT_MS_MIN);
   }
+}
+
+// The fighter's way through the zone: its top edge at nowMs (which may be ahead of now).
+static inline float mzPath(const State& s, uint32_t ms) {
+  float t = (int32_t)(ms - s.mz.startMs) * 0.001f + s.mz.ph0;
+  const float top = TOP + 6.0f, bottom = (float)(H - MZ_SEG * SEG_PITCH - SHIP_H - 6);
+  return (top + bottom) / 2 + (bottom - top) / 2 * (0.62f * sinf(t * 1.1f) + 0.38f * sinf(t * 2.3f + 1.0f));
+}
+// A new meteor, placed so that it and its tail miss the fighter's path; none if no place was found.
+static void spawnMeteor(State& s, uint32_t nowMs, int sx, uint8_t size) {
+  Meteor* m = nullptr;
+  for (auto& c : s.met)
+    if (!c.on) { m = &c; break; }
+  if (!m) return;
+  const MeteorSize& z = MZ_SIZE[size];
+  float v = (float)(z.vMin + nextRandom(s) % (z.vMax - z.vMin));
+  float vy = v * (0.04f + (nextRandom(s) % 12) / 100.0f), tail = (float)(z.tail * DOT);
+  float arrive = (W + z.r - sx - SHIP_W) / v, leave = (W + z.r + tail - sx) / v, clear = SHIP_H / 2.0f + z.r + MZ_GAP;
+  for (int tries = 0; tries < 8; tries++) {
+    float y = (float)(TOP + nextRandom(s) % (H - MZ_SEG * SEG_PITCH - TOP - 6));
+    bool ok = true;
+    for (int i = 0; i <= 5 && ok; i++) {
+      float t = arrive + (leave - arrive) * i / 5;
+      ok = fabsf(y + vy * t - (mzPath(s, nowMs + (uint32_t)(t * 1000)) + SHIP_H / 2.0f)) >= clear;
+    }
+    if (!ok) continue;
+    m->on = true, m->x = (float)(W + z.r), m->y = y, m->v = v, m->vy = vy, m->size = size;
+    m->warm = size == 2 || nextRandom(s) % 100 < 55;
+    return;
+  }
+}
+static void updateMeteorZone(State& s, uint32_t nowMs, float dt, int sx) {
+  MeteorZone& z = s.mz;
+  Kong& k = s.k;
+  if (z.ph == 0) {
+    if ((int32_t)(nowMs - z.nextMs) < 0 || k.ph != K_IDLE || !k.musicOn || nowMs - k.musicSince < KONG_MUSIC_MS) return;
+    z.ph = 1, z.t = 0, z.acc = z.dustAcc = 0, z.ph0 = (nextRandom(s) % 628) / 100.0f, z.startMs = nowMs;
+    uint32_t after = nowMs + (uint32_t)((MZ_IN_S + MZ_RUN_S + MZ_OUT_S) * 1000) + 8000;
+    if ((int32_t)(after - k.nextMs) > 0) k.nextMs = after;
+  }
+  z.t += dt;
+  int meteors = 0;
+  for (const auto& m : s.met) meteors += m.on;
+  if (z.ph == 1) {
+    z.u = z.t / MZ_IN_S;
+    if (z.u >= 1) z.u = 1, z.ph = 2, z.t = 0;
+  } else if (z.ph == 2 && z.t >= MZ_RUN_S) {
+    z.ph = 3, z.t = 0;
+  } else if (z.ph == 3) {
+    z.u = 1.0f - z.t / MZ_OUT_S;
+    if (z.u < 0) z.u = 0;
+    if (z.t >= MZ_OUT_S && meteors == 0) {
+      z.ph = 0, z.u = 0;
+      uint32_t light = nowMs + 6000;
+      if ((int32_t)(light - s.nextLightMs) > 0) s.nextLightMs = light;
+      z.nextMs = nowMs + MZ_MS_MIN + nextRandom(s) % (MZ_MS_MAX - MZ_MS_MIN);
+    }
+  }
+  if (z.ph == 2) {
+    float level = s.prevDb <= DB_SILENT ? 0.0f : (s.prevDb - s.avgDb) / SPAN_DB + 0.5f;
+    level = level < 0 ? 0 : level > 1 ? 1 : level;
+    z.acc += dt * (MZ_RATE_MIN + (MZ_RATE_MAX - MZ_RATE_MIN) * level);
+    while (z.acc >= 1) {
+      z.acc -= 1;
+      spawnMeteor(s, nowMs, sx, nextRandom(s) % 100 < 65 ? 0 : 1);
+    }
+    if (s.beat) spawnMeteor(s, nowMs, sx, 2);
+  }
+  s.beat = false;
+  z.dustAcc += dt * (z.ph == 3 ? 0.0f : MZ_DUST_RATE * z.u);
+  while (z.dustAcc >= 1) {
+    z.dustAcc -= 1;
+    for (auto& d : s.dust) {
+      if (d.on) continue;
+      d.on = true, d.x = (float)(W + 8), d.y = (float)(TOP + nextRandom(s) % (H - TOP - MZ_SEG * SEG_PITCH));
+      d.v = (float)(340 + nextRandom(s) % 200), d.len = (uint8_t)(10 + nextRandom(s) % 18);
+      break;
+    }
+  }
+  for (auto& m : s.met) {
+    if (!m.on) continue;
+    m.x -= m.v * dt, m.y += m.vy * dt;
+    if (m.x <= -MZ_SIZE[m.size].tail * DOT - 8) m.on = false;
+  }
+  for (auto& d : s.dust) {
+    if (!d.on) continue;
+    d.x -= d.v * dt;
+    if (d.x <= -d.len) d.on = false;
+  }
+  float w = MZ_WARP_PX_S * z.u * dt;  // whatever was on screen falls behind
+  for (auto& e : s.e) if (e.on) e.x -= w;
+  for (auto& b : s.eb) if (b.on) b.x -= w;
+  for (auto& m : s.mine) if (m.on) m.x -= w;
+  for (auto& l : s.lt) if (l.on) l.x -= w;
 }
 
 // Moves the fighter, laser shots, targets, bombs and bursts to nowMs.
@@ -835,6 +973,7 @@ static void update(State& s, uint32_t nowMs) {
 
   updateTurns(s, nowMs, dt);
   if (s.eq) updateEq(s, dt);
+  updateMeteorZone(s, nowMs, dt, sx);
 
   // Look at the terrain from the fighter to 60 px ahead, so it rises before a loud passage reaches it.
   int tallest = GROUND;
@@ -874,6 +1013,10 @@ static void update(State& s, uint32_t nowMs) {
   }
   if (!threat) s.dodging = false;
   if (target < TOP + 4) target = TOP + 4;
+  if (s.mz.u > 0) {  // in the zone the fighter keeps to its way through the meteors
+    target += (mzPath(s, nowMs) - target) * s.mz.u;
+    ease = 0.05f + (ease - 0.05f) * (1.0f - s.mz.u);
+  }
   s.shipY += (target - s.shipY) * (1.0f - expf(-dt / ease));
   updateLights(s, nowMs, dt);
   float evadeTgt = updateKong(s, nowMs, dt, sx + SHIP_W / 2.0f, s.shipY + bobY(nowMs) + SHIP_H / 2.0f);
@@ -974,7 +1117,7 @@ static void update(State& s, uint32_t nowMs) {
     if (m.age >= MINE_S || m.x < -DOT) m.on = false;
   }
   bool music = s.prevDb > DB_SILENT;
-  if (s.beat || (int32_t)(nowMs - s.nextSpawnMs) >= (int32_t)((music ? SPAWN_MS_MAX : SPAWN_MS_QUIET) - SPAWN_MS_MIN)) {
+  if (!s.mz.ph && (s.beat || (int32_t)(nowMs - s.nextSpawnMs) >= (int32_t)((music ? SPAWN_MS_MAX : SPAWN_MS_QUIET) - SPAWN_MS_MIN))) {
     s.beat = false;
     int targets = 0;
     for (const auto& e : s.e) targets += e.on && e.kind != SWARMER;
@@ -1030,11 +1173,12 @@ static void update(State& s, uint32_t nowMs) {
     if (x.age >= (x.pop ? POP_S : BURST_S) || x.x < -8) x.on = false;
   }
   for (auto& st : s.star) {
-    st.x -= (st.near ? STAR_NEAR_PX_S : STAR_FAR_PX_S) * dt;
+    st.x -= (st.near ? STAR_NEAR_PX_S : STAR_FAR_PX_S) * (1.0f + 9.0f * s.mz.u) * dt;
     if (st.x < -2) placeStar(s, st, W + 1);
   }
 
-  if (aim) {  // lined up: shoot
+  if (s.mz.ph) {  // the fighter only weaves through
+  } else if (aim) {  // lined up: shoot
     int nose = sy + 2 * DOT + DOT / 2, mid = (int)aim->y + enemyH(*aim) / 2;
     if (abs(nose - mid) <= DOT && aim->x < ENGAGE_X && formed(*aim) && (int32_t)(nowMs - s.nextAimMs) >= 0) {
       s.nextAimMs = nowMs + AIM_FIRE_MS;
@@ -1045,7 +1189,7 @@ static void update(State& s, uint32_t nowMs) {
     s.nextFireMs = nowMs + interval(s, FIRE_MS_MIN, FIRE_MS_MAX);
     fireLaser(s, sx, sy);
   }
-  if ((int32_t)(nowMs - s.nextBombMs) >= 0) {
+  if (!s.mz.ph && (int32_t)(nowMs - s.nextBombMs) >= 0) {
     s.nextBombMs = nowMs + interval(s, BOMB_MS_MIN, BOMB_MS_MAX);
     for (auto& b : s.b) {
       if (b.on) continue;
@@ -1229,6 +1373,47 @@ static void addDot(uint16_t* fb, int x, int y, int r, int g, int b) {
       fb[yy * W + xx] = swap((uint16_t)((cr << 11) | (cg << 5) | cb));
     }
 }
+// The meteors, their tails added to what is behind them, and the thin streaks far behind.
+static void drawMeteors(const State& s, uint16_t* fb) {
+  for (const auto& d : s.dust) {
+    if (!d.on) continue;
+    int x = (int)lrintf(d.x), y = (int)lrintf(d.y);
+    for (int i = 0; i < d.len; i += 2) {
+      float f = 1.0f - (float)i / d.len;
+      px(fb, x + i, y, swap(rgb((int)(90 * f), (int)(110 * f), (int)(150 * f))));
+    }
+  }
+  static const uint16_t CORE = swap(rgb(255, 255, 235)), HOT_W = swap(rgb(255, 214, 110)), HOT_C = swap(rgb(150, 220, 255));
+  static const int8_t BIG[13][3] = {{0, 0, 1}, {-1, 0, 1}, {1, 0, 1}, {0, -1, 1}, {0, 1, 1}, {-1, -1, 0}, {1, -1, 0},
+                                    {-1, 1, 0}, {1, 1, 0}, {-2, 0, 0}, {2, 0, 0}, {0, -2, 0}, {0, 2, 0}};
+  for (const auto& m : s.met) {
+    if (!m.on) continue;
+    const MeteorSize& z = MZ_SIZE[m.size];
+    int gx = DOT * (int)lrintf(m.x / DOT), gy = DOT * (int)lrintf(m.y / DOT);
+    for (int i = z.tail; i >= 1; i--) {
+      float f = 1.0f - (float)i / (z.tail + 1);
+      int slope = (int)lrintf(-m.vy / m.v * i);
+      int r = (int)((m.warm ? 255 : 70) * f), g = (int)((m.warm ? 70 + 150 * f : 150 + 80 * f) * f), b = (int)((m.warm ? 10 + 40 * f : 255) * f);
+      addDot(fb, gx + i * DOT, gy + slope * DOT, r, g, b);
+      if (m.size == 2 && i < z.tail * 0.6f) {
+        addDot(fb, gx + i * DOT, gy + (slope - 1) * DOT, r / 2, g / 2, b / 2);
+        addDot(fb, gx + i * DOT, gy + (slope + 1) * DOT, r / 2, g / 2, b / 2);
+      }
+    }
+    uint16_t hot = m.warm ? HOT_W : HOT_C;
+    if (m.size == 0) {
+      dot(fb, gx, gy, CORE);
+    } else if (m.size == 1) {
+      dot(fb, gx, gy, CORE);
+      dot(fb, gx + DOT, gy, hot);
+      dot(fb, gx, gy - DOT, hot);
+      dot(fb, gx, gy + DOT, hot);
+    } else {
+      for (const auto& d : BIG) dot(fb, gx + d[0] * DOT, gy + d[1] * DOT, d[2] ? CORE : hot);
+    }
+  }
+}
+
 // Is there a part of the monster at the screen point x, y? The ape's silhouette, or the squid's head (its tentacles let light through).
 static bool monsterAt(const Kong& k, float x, float y) {
   if (k.ph == K_IDLE) return false;
@@ -1437,12 +1622,13 @@ static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
       px(fb, x, y + 1, STAR_C[st.kind]);
       px(fb, x + 1, y + 1, STAR_C[st.kind]);
     }
+    for (int t = (int)lrintf(s.mz.u * (st.near ? 10 : 4)); t > 0; t--) px(fb, x + 1 + t, y, STAR_C[st.kind]);  // streaks in the zone
   }
 
   drawKongBody(s, fb, nowMs);  // behind the terrain
 
   for (int i = 0; i < COLS; i++) {
-    int x0 = colX(i, off), h = s.h[i];
+    int x0 = colX(i, off), h = mzHeight(s, s.h[i]);
     for (int dx = 0; dx < BAR_W; dx++) {
       int x = x0 + dx;
       if ((unsigned)x >= (unsigned)W) continue;
@@ -1454,7 +1640,7 @@ static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
     static const uint16_t PEAK = swap(rgb(255, 255, 255));
     for (int j = 0; j < EQ_BANDS; j++) {
       int x0 = j * PITCH + (PITCH - BAR_W) / 2, h = eqHeight(s, j);
-      int peak = s.scale >= 1 ? ((int)lrintf(s.eqPeak[j]) - 1) * SEG_PITCH : -1;  // peak dot: its top segment
+      int peak = s.scale >= 1 && s.mz.u <= 0 ? ((int)lrintf(s.eqPeak[j]) - 1) * SEG_PITCH : -1;  // peak dot: its top segment
       if (peak < h) peak = -1;
       for (int dx = 0; dx < BAR_W; dx++) {
         int x = x0 + dx;
@@ -1505,6 +1691,7 @@ static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
     const EBullet& b = s.eb[i];
     if (b.on) dot(fb, (int)b.x, (int)b.y, ((nowMs / 80 + i) & 1) ? EB_A : EB_B);
   }
+  drawMeteors(s, fb);
 
   // Laser beams: bands of color running along the beam, a white head, the last stretch before the tail in dashes.
   static const uint16_t BEAM[5] = {swap(rgb(255, 255, 255)), swap(rgb(0, 224, 255)), swap(rgb(255, 80, 200)),
@@ -1545,6 +1732,10 @@ static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
   // Engine flame behind the hull (dot row 2), flickering between one and two dots.
   dot(fb, sx - DOT, sy + 2 * DOT, F2);
   if ((nowMs / 90) & 1) dot(fb, sx - 2 * DOT, sy + 2 * DOT, F1);
+  if (s.mz.u > 0.5f) {  // a longer flame at the zone's speed
+    dot(fb, sx - 2 * DOT, sy + 2 * DOT, F1);
+    if ((nowMs / 60) & 1) dot(fb, sx - 3 * DOT, sy + 2 * DOT, F2);
+  }
   drawLightBases(s, fb);       // the searchlights' bases, on the ground
   drawKongArms(s, fb, nowMs);  // both arms: in front of the terrain, the equalizer and the fighter
 }

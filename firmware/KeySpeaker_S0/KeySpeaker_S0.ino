@@ -116,6 +116,8 @@
       whether a press had counted (the user's idea).
     - (S12-3) No NO AUX while a jog dial is on the Grove port: the unit cannot be there too, and the dial is the everyday use,
       so the red word would come up on every round of Fn+I (the user's call). The dial's turning, its button and NO AUX were seen working on S12-2.
+    - (S13-1) The meteor zone on the game screen (FlightViz.h): every few minutes while music plays the terrain sinks low and meteors stream
+      past the fighter, which weaves through them without firing. Tried in the web demo first (the user's idea, no searchlights in it).
     - (S11-2) Searchlights on the game screen (FlightViz.h): a city on alert. Up to three stand on the ground, each with a small base (a
       3 x 3 dot light grey square with a blue window), flow from right to left with the terrain and sweep the sky with a slim beam that
       widens and fades toward the top, in a cool blue-white added to the stars' light. A new one comes every 10 to 35 s, only while
@@ -197,7 +199,7 @@
 #define KS_BLE 1  // (S5-5) 0: build without BLE, to compare
 #include "BleHid.h"
 
-#define BUILD_TAG "S12-3"
+#define BUILD_TAG "S13-1"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
