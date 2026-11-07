@@ -109,7 +109,11 @@
       Also left over and gone: the S5-5 / S5-6 diagnostics at the keyboard and mouse screens' bottom right, and "S0"
       in the data screen's title, now just "KeySpeaker" (the user noticed both).
     - (S12-1) AUX input through the Pico 2 unit on the Grove port (docs/AUX_PICO2_DESIGN.md): Fn+I offers AUX when the unit answers.
-      The jog dial works straight on Grove as before, or on the unit, found by itself. Not yet tried on the device.
+      The jog dial works straight on Grove as before, or on the unit, found by itself. Sound tried on the device
+      2026-11-07; the dial on the unit not yet.
+    - (S12-2) Fn+I shows what it did: the fighter crosses the screen and leaves the input in big letters behind it, USB,
+      MIC or AUX, in red NO USB when no computer is there and NO AUX when the unit is missing. The small lines did not say
+      whether a press had counted (the user's idea).
     - (S11-2) Searchlights on the game screen (FlightViz.h): a city on alert. Up to three stand on the ground, each with a small base (a
       3 x 3 dot light grey square with a blue window), flow from right to left with the terrain and sweep the sky with a slim beam that
       widens and fades toward the top, in a cool blue-white added to the stars' light. A new one comes every 10 to 35 s, only while
@@ -191,7 +195,7 @@
 #define KS_BLE 1  // (S5-5) 0: build without BLE, to compare
 #include "BleHid.h"
 
-#define BUILD_TAG "S12-1"
+#define BUILD_TAG "S12-2"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -798,6 +802,64 @@ static M5Canvas canvas(&M5Cardputer.Display);
 static constexpr uint16_t COL_BG = 0x0000, COL_FG = 0xFFFF, COL_DIM = 0x8410, COL_OK = 0x07E0, COL_WARN = 0xFFE0,
                           COL_BAD = 0xF800, COL_AMBER = 0xFD20;
 
+// (S12-2) What Fn+I did, over whichever screen is up: a band across the middle, the fighter flies through it from left to
+// right, and the big word appears behind it and stays for a moment. Only the screen changes: sound and keys go on.
+static constexpr uint32_t FX_FLY_MS = 800, FX_TOTAL_MS = 2000;
+static constexpr int FX_TOP = 32, FX_H = 71, FX_TEXT_Y = 40, FX_SUB_Y = 87, FX_TEXT_SIZE = 5;
+static bool usbUp();
+static const char* fxText = nullptr;
+static const char* fxSub = nullptr;
+static uint16_t fxColor = 0;
+static uint32_t fxStartMs = 0;
+
+static bool inputFxOn(uint32_t now) { return fxText && now - fxStartMs < FX_TOTAL_MS; }
+
+static void inputFxShow(bool noAux) {
+  fxColor = COL_BAD;
+  if (noAux) fxText = "NO AUX", fxSub = "unit not found";
+  else if (micOn) fxText = "MIC", fxSub = "no sound out", fxColor = COL_WARN;
+  else if (auxOn) fxText = "AUX", fxSub = "sound from the unit", fxColor = COL_OK;
+  else if (usbUp()) fxText = "USB", fxSub = "sound from the computer", fxColor = COL_FG;
+  else fxText = "NO USB", fxSub = "no computer connected";
+  fxStartMs = millis();
+}
+
+static void inputFxDraw(uint32_t now) {
+  uint32_t t = now - fxStartMs;
+  constexpr int W = 240, SW = flightviz::SHIP_W, D = flightviz::DOT;
+  int shipX = t >= FX_FLY_MS ? W : -SW + (int)((W + SW) * t / FX_FLY_MS);
+  canvas.fillRect(0, FX_TOP, W, FX_H, COL_BG);
+  canvas.fillRect(0, FX_TOP, W, 2, fxColor);
+  canvas.fillRect(0, FX_TOP + FX_H - 2, W, 2, fxColor);
+  canvas.setTextColor(fxColor);
+  canvas.setTextSize(FX_TEXT_SIZE);
+  int x = (W - canvas.textWidth(fxText)) / 2;
+  canvas.drawString(fxText, x, FX_TEXT_Y);
+  canvas.drawString(fxText, x + 1, FX_TEXT_Y);  // bold
+  canvas.setTextSize(1);
+  canvas.setTextColor(COL_FG);
+  canvas.drawString(fxSub, (W - canvas.textWidth(fxSub)) / 2, FX_SUB_Y);
+  if (shipX >= W) return;
+  // The word is there only behind the fighter.
+  int cover = shipX + SW / 2 < 0 ? 0 : shipX + SW / 2;
+  canvas.fillRect(cover, FX_TOP + 2, W - cover, FX_H - 4, COL_BG);
+  int y = FX_TOP + (FX_H - flightviz::SHIP_H) / 2;
+  uint16_t wh = canvas.color565(236, 236, 236), sh = canvas.color565(120, 128, 160), mg = canvas.color565(224, 48, 200),
+           cy = canvas.color565(0, 224, 255);
+  for (int r = 0; r < flightviz::SHIP_DH; r++)
+    for (int c = 0; c < flightviz::SHIP_DW; c++) {
+      char k = flightviz::SHIP[r][c];
+      if (k != '.') canvas.fillRect(shipX + c * D, y + r * D, D, D, k == 'W' ? wh : k == 'B' ? sh : k == 'M' ? mg : cy);
+    }
+  canvas.fillRect(shipX - 2 * D, y + 2 * D, 2 * D, D, (t / 50) & 1 ? canvas.color565(255, 120, 0) : canvas.color565(255, 240, 96));
+}
+
+static void showCanvas() {
+  uint32_t now = millis();
+  if (inputFxOn(now)) inputFxDraw(now);
+  canvas.pushSprite(0, 0);
+}
+
 static void drawScreen(uint32_t fillNow, uint32_t elapsedS) {
   char l[48];
   canvas.fillSprite(COL_BG);
@@ -865,7 +927,7 @@ static void drawScreen(uint32_t fillNow, uint32_t elapsedS) {
 
   canvas.setTextColor(COL_DIM);
   canvas.drawString("[ ]\\ vol  spc play  v view  h help", 4, 125);
-  canvas.pushSprite(0, 0);
+  showCanvas();
 }
 
 // ---- Flight visualizer screen (S0-3): about 30 frames a second, drawn straight into the canvas buffer.
@@ -909,7 +971,7 @@ static void drawViz(uint32_t now) {
     snprintf(l, sizeof l, "%sU%lu O%lu", mute ? "MUTE " : "", (unsigned long)u, (unsigned long)o);
     canvas.drawRightString(l, 236, 2);
   }
-  canvas.pushSprite(0, 0);
+  showCanvas();
 
   uint32_t us = micros() - t0;
   if (us > drawMaxUs) drawMaxUs = us;
@@ -1051,7 +1113,7 @@ static void drawSplash() {
     canvas.drawString("KeySpeaker", 60, 107);
     canvas.setTextSize(1);
   }
-  canvas.pushSprite(0, 0);
+  showCanvas();
 }
 
 // ---- Keyboard to the computer (keyboard mode)
@@ -1273,6 +1335,7 @@ static void keyService() {
       } else if (keysMode && (c == '[' || c == ']')) {
         inputKana = c == ']';
       } else if (c == 'i') {  // (S10-1) input: USB audio, microphone, and (S12-1) AUX when the unit is there
+        bool noAux = false;
         if (auxOn) {
           setAux(false);
           auxSend();
@@ -1281,10 +1344,13 @@ static void keyService() {
           if (auxUp) {
             setAux(true);
             auxSend();
+          } else {
+            noAux = true;
           }
         } else {
           setMic(true);
         }
+        inputFxShow(noAux);
         keysRedraw = true;
         acted = true;
       } else if (c == 'o') {
@@ -1769,7 +1835,7 @@ static void drawKeys() {
   } else {
     drawHelp("Fn+M", "mode", sx, y, mx);  // (S10-7) works without USB too
     y += 9;
-    drawHelp("Fn+I", "USB/MIC", sx, y, mx);  // (S10-8) the input switch: it was only on the other screens' help
+    drawHelp("Fn+I", "USB/MIC/AUX", sx, y, mx);  // (S10-8) the input switch: it was only on the other screens' help
     y += 12;
     for (const KeyHelp& h : SHEET) {
       drawHelp(h.key, h.meaning, sx, y, mx);
@@ -1785,7 +1851,7 @@ static void drawKeys() {
   }
   // (S5-13) The S5-5 / S5-6 diagnostics at the bottom right (uac, free memory, BLE subscriptions and reports) are gone
   // from the screen now that BLE works; they looked left over (the user noticed). The serial log keeps [LINK] lines.
-  canvas.pushSprite(0, 0);
+  showCanvas();
 }
 
 // ---- Help screen of the measurement and visualizer modes (S2-6): h or a key with no job opens it and closes it.
@@ -1817,7 +1883,7 @@ static void drawSpeakerHelp() {
   snprintf(l, sizeof l, "+%ddB %s  %s", boostDb.load(), bassCut ? "cut" : "full", uac.mute(UAC_CHAN_MASTER) ? "MUTE" : "");
   canvas.setTextColor(COL_DIM);
   canvas.drawString(l, 124, 30 + 6 * 15);
-  canvas.pushSprite(0, 0);
+  showCanvas();
 }
 
 void setup() {
@@ -1924,6 +1990,7 @@ void loop() {
     helpOn = false;
     showSplash(true);
   }
+  uint32_t screenMs = inputFxOn(now) ? FRAME_MS : 250;  // (S12-2) the fighter needs more frames than the text screens
   if (splashOn) {
     if (now - lastFrame >= FRAME_MS) {
       lastFrame = now;
@@ -1934,13 +2001,13 @@ void loop() {
       splashDrawn = true;
     }
   } else if (view == MODE_KEYS) {
-    if (now - lastScreen >= 250 || keysRedraw) {
+    if (now - lastScreen >= screenMs || keysRedraw) {
       keysRedraw = false;
       lastScreen = now;
       drawKeys();
     }
   } else if (helpOn) {
-    if (now - lastScreen >= 250) {
+    if (now - lastScreen >= screenMs) {
       lastScreen = now;
       drawSpeakerHelp();
     }
@@ -1950,7 +2017,7 @@ void loop() {
       diagMark(diagLoop, 4);
       drawViz(now);
     }
-  } else if (now - lastScreen >= 250) {
+  } else if (now - lastScreen >= screenMs) {
     lastScreen = now;
     diagMark(diagLoop, 5);
     drawScreen(fillNow, elapsedMs / 1000);
