@@ -108,6 +108,12 @@
       a game's demo when left up (the user's call).
       Also left over and gone: the S5-5 / S5-6 diagnostics at the keyboard and mouse screens' bottom right, and "S0"
       in the data screen's title, now just "KeySpeaker" (the user noticed both).
+    - (S12-1) AUX input through the Pico 2 unit on the Grove port (docs/AUX_PICO2_DESIGN.md): Fn+I offers AUX when the unit answers.
+      The jog dial works straight on Grove as before, or on the unit, found by itself. Sound tried on the device
+      2026-11-07; the dial on the unit not yet.
+    - (S12-2) Fn+I shows what it did: the fighter crosses the screen and leaves the input in big letters behind it, USB,
+      MIC or AUX, in red NO USB when no computer is there and NO AUX when the unit is missing. The small lines did not say
+      whether a press had counted (the user's idea).
     - (S11-2) Searchlights on the game screen (FlightViz.h): a city on alert. Up to three stand on the ground, each with a small base (a
       3 x 3 dot light grey square with a blue window), flow from right to left with the terrain and sweep the sky with a slim beam that
       widens and fades toward the top, in a cool blue-white added to the stars' light. A new one comes every 10 to 35 s, only while
@@ -179,6 +185,7 @@
 #include <freertos/stream_buffer.h>
 #include "FlightViz.h"
 #include "RateAdjust.h"
+#include "AuxFrame.h"
 #include "esp_core_dump.h"
 #include "UsbIsoFix.h"
 #include "UsbNames.h"
@@ -188,7 +195,7 @@
 #define KS_BLE 1  // (S5-5) 0: build without BLE, to compare
 #include "BleHid.h"
 
-#define BUILD_TAG "S11-2"
+#define BUILD_TAG "S12-2"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -232,6 +239,7 @@ USBHIDMouse mouse;  // (S2.5-1) the air mouse, after the keyboard
 
 static StreamBufferHandle_t ring = nullptr;   // writer: uacReceiveTask (onSpkData), reader: playTask
 static std::atomic<bool> micOn{false};         // (S10-1) the built-in microphone is the input: it moves the screen only, no sound out
+static std::atomic<bool> auxOn{false};         // (S12-1) the Pico 2 AUX unit on the Grove port is the input: its sound plays
 
 // ---- Counters, written by the audio tasks and read once a second by loop()
 static std::atomic<uint32_t> rxFrames{0};      // stereo frames received from USB (= mono samples)
@@ -386,7 +394,7 @@ static bool ringWasFull = false;
 
 static void onSpkData(void* data, uint16_t len) {
   diagMark(diagRx, 1);
-  if (micOn) {  // (S10-1) the microphone is the input: USB audio is dropped, and the speaker is off
+  if (micOn || auxOn) {  // (S10-1) another input is on: USB audio is dropped
     lastRxMs = millis();
     diagMark(diagRx, 0);
     return;
@@ -504,6 +512,92 @@ static void micTask(void*) {
   vTaskDelete(nullptr);
 }
 
+// ---- Pico 2 AUX unit -> ring (S12-1, docs/AUX_PICO2_DESIGN.md). The unit sends 48 kHz mono in 5 ms frames over the Grove
+// UART, with the jog dial's values if a dial sits on the unit. Its sound takes the same way as USB audio from the ring on.
+static constexpr uint8_t AUX_MAX_GAP = 8;     // lost frames up to this are filled with silence, to keep the timing
+static std::atomic<bool> auxFeed{false};      // the unit's sound goes to the ring
+static std::atomic<bool> auxUp{false};        // the unit answers on the Grove port
+static std::atomic<bool> auxRx{false}, auxRxBusy{false};  // auxTask reads the UART
+static std::atomic<uint32_t> auxLastFrameMs{0}, auxFrames{0}, auxLost{0}, auxBad{0};
+static std::atomic<int16_t> auxDialCount{0};
+static std::atomic<uint8_t> auxFlags{0};
+
+static void auxProcess(const int16_t* s, size_t n) {
+  static float vizAcc = 0;
+  static size_t vizN = 0;
+  int16_t peak = 0;
+  uint32_t pos = vizPcmPos.load(std::memory_order_relaxed);
+  for (size_t i = 0; i < n; i++) {
+    int16_t a = s[i] < 0 ? (int16_t)(s[i] == INT16_MIN ? INT16_MAX : -s[i]) : s[i];
+    if (a > peak) peak = a;
+    vizAcc += (float)s[i] * s[i];
+    vizPcm[pos++ & (VIZ_PCM_N - 1)] = s[i];
+  }
+  vizPcmPos.store(pos, std::memory_order_release);
+  vizN += n;
+  if (vizN >= CHUNK) {
+    vizSum += (uint32_t)sqrtf(vizAcc / vizN);
+    vizCount++;
+    vizAcc = 0;
+    vizN = 0;
+  }
+  rxFrames += n;
+  if (xStreamBufferSpacesAvailable(ring) < n * 2) {
+    droppedSamples += n;
+    if (!ringWasFull) overruns++;
+    ringWasFull = true;
+  } else {
+    ringWasFull = false;
+    xStreamBufferSend(ring, s, n * 2, 0);
+  }
+  uint32_t now = millis();
+  lastRxMs = now;
+  if (peak > rxPeak) rxPeak = peak;
+  if (peak > SOUND_MIN) lastSoundMs = now;
+  if (peak > beatPeak) beatPeak = peak;
+}
+
+static void auxTask(void*) {
+  static auxlink::Parser parser;
+  static uint8_t in[512];
+  static int16_t pcm[auxlink::SOUND_N];
+  static const int16_t silence[auxlink::SOUND_N] = {};
+  int lastSeq = -1;
+  for (;;) {
+    if (!auxRx) {
+      auxRxBusy = false;
+      parser.reset();
+      lastSeq = -1;
+      vTaskDelay(10);
+      continue;
+    }
+    auxRxBusy = true;
+    int n = Serial1.available();
+    if (n <= 0) {
+      vTaskDelay(1);
+      continue;
+    }
+    if (n > (int)sizeof in) n = sizeof in;
+    n = Serial1.read(in, n);
+    for (int i = 0; i < n; i++) {
+      if (!parser.feed(in[i])) continue;
+      uint8_t gap = lastSeq < 0 ? 0 : (uint8_t)(parser.seq() - lastSeq - 1);
+      lastSeq = parser.seq();
+      auxFrames++;
+      auxLost += gap;
+      auxBad = parser.crcBad;
+      auxDialCount = parser.dialCount();
+      auxFlags = parser.flags();
+      auxLastFrameMs = millis();
+      if (parser.type() != auxlink::TYPE_SOUND || !auxFeed) continue;
+      if (gap <= AUX_MAX_GAP)
+        for (uint8_t g = 0; g < gap; g++) auxProcess(silence, auxlink::SOUND_N);
+      parser.samples(pcm);
+      auxProcess(pcm, parser.sampleCount());
+    }
+  }
+}
+
 // ---- ring -> M5.Speaker (core 1)
 // Waits until START_FILL samples are buffered, then keeps M5.Speaker's two queue slots filled with 10 ms chunks.
 // Three chunk buffers in rotation: M5.Speaker reads a buffer until it has played it.
@@ -541,7 +635,7 @@ static void playTask(void*) {
     size_t need = rs.need(ppm);
     if (fill < need) {
       // Only a real underrun when the computer is still sending; the end of a stream just drains the ring.
-      if (streaming && millis() - lastRxMs < 50) underruns++;
+      if ((streaming || auxOn) && millis() - lastRxMs < 50) underruns++;
       playing = false;
       adjPpm = 0;
       continue;
@@ -708,6 +802,64 @@ static M5Canvas canvas(&M5Cardputer.Display);
 static constexpr uint16_t COL_BG = 0x0000, COL_FG = 0xFFFF, COL_DIM = 0x8410, COL_OK = 0x07E0, COL_WARN = 0xFFE0,
                           COL_BAD = 0xF800, COL_AMBER = 0xFD20;
 
+// (S12-2) What Fn+I did, over whichever screen is up: a band across the middle, the fighter flies through it from left to
+// right, and the big word appears behind it and stays for a moment. Only the screen changes: sound and keys go on.
+static constexpr uint32_t FX_FLY_MS = 800, FX_TOTAL_MS = 2000;
+static constexpr int FX_TOP = 32, FX_H = 71, FX_TEXT_Y = 40, FX_SUB_Y = 87, FX_TEXT_SIZE = 5;
+static bool usbUp();
+static const char* fxText = nullptr;
+static const char* fxSub = nullptr;
+static uint16_t fxColor = 0;
+static uint32_t fxStartMs = 0;
+
+static bool inputFxOn(uint32_t now) { return fxText && now - fxStartMs < FX_TOTAL_MS; }
+
+static void inputFxShow(bool noAux) {
+  fxColor = COL_BAD;
+  if (noAux) fxText = "NO AUX", fxSub = "unit not found";
+  else if (micOn) fxText = "MIC", fxSub = "no sound out", fxColor = COL_WARN;
+  else if (auxOn) fxText = "AUX", fxSub = "sound from the unit", fxColor = COL_OK;
+  else if (usbUp()) fxText = "USB", fxSub = "sound from the computer", fxColor = COL_FG;
+  else fxText = "NO USB", fxSub = "no computer connected";
+  fxStartMs = millis();
+}
+
+static void inputFxDraw(uint32_t now) {
+  uint32_t t = now - fxStartMs;
+  constexpr int W = 240, SW = flightviz::SHIP_W, D = flightviz::DOT;
+  int shipX = t >= FX_FLY_MS ? W : -SW + (int)((W + SW) * t / FX_FLY_MS);
+  canvas.fillRect(0, FX_TOP, W, FX_H, COL_BG);
+  canvas.fillRect(0, FX_TOP, W, 2, fxColor);
+  canvas.fillRect(0, FX_TOP + FX_H - 2, W, 2, fxColor);
+  canvas.setTextColor(fxColor);
+  canvas.setTextSize(FX_TEXT_SIZE);
+  int x = (W - canvas.textWidth(fxText)) / 2;
+  canvas.drawString(fxText, x, FX_TEXT_Y);
+  canvas.drawString(fxText, x + 1, FX_TEXT_Y);  // bold
+  canvas.setTextSize(1);
+  canvas.setTextColor(COL_FG);
+  canvas.drawString(fxSub, (W - canvas.textWidth(fxSub)) / 2, FX_SUB_Y);
+  if (shipX >= W) return;
+  // The word is there only behind the fighter.
+  int cover = shipX + SW / 2 < 0 ? 0 : shipX + SW / 2;
+  canvas.fillRect(cover, FX_TOP + 2, W - cover, FX_H - 4, COL_BG);
+  int y = FX_TOP + (FX_H - flightviz::SHIP_H) / 2;
+  uint16_t wh = canvas.color565(236, 236, 236), sh = canvas.color565(120, 128, 160), mg = canvas.color565(224, 48, 200),
+           cy = canvas.color565(0, 224, 255);
+  for (int r = 0; r < flightviz::SHIP_DH; r++)
+    for (int c = 0; c < flightviz::SHIP_DW; c++) {
+      char k = flightviz::SHIP[r][c];
+      if (k != '.') canvas.fillRect(shipX + c * D, y + r * D, D, D, k == 'W' ? wh : k == 'B' ? sh : k == 'M' ? mg : cy);
+    }
+  canvas.fillRect(shipX - 2 * D, y + 2 * D, 2 * D, D, (t / 50) & 1 ? canvas.color565(255, 120, 0) : canvas.color565(255, 240, 96));
+}
+
+static void showCanvas() {
+  uint32_t now = millis();
+  if (inputFxOn(now)) inputFxDraw(now);
+  canvas.pushSprite(0, 0);
+}
+
 static void drawScreen(uint32_t fillNow, uint32_t elapsedS) {
   char l[48];
   canvas.fillSprite(COL_BG);
@@ -756,6 +908,8 @@ static void drawScreen(uint32_t fillNow, uint32_t elapsedS) {
 
   if (micOn) {  // (S10-1)
     snprintf(l, sizeof l, "MIC (no sound out)  sens x%.1f  [- =]", MIC_GAIN[micLevel]);
+  } else if (auxOn) {  // (S12-1)
+    snprintf(l, sizeof l, "AUX IN  bad %lu lost %lu", (unsigned long)auxBad, (unsigned long)auxLost);
   } else {
     snprintf(l, sizeof l, "PC vol %d dB%s  L%d R%d", (int)uac.volume(UAC_CHAN_MASTER), uac.mute(UAC_CHAN_MASTER) ? " MUTE" : "",
              (int)uac.volume(UAC_CHAN_LEFT), (int)uac.volume(UAC_CHAN_RIGHT));
@@ -773,7 +927,7 @@ static void drawScreen(uint32_t fillNow, uint32_t elapsedS) {
 
   canvas.setTextColor(COL_DIM);
   canvas.drawString("[ ]\\ vol  spc play  v view  h help", 4, 125);
-  canvas.pushSprite(0, 0);
+  showCanvas();
 }
 
 // ---- Flight visualizer screen (S0-3): about 30 frames a second, drawn straight into the canvas buffer.
@@ -799,12 +953,15 @@ static void drawViz(uint32_t now) {
   // connected, muted, or dropouts counted. The rest (boost, bass cut) is on the data screen, so the terrain stays alone.
   char l[48];
   uint32_t u = underruns, o = overruns;
-  bool mute = !micOn && uac.mute(UAC_CHAN_MASTER);
+  bool mute = !micOn && !auxOn && uac.mute(UAC_CHAN_MASTER);
   canvas.setTextSize(1);
   if (micOn) {  // (S10-1)
     canvas.setTextColor(COL_DIM);
     snprintf(l, sizeof l, "MIC (no sound out)  x%.1f", MIC_GAIN[micLevel]);
     canvas.drawString(l, 4, 2);
+  } else if (auxOn) {  // (S12-1)
+    canvas.setTextColor(COL_DIM);
+    canvas.drawString("AUX", 4, 2);
   } else if (!(bool)USB) {
     canvas.setTextColor(COL_BAD);
     canvas.drawString("not connected", 4, 2);
@@ -814,7 +971,7 @@ static void drawViz(uint32_t now) {
     snprintf(l, sizeof l, "%sU%lu O%lu", mute ? "MUTE " : "", (unsigned long)u, (unsigned long)o);
     canvas.drawRightString(l, 236, 2);
   }
-  canvas.pushSprite(0, 0);
+  showCanvas();
 
   uint32_t us = micros() - t0;
   if (us > drawMaxUs) drawMaxUs = us;
@@ -845,7 +1002,7 @@ static bool usbUp() { return (bool)USB && usbSawHost && millis() - usbLastSofMs 
 static bool navFree = false;
 static uint8_t viewMode() {
   if (usbUp()) navFree = false;
-  return usbUp() || micOn || navFree ? mode : (uint8_t)MODE_KEYS;
+  return usbUp() || micOn || auxOn || navFree ? mode : (uint8_t)MODE_KEYS;
 }
 
 // ---- Emblem screen (S1-7, S2-6, design 8.3): shown at start for SPLASH_MS or until a key, and, in the measurement
@@ -956,7 +1113,7 @@ static void drawSplash() {
     canvas.drawString("KeySpeaker", 60, 107);
     canvas.setTextSize(1);
   }
-  canvas.pushSprite(0, 0);
+  showCanvas();
 }
 
 // ---- Keyboard to the computer (keyboard mode)
@@ -1108,6 +1265,28 @@ static bool setMic(bool on) {
   return true;
 }
 
+// (S12-1) Input: the Pico 2 AUX unit. The speaker stays on; only what feeds the ring changes. save is false when the unit
+// went away by itself, so the choice comes back with the unit.
+static void auxSend() { Serial1.print(auxOn ? "KS+\n" : "KS-\n"); }
+
+static void setAux(bool on, bool save = true) {
+  if (on != auxOn) {
+    if (on) {
+      auxOn = true;  // onSpkData stops feeding the ring
+      delay(30);
+      xStreamBufferReset(ring);
+      auxFeed = true;
+    } else {
+      auxFeed = false;
+      delay(10);
+      xStreamBufferReset(ring);
+      auxOn = false;
+    }
+    Serial.printf("[AUX] input: %s\n", on ? "AUX" : "USB audio");
+  }
+  if (save) prefs.putBool("aux", on);
+}
+
 // ---- Keys
 static uint8_t heldLabels[16];  // unshifted labels of the keys held at the last change
 static int heldCount = 0;
@@ -1155,8 +1334,23 @@ static void keyService() {
         acted = true;
       } else if (keysMode && (c == '[' || c == ']')) {
         inputKana = c == ']';
-      } else if (c == 'i') {  // (S10-1) input: USB audio / microphone
-        setMic(!micOn);
+      } else if (c == 'i') {  // (S10-1) input: USB audio, microphone, and (S12-1) AUX when the unit is there
+        bool noAux = false;
+        if (auxOn) {
+          setAux(false);
+          auxSend();
+        } else if (micOn) {
+          setMic(false);
+          if (auxUp) {
+            setAux(true);
+            auxSend();
+          } else {
+            noAux = true;
+          }
+        } else {
+          setMic(true);
+        }
+        inputFxShow(noAux);
         keysRedraw = true;
         acted = true;
       } else if (c == 'o') {
@@ -1348,41 +1542,24 @@ static bool dialRead(uint8_t reg, uint8_t* buf, uint8_t len) {  // false instead
   return true;
 }
 
-static void dialService(uint32_t now) {
-  static bool found = false;
-  static uint32_t last = 0, lastProbe = 0;
-  static int16_t lastCount = 0;
-  static int accum = 0;
-  static bool down = false;
-  if (now - last < DIAL_MS) return;
-  last = now;
-  uint8_t d[2];
-  if (!found) {
-    if (lastProbe && now - lastProbe < 1000) return;
-    lastProbe = now;
-    if (!dialRead(DIAL_REG_COUNT, d, 2)) return;
-    lastCount = (int16_t)(d[0] | (d[1] << 8));
-    uint8_t b;
-    down = dialRead(DIAL_REG_BUTTON, &b, 1) && b == 0;
-    accum = 0;
-    found = true;
-    Serial.println("[DIAL] Unit Encoder found");
-    return;
-  }
-  if (!dialRead(DIAL_REG_COUNT, d, 2)) {
-    found = false;
-    Serial.println("[DIAL] Unit Encoder lost");
-    return;
-  }
-  int16_t count = (int16_t)(d[0] | (d[1] << 8));
-  accum += (int16_t)(count - lastCount);
-  lastCount = count;
-  uint8_t b = 1;
-  bool press = dialRead(DIAL_REG_BUTTON, &b, 1) && b == 0;
+// (S12-1) The dial's values arrive from either way (I2C here, or the AUX unit's frames) and do the same thing.
+static int16_t dialLastCount = 0;
+static int dialAccum = 0;
+static bool dialDown = false;
+
+static void dialStart(int16_t count, bool press) {
+  dialLastCount = count;
+  dialDown = press;
+  dialAccum = 0;
+}
+
+static void dialApply(int16_t count, bool press, uint32_t now) {
+  dialAccum += (int16_t)(count - dialLastCount);
+  dialLastCount = count;
   bool keys = viewMode() == MODE_KEYS;
-  while (accum >= 2 || accum <= -2) {
-    bool up = accum > 0;
-    accum += up ? -2 : 2;
+  while (dialAccum >= 2 || dialAccum <= -2) {
+    bool up = dialAccum > 0;
+    dialAccum += up ? -2 : 2;
     lastKeyMs = now;
     if (keys) {
       resendKeys(up ? HID_RIGHT : HID_LEFT);
@@ -1392,7 +1569,7 @@ static void dialService(uint32_t now) {
       media.release();
     }
   }
-  if (press && !down) {
+  if (press && !dialDown) {
     lastKeyMs = now;
     if (keys) {
       resendKeys(HID_ENTER);
@@ -1402,7 +1579,122 @@ static void dialService(uint32_t now) {
       media.release();
     }
   }
-  down = press;
+  dialDown = press;
+}
+
+// (S12-1) G1 and G2 carry I2C or the UART, never both, so only one is open. With nothing found on I2C the UART is tried now
+// and then: a HELLO, and the unit answers with frames. The unit keeps its TX off until it is asked, so the I2C search
+// cannot meet it (design 6).
+static constexpr uint32_t AUX_PROBE_MS = 100, AUX_HELLO_MS = 30, AUX_KEEP_MS = 200, AUX_LOST_MS = 500;
+static constexpr uint8_t AUX_PROBE_EVERY = 3;  // I2C searches (a second apart) for each UART try
+static bool auxOpen = false;
+static uint32_t auxOpenMs = 0, auxSendMs = 0, auxLogMs = 0, auxDialMs = 0;
+static bool auxDialSeen = false;
+
+static void auxLinkOpen(uint32_t now) {
+  Wire.end();
+  Serial1.setRxBufferSize(4096);
+  Serial1.begin(auxlink::BAUD, SERIAL_8N1, 1, 2);  // RX G1, TX G2
+  Serial1.setRxFIFOFull(64);
+  auxLastFrameMs = 0;
+  auxRx = true;
+  auxOpen = true;
+  auxOpenMs = now;
+  auxSendMs = 0;
+  auxDialSeen = false;
+}
+
+static void auxLinkClose() {
+  auxRx = false;
+  while (auxRxBusy) delay(1);
+  Serial1.end();
+  auxOpen = false;
+  auxUp = false;
+  Wire.begin(2, 1, 200000);
+}
+
+static void auxService(uint32_t now) {
+  uint32_t last = auxLastFrameMs;
+  if (!auxUp) {
+    if (last) {
+      auxUp = true;
+      Serial.println("[AUX] unit found");
+      if (prefs.getBool("aux", false) && !micOn) setAux(true, false);
+      auxSend();
+      auxSendMs = now;
+      return;
+    }
+    if (now - auxOpenMs >= AUX_PROBE_MS) {
+      auxLinkClose();
+      return;
+    }
+    if (!auxSendMs || now - auxSendMs >= AUX_HELLO_MS) {
+      auxSendMs = now;
+      Serial1.print("KS?\n");
+    }
+    return;
+  }
+  if (now - last >= AUX_LOST_MS) {
+    Serial.println("[AUX] unit lost");
+    setAux(false, false);
+    auxLinkClose();
+    return;
+  }
+  if (now - auxSendMs >= AUX_KEEP_MS) {
+    auxSendMs = now;
+    auxSend();
+  }
+  if (now - auxDialMs >= DIAL_MS) {
+    auxDialMs = now;
+    uint8_t f = auxFlags;
+    bool dial = f & auxlink::FLAG_DIAL, press = f & auxlink::FLAG_BUTTON;
+    if (dial && !auxDialSeen) {
+      dialStart(auxDialCount, press);
+      Serial.println("[AUX] dial on the unit");
+    } else if (dial) {
+      dialApply(auxDialCount, press, now);
+    }
+    auxDialSeen = dial;
+  }
+  if (now - auxLogMs >= 1000) {
+    auxLogMs = now;
+    Serial.printf("[AUX] input=%d frames=%lu bad=%lu lost=%lu dial=%d\n", (int)auxOn.load(), (unsigned long)auxFrames.load(),
+                  (unsigned long)auxBad.load(), (unsigned long)auxLost.load(), (int)auxDialSeen);
+  }
+}
+
+static void dialService(uint32_t now) {
+  static bool found = false;
+  static uint32_t last = 0, lastProbe = 0;
+  static uint8_t misses = 0;
+  if (auxOpen) {
+    auxService(now);
+    return;
+  }
+  if (now - last < DIAL_MS) return;
+  last = now;
+  uint8_t d[2];
+  if (!found) {
+    if (lastProbe && now - lastProbe < 1000) return;
+    lastProbe = now;
+    if (!dialRead(DIAL_REG_COUNT, d, 2)) {
+      if (misses++ % AUX_PROBE_EVERY == 0) auxLinkOpen(now);
+      return;
+    }
+    uint8_t b;
+    dialStart((int16_t)(d[0] | (d[1] << 8)), dialRead(DIAL_REG_BUTTON, &b, 1) && b == 0);
+    found = true;
+    Serial.println("[DIAL] Unit Encoder found");
+    return;
+  }
+  if (!dialRead(DIAL_REG_COUNT, d, 2)) {
+    found = false;
+    Serial.println("[DIAL] Unit Encoder lost");
+    return;
+  }
+  uint8_t b = 1;
+  bool press = dialRead(DIAL_REG_BUTTON, &b, 1) && b == 0;
+  dialApply((int16_t)(d[0] | (d[1] << 8)), press, now);
 }
 
 // ---- USB or BLE (S5-1, design 5.3): BLE starts once USB has been gone for BLE_AFTER_MS (unplugged, only a charger,
@@ -1494,6 +1786,9 @@ static void drawKeys() {
   if (micOn) {  // (S10-9) the microphone is the input (it moves the other screens): just above the connection, in the
     canvas.setTextColor(COL_OK);  // bottom left corner, which the round Earth leaves empty. Three letters only: "MIC ON" would touch the disc.
     canvas.drawString("MIC", x, 90);
+  } else if (auxOn) {  // (S12-1)
+    canvas.setTextColor(COL_OK);
+    canvas.drawString("AUX", x, 90);
   }
   x += canvas.textWidth(link) + 6;
   canvas.setTextColor(COL_FG);
@@ -1540,7 +1835,7 @@ static void drawKeys() {
   } else {
     drawHelp("Fn+M", "mode", sx, y, mx);  // (S10-7) works without USB too
     y += 9;
-    drawHelp("Fn+I", "USB/MIC", sx, y, mx);  // (S10-8) the input switch: it was only on the other screens' help
+    drawHelp("Fn+I", "USB/MIC/AUX", sx, y, mx);  // (S10-8) the input switch: it was only on the other screens' help
     y += 12;
     for (const KeyHelp& h : SHEET) {
       drawHelp(h.key, h.meaning, sx, y, mx);
@@ -1556,7 +1851,7 @@ static void drawKeys() {
   }
   // (S5-13) The S5-5 / S5-6 diagnostics at the bottom right (uac, free memory, BLE subscriptions and reports) are gone
   // from the screen now that BLE works; they looked left over (the user noticed). The serial log keeps [LINK] lines.
-  canvas.pushSprite(0, 0);
+  showCanvas();
 }
 
 // ---- Help screen of the measurement and visualizer modes (S2-6): h or a key with no job opens it and closes it.
@@ -1573,7 +1868,7 @@ static void drawSpeakerHelp() {
   const KeyHelp LEFT[] = {{"[ ]", "volume"}, {"\\", "mute"}, {"space", "play/pause"},
                           {", /", "prev/next"}, {"- =", micOn ? "mic sens" : "boost"}, {"b", "bass cut"}};  // (S10-7) - = sets the mic's sensitivity
   const KeyHelp RIGHT[] = {{"v", "measure/flight"}, {"r", "reset counts"}, {"h", "close help"},
-                           {"Fn+M", "next mode"}, {"Fn+O", "Mac/Win"}, {"Fn+I", micOn ? "input: MIC" : "input: USB"}};
+                           {"Fn+M", "next mode"}, {"Fn+O", "Mac/Win"}, {"Fn+I", micOn ? "input: MIC" : auxOn ? "input: AUX" : "input: USB"}};
   int y = 30;
   for (const KeyHelp& h : LEFT) {
     drawHelp(h.key, h.meaning, 6, y, 44);
@@ -1588,7 +1883,7 @@ static void drawSpeakerHelp() {
   snprintf(l, sizeof l, "+%ddB %s  %s", boostDb.load(), bassCut ? "cut" : "full", uac.mute(UAC_CHAN_MASTER) ? "MUTE" : "");
   canvas.setTextColor(COL_DIM);
   canvas.drawString(l, 124, 30 + 6 * 15);
-  canvas.pushSprite(0, 0);
+  showCanvas();
 }
 
 void setup() {
@@ -1644,6 +1939,7 @@ void setup() {
   mouse.begin();
   Wire.begin(2, 1, 200000);  // (S2.5-10) the Grove port, for a jog dial: SDA G2, SCL G1, as in Media Jog
   if (micWanted) setMic(true);
+  xTaskCreatePinnedToCore(auxTask, "aux", 4096, nullptr, 3, nullptr, PRO_CPU_NUM);
   Serial.printf("[BOOT] IMU %s\n", M5.Imu.isEnabled() ? "on" : "not found");
   Serial.printf("[BOOT] ready, heap %u\n", (unsigned)ESP.getFreeHeap());
 }
@@ -1694,6 +1990,7 @@ void loop() {
     helpOn = false;
     showSplash(true);
   }
+  uint32_t screenMs = inputFxOn(now) ? FRAME_MS : 250;  // (S12-2) the fighter needs more frames than the text screens
   if (splashOn) {
     if (now - lastFrame >= FRAME_MS) {
       lastFrame = now;
@@ -1704,13 +2001,13 @@ void loop() {
       splashDrawn = true;
     }
   } else if (view == MODE_KEYS) {
-    if (now - lastScreen >= 250 || keysRedraw) {
+    if (now - lastScreen >= screenMs || keysRedraw) {
       keysRedraw = false;
       lastScreen = now;
       drawKeys();
     }
   } else if (helpOn) {
-    if (now - lastScreen >= 250) {
+    if (now - lastScreen >= screenMs) {
       lastScreen = now;
       drawSpeakerHelp();
     }
@@ -1720,7 +2017,7 @@ void loop() {
       diagMark(diagLoop, 4);
       drawViz(now);
     }
-  } else if (now - lastScreen >= 250) {
+  } else if (now - lastScreen >= screenMs) {
     lastScreen = now;
     diagMark(diagLoop, 5);
     drawScreen(fillNow, elapsedMs / 1000);

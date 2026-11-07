@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 760" width="1040" height="760" font-family="'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans CJK JP','Noto Sans JP','Yu Gothic',Meiryo,sans-serif" role="img" aria-label="Pico 2 H pins">
+<title>Pico 2 H pins</title>
+<rect width="1040" height="760" fill="#ffffff"/>
+<text x="24" y="36" font-size="22" fill="#222" text-anchor="start" font-weight="700">Figure 2  Pins used (Pico 2 H seen from above)</text>
+<text x="24" y="60" font-size="14" fill="#666" text-anchor="start">With USB at the top, pin 1 is top left and pin 40 is top right</text>
+<rect x="420" y="120" width="200" height="600" rx="6" fill="#e9f6ec" stroke="#222" stroke-width="1.5"/>
+<rect x="490" y="94" width="60" height="34" rx="6" fill="#ccc" stroke="#222" stroke-width="1.5"/>
+<text x="520" y="118" font-size="13" fill="#222" text-anchor="middle" font-weight="700">USB</text>
+<text x="520" y="420.0" font-size="20" fill="#222" text-anchor="middle" font-weight="700">Pico 2 H</text>
+<circle cx="420" cy="135" r="6" fill="#8e44ad" stroke="#8e44ad" stroke-width="1.5"/>
+<text x="434" y="140" font-size="11.5" fill="#666" text-anchor="start">1</text>
+<line x1="414" y1="135" x2="380" y2="135" stroke="#8e44ad" stroke-width="2" stroke-linecap="round"/>
+<text x="374" y="140" font-size="14" fill="#8e44ad" text-anchor="end" font-weight="700">GP0  UART TX (to Grove yellow)</text>
+<circle cx="420" cy="165" r="6" fill="#c9a400" stroke="#c9a400" stroke-width="1.5"/>
+<text x="434" y="170" font-size="11.5" fill="#666" text-anchor="start">2</text>
+<line x1="414" y1="165" x2="380" y2="165" stroke="#c9a400" stroke-width="2" stroke-linecap="round"/>
+<text x="374" y="170" font-size="14" fill="#c9a400" text-anchor="end" font-weight="700">GP1  UART RX (from Grove white)</text>
+<circle cx="420" cy="195" r="6" fill="#222222" stroke="#222222" stroke-width="1.5"/>
+<text x="434" y="200" font-size="11.5" fill="#666" text-anchor="start">3</text>
+<line x1="414" y1="195" x2="380" y2="195" stroke="#222222" stroke-width="2" stroke-linecap="round"/>
+<text x="374" y="200" font-size="14" fill="#222222" text-anchor="end" font-weight="700">GND  </text>
+<circle cx="420" cy="225" r="6" fill="#f07f13" stroke="#f07f13" stroke-width="1.5"/>
+<text x="434" y="230" font-size="11.5" fill="#666" text-anchor="start">4</text>
+<line x1="414" y1="225" x2="380" y2="225" stroke="#f07f13" stroke-width="2" stroke-linecap="round"/>
+<text x="374" y="230" font-size="14" fill="#f07f13" text-anchor="end" font-weight="700">GP2  PCM1808 DATA</text>
+<circle cx="420" cy="255" r="6" fill="#1f77b4" stroke="#1f77b4" stroke-width="1.5"/>
+<text x="434" y="260" font-size="11.5" fill="#666" text-anchor="start">5</text>
+<line x1="414" y1="255" x2="380" y2="255" stroke="#1f77b4" stroke-width="2" stroke-linecap="round"/>
+<text x="374" y="260" font-size="14" fill="#1f77b4" text-anchor="end" font-weight="700">GP3  PCM1808 BCLK</text>
+<circle cx="420" cy="285" r="6" fill="#2a9d3a" stroke="#2a9d3a" stroke-width="1.5"/>
+<text x="434" y="290" font-size="11.5" fill="#666" text-anchor="start">6</text>
+<line x1="414" y1="285" x2="380" y2="285" stroke="#2a9d3a" stroke-width="2" stroke-linecap="round"/>
+<text x="374" y="290" font-size="14" fill="#2a9d3a" text-anchor="end" font-weight="700">GP4  PCM1808 LRCK</text>
+<circle cx="420" cy="315" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="434" y="320" font-size="11.5" fill="#666" text-anchor="start">7</text>
+<circle cx="420" cy="345" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="434" y="350" font-size="11.5" fill="#666" text-anchor="start">8</text>
+<circle cx="420" cy="375" r="6" fill="#00897b" stroke="#00897b" stroke-width="1.5"/>
+<text x="434" y="380" font-size="11.5" fill="#666" text-anchor="start">9</text>
+<line x1="414" y1="375" x2="380" y2="375" stroke="#00897b" stroke-width="2" stroke-linecap="round"/>
+<text x="374" y="380" font-size="14" fill="#00897b" text-anchor="end" font-weight="700">GP6  Dial SDA (optional)</text>
+<circle cx="420" cy="405" r="6" fill="#6d4c41" stroke="#6d4c41" stroke-width="1.5"/>
+<text x="434" y="410" font-size="11.5" fill="#666" text-anchor="start">10</text>
+<line x1="414" y1="405" x2="380" y2="405" stroke="#6d4c41" stroke-width="2" stroke-linecap="round"/>
+<text x="374" y="410" font-size="14" fill="#6d4c41" text-anchor="end" font-weight="700">GP7  Dial SCL (optional)</text>
+<circle cx="420" cy="435" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="434" y="440" font-size="11.5" fill="#666" text-anchor="start">11</text>
+<circle cx="420" cy="465" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="434" y="470" font-size="11.5" fill="#666" text-anchor="start">12</text>
+<circle cx="420" cy="495" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="434" y="500" font-size="11.5" fill="#666" text-anchor="start">13</text>
+<circle cx="420" cy="525" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="434" y="530" font-size="11.5" fill="#666" text-anchor="start">14</text>
+<circle cx="420" cy="555" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="434" y="560" font-size="11.5" fill="#666" text-anchor="start">15</text>
+<circle cx="420" cy="585" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="434" y="590" font-size="11.5" fill="#666" text-anchor="start">16</text>
+<circle cx="420" cy="615" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="434" y="620" font-size="11.5" fill="#666" text-anchor="start">17</text>
+<circle cx="420" cy="645" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="434" y="650" font-size="11.5" fill="#666" text-anchor="start">18</text>
+<circle cx="420" cy="675" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="434" y="680" font-size="11.5" fill="#666" text-anchor="start">19</text>
+<circle cx="420" cy="705" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="434" y="710" font-size="11.5" fill="#666" text-anchor="start">20</text>
+<circle cx="620" cy="135" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="606" y="140" font-size="11.5" fill="#666" text-anchor="end">40</text>
+<circle cx="620" cy="165" r="6" fill="#d62728" stroke="#d62728" stroke-width="1.5"/>
+<text x="606" y="170" font-size="11.5" fill="#666" text-anchor="end">39</text>
+<line x1="626" y1="165" x2="660" y2="165" stroke="#d62728" stroke-width="2" stroke-linecap="round"/>
+<text x="666" y="170" font-size="14" fill="#d62728" text-anchor="start" font-weight="700">VSYS  5 V power (to the + rail)</text>
+<circle cx="620" cy="195" r="6" fill="#222222" stroke="#222222" stroke-width="1.5"/>
+<text x="606" y="200" font-size="11.5" fill="#666" text-anchor="end">38</text>
+<line x1="626" y1="195" x2="660" y2="195" stroke="#222222" stroke-width="2" stroke-linecap="round"/>
+<text x="666" y="200" font-size="14" fill="#222222" text-anchor="start" font-weight="700">GND  common GND</text>
+<circle cx="620" cy="225" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="606" y="230" font-size="11.5" fill="#666" text-anchor="end">37</text>
+<circle cx="620" cy="255" r="6" fill="#e67e22" stroke="#e67e22" stroke-width="1.5"/>
+<text x="606" y="260" font-size="11.5" fill="#666" text-anchor="end">36</text>
+<line x1="626" y1="255" x2="660" y2="255" stroke="#e67e22" stroke-width="2" stroke-linecap="round"/>
+<text x="666" y="260" font-size="14" fill="#e67e22" text-anchor="start" font-weight="700">3V3(OUT)  for pull-ups (optional)</text>
+<circle cx="620" cy="285" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="606" y="290" font-size="11.5" fill="#666" text-anchor="end">35</text>
+<circle cx="620" cy="315" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="606" y="320" font-size="11.5" fill="#666" text-anchor="end">34</text>
+<circle cx="620" cy="345" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="606" y="350" font-size="11.5" fill="#666" text-anchor="end">33</text>
+<circle cx="620" cy="375" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="606" y="380" font-size="11.5" fill="#666" text-anchor="end">32</text>
+<circle cx="620" cy="405" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="606" y="410" font-size="11.5" fill="#666" text-anchor="end">31</text>
+<circle cx="620" cy="435" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="606" y="440" font-size="11.5" fill="#666" text-anchor="end">30</text>
+<circle cx="620" cy="465" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="606" y="470" font-size="11.5" fill="#666" text-anchor="end">29</text>
+<circle cx="620" cy="495" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="606" y="500" font-size="11.5" fill="#666" text-anchor="end">28</text>
+<circle cx="620" cy="525" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="606" y="530" font-size="11.5" fill="#666" text-anchor="end">27</text>
+<circle cx="620" cy="555" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="606" y="560" font-size="11.5" fill="#666" text-anchor="end">26</text>
+<circle cx="620" cy="585" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="606" y="590" font-size="11.5" fill="#666" text-anchor="end">25</text>
+<circle cx="620" cy="615" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="606" y="620" font-size="11.5" fill="#666" text-anchor="end">24</text>
+<circle cx="620" cy="645" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="606" y="650" font-size="11.5" fill="#666" text-anchor="end">23</text>
+<circle cx="620" cy="675" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="606" y="680" font-size="11.5" fill="#666" text-anchor="end">22</text>
+<circle cx="620" cy="705" r="6" fill="#fff" stroke="#666" stroke-width="1.5"/>
+<text x="606" y="710" font-size="11.5" fill="#666" text-anchor="end">21</text>
+</svg>
