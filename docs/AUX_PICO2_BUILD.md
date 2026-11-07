@@ -56,6 +56,8 @@ If you put the jog dial on the Pico, you also need these:
 
 The PCM1808 board the author bought: https://www.aliexpress.com/item/1005009056060069.html Before you buy, check in the shop's photos that the pin headers are on the board. Without them, you need to solder.
 
+Other PCM1808 boards should also work if they have the same pins (DATA, BCLK, LRCK, VDD and GND), run on 5 V, have a 3.5 mm input, and work as an I²S master at 96 kHz. I²S master means that the board makes the timing of the sound, and the Pico follows it. The author has only tried this one.
+
 Stock and prices are not checked and may change. Ask your shop.
 
 ## 4. Pins used
