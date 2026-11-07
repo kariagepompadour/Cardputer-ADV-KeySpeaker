@@ -13,6 +13,12 @@
 
 ## 1. 完成すると何ができるか
 
+![パソコンの横に置いた作者の試作機](images/aux_pico2/photo_aux_side.jpg)
+
+![作者の試作機を上から見たところ](images/aux_pico2/photo_aux_top.jpg)
+
+作者の試作機です。Grove ケーブルの途中の余分な線は、前の作品のケーブルを流用したためです。配線は写真ではなく、図と表に従ってください。
+
 ![システム全体図](images/aux_pico2/fig01_system_ja.svg)
 
 - パソコンやスマートフォンなどの音を、Cardputer ADV のスピーカーで鳴らせます。

@@ -84,6 +84,10 @@ there only says the cable is connected.
 player comes out of the Cardputer's speaker. The unit runs on the Cardputer's power and can stay connected. See the
 [build guide](docs/AUX_PICO2_BUILD.md) and the [design](docs/AUX_PICO2_DESIGN.md).
 
+<img src="docs/images/aux_pico2/photo_aux_overview.jpg" alt="The AUX unit on a breadboard, connected to the Cardputer ADV and a computer's earphone jack" width="420">
+
+The author's build. The extra wires on the Grove cable are from an earlier project. Follow the figures and tables, not this photo.
+
 Each press of `Fn+I` moves on to the next input: USB, MIC, then AUX when the unit is there. The fighter crosses the screen and
 leaves the input in big letters behind it, or `NO USB` or `NO AUX` in red when that source is missing.
 

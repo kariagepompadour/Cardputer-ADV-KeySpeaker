@@ -71,6 +71,10 @@ keyboard modeの画面の左下に、緑の `MIC` が出ます。そこの緑の
 鳴らせます。ユニットは Cardputer の電気で動き、つないだままにできます。[製作説明書](docs/AUX_PICO2_BUILD_JA.md)と
 [設計書](docs/AUX_PICO2_DESIGN_JA.md)を見てください。
 
+<img src="docs/images/aux_pico2/photo_aux_overview.jpg" alt="ブレッドボードのAUXユニットを、Cardputer ADVとパソコンのイヤホン端子につないだところ" width="420">
+
+作者の試作機です。Grove ケーブルの途中の余分な線は、前の作品のケーブルを流用したためです。配線は写真ではなく、図と表に従ってください。
+
 `Fn+I` を押すたびに、入力が USB、MIC、AUX の順に変わります。AUX はユニットがあるときだけ選べます。押すと戦闘機が画面を横切り、
 今の入力が大きな文字で出ます。音源がないときは、赤で `NO USB` や `NO AUX` と出ます。
 
