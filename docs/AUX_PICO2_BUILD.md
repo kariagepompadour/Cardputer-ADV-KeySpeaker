@@ -13,6 +13,12 @@ Japanese version: [AUX_PICO2_BUILD_JA.md](AUX_PICO2_BUILD_JA.md). Design: [AUX_P
 
 ## 1. What the finished unit does
 
+![The author's build next to a computer](images/aux_pico2/photo_aux_side.jpg)
+
+![The author's build from above](images/aux_pico2/photo_aux_top.jpg)
+
+The author's build. The extra wires on the Grove cable are from an earlier project. Follow the figures and tables, not this photo.
+
 ![System overview](images/aux_pico2/fig01_system_en.svg)
 
 - Sound from a computer, a phone or another player comes out of the Cardputer ADV's speaker.
