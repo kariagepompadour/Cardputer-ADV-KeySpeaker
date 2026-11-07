@@ -96,7 +96,7 @@ R3 and R4 match the pull-ups on the Cardputer's board. ✅ Today's dial works wi
 | Total | 🟡 Up to about 100 mA at 5 V |
 | Battery side | 🟡 About 150 mA more (assuming 3.7 V and an 85% efficient boost) |
 
-⛔ Whether Grove has 5 V on battery alone is not confirmed. In the schematic, an internal switch SW2 selects 5VOUT or 5VIN. Check with a tester.
+✅ Measured 2026-11-07 with no unit attached: Grove red is 5.347 V on USB and 5.333 V on battery, white 3.291 V, yellow 3.275 V. That is below the Pico 2's 5.5 V VSYS limit, with about 0.15 V to spare.
 
 Unplug Grove before connecting USB to the Pico, as with Karipom Ear. On USB, VSYS (VBUS through a diode) also powers the PCM1808 board. ✅ Reception was confirmed with this wiring (section 10).
 
@@ -202,10 +202,10 @@ While AUX is selected, USB audio is dropped and only AUX sound enters the ring.
 
 1. ⛔ Whether Grove can carry sound continuously at 2,000,000 bps, including the effect of G1's TVS and pull-up.
 2. ⛔ Sound quality. Karipom Ear only analysed sound and nobody listened to it. Listen for Pico noise.
-3. ⛔ Grove 5 V on battery.
+3. ⛔ Grove 5 V with the unit attached (under load).
 4. ⛔ That Launcher does not use G1 or G2 outside `_setup_gpio()`.
 5. ⛔ The dial's signal voltage (expected at or below 3.3 V, since it works with an ESP32-S3). Measure before connecting.
-6. ⛔ Grove cable colours. They can differ by lot, so check with a tester.
+6. ⛔ Which of white and yellow is G1. Both read about 3.3 V, so voltage cannot tell them apart. The communication check will.
 
 ## 11. Sources
 
