@@ -12,8 +12,8 @@
 <text x="1095" y="138" font-size="16" fill="#222" text-anchor="middle" font-weight="700">U2  PCM1808 board</text>
 <rect x="960" y="470" width="270" height="180" rx="6" fill="#fff" stroke="#00897b" stroke-width="1.5" stroke-dasharray="6 4"/>
 <text x="1095" y="498" font-size="15" fill="#00897b" text-anchor="middle" font-weight="700">U3  Unit Encoder (optional)</text>
-<text x="262" y="240" font-size="13.5" fill="#8e44ad" text-anchor="end" font-weight="700">G1 (white)</text>
-<text x="262" y="290" font-size="13.5" fill="#c9a400" text-anchor="end" font-weight="700">G2 (yellow)</text>
+<text x="262" y="240" font-size="13.5" fill="#8e44ad" text-anchor="end" font-weight="700">G1 (yellow)</text>
+<text x="262" y="290" font-size="13.5" fill="#c9a400" text-anchor="end" font-weight="700">G2 (white)</text>
 <text x="262" y="340" font-size="13.5" fill="#d62728" text-anchor="end" font-weight="700">5V (red)</text>
 <text x="262" y="390" font-size="13.5" fill="#222222" text-anchor="end" font-weight="700">GND (black)</text>
 <line x1="270" y1="235" x2="350" y2="235" stroke="#8e44ad" stroke-width="2.5" stroke-linecap="round"/>

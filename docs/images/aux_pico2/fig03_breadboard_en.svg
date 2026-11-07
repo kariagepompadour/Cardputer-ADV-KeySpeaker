@@ -472,13 +472,13 @@
 <line x1="888" y1="322" x2="888" y2="214" stroke="#8e44ad" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="2 5"/>
 <line x1="888" y1="214" x2="888" y2="98" stroke="#8e44ad" stroke-width="3" stroke-linecap="round"/>
 <circle cx="888" cy="214" r="4.5" fill="#8e44ad" stroke="#8e44ad" stroke-width="1.5"/>
-<rect x="859.5" y="74" width="57.0" height="24" rx="4" fill="#fff" stroke="#8e44ad" stroke-width="1.8"/>
-<text x="888" y="91" font-size="13" fill="#8e44ad" text-anchor="middle" font-weight="700">white</text>
+<rect x="855.2" y="74" width="65.6" height="24" rx="4" fill="#fff" stroke="#8e44ad" stroke-width="1.8"/>
+<text x="888" y="91" font-size="13" fill="#8e44ad" text-anchor="middle" font-weight="700">yellow</text>
 <line x1="924" y1="322" x2="924" y2="214" stroke="#c9a400" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="2 5"/>
 <line x1="924" y1="214" x2="924" y2="76" stroke="#c9a400" stroke-width="3" stroke-linecap="round"/>
 <circle cx="924" cy="214" r="4.5" fill="#c9a400" stroke="#c9a400" stroke-width="1.5"/>
-<rect x="891.2" y="52" width="65.6" height="24" rx="4" fill="#fff" stroke="#c9a400" stroke-width="1.8"/>
-<text x="924" y="69" font-size="13" fill="#c9a400" text-anchor="middle" font-weight="700">yellow</text>
+<rect x="895.5" y="52" width="57.0" height="24" rx="4" fill="#fff" stroke="#c9a400" stroke-width="1.8"/>
+<text x="924" y="69" font-size="13" fill="#c9a400" text-anchor="middle" font-weight="700">white</text>
 <path d="M168 214 L168 128" fill="none" stroke="#d62728" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="168" cy="214" r="4.5" fill="#d62728" stroke="#d62728" stroke-width="1.5"/>
 <circle cx="168" cy="128" r="4.5" fill="#d62728" stroke="#d62728" stroke-width="1.5"/>

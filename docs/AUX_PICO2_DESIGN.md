@@ -49,8 +49,8 @@ Why the design moved to the Pico 2:
 
 | Line | Goes to |
 |---|---|
-| Grove white (G1) | R1, then Pico GP0 (pin 1, UART TX) |
-| Grove yellow (G2) | R2, then Pico GP1 (pin 2, UART RX) |
+| Grove yellow (G1) | R1, then Pico GP0 (pin 1, UART TX) |
+| Grove white (G2) | R2, then Pico GP1 (pin 2, UART RX) |
 | Grove red (5 V) | Pico VSYS (pin 39), PCM1808 board VDD |
 | Grove black (GND) | Pico GND (pin 38), PCM1808 board GND (two places) |
 | PCM1808 DATA | Direct to Pico GP2 (pin 4) |
@@ -202,11 +202,11 @@ While AUX is selected, USB audio is dropped and only AUX sound enters the ring.
 ✅ Confirmed 2026-11-07: I²S reception from the PCM1808 board on the Pico 2 H. On a breadboard, wired directly with no resistors, on USB power, with `firmware/aux_pico2_check/aux_pico2_check.uf2`: `n=96000 mis=0 ovf=0 fft/s=25`.
 
 1. ⛔ Whether Grove can carry sound continuously at 2,000,000 bps, including the effect of G1's TVS and pull-up.
-2. ⛔ Sound quality. Karipom Ear only analysed sound and nobody listened to it. Listen for Pico noise.
-3. ⛔ Grove 5 V with the unit attached (under load).
+2. ✅ Sound quality. Computer sound on the Cardputer speaker had no noticeable noise, dropouts, delay or distortion (2026-11-07, Pico on USB power). `bad 0 lost 0`, `underrun 0 overrun 0`, `drop=0 mis=0 ovf=0`.
+3. ✅ Grove 5 V with the unit attached. 5.025 V with the Cardputer running it (2026-11-07). The value while sound is playing is still to be measured.
 4. ⛔ That Launcher does not use G1 or G2 outside `_setup_gpio()`.
 5. ⛔ The dial's signal voltage (expected at or below 3.3 V, since it works with an ESP32-S3). Measure before connecting.
-6. ⛔ Which of white and yellow is G1. Both read about 3.3 V, so voltage cannot tell them apart. The communication check will.
+6. ✅ Which of white and yellow is G1. On the author's cable, black, red, white and yellow line up with the Cardputer's marks G, 5V, G2 and G1, so yellow is G1. A photo and the link both confirm it (2026-11-07). The order of white and yellow differs between cables, so go by the marks, not the colours.
 
 ## 11. Sources
 
