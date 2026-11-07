@@ -98,7 +98,7 @@ R3 and R4 match the pull-ups on the Cardputer's board. ✅ Today's dial works wi
 
 ⛔ Whether Grove has 5 V on battery alone is not confirmed. In the schematic, an internal switch SW2 selects 5VOUT or 5VIN. Check with a tester.
 
-Unplug Grove before connecting USB to the Pico, as with Karipom Ear.
+Unplug Grove before connecting USB to the Pico, as with Karipom Ear. On USB, VSYS (VBUS through a diode) also powers the PCM1808 board. ✅ Reception was confirmed with this wiring (section 10).
 
 ## 5.1 LINE OUT
 

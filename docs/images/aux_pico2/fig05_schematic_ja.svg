@@ -79,5 +79,5 @@
 <text x="864" y="500" font-size="12" fill="#6d4c41" text-anchor="start" font-weight="700">R4</text>
 <text x="825" y="445" font-size="12.5" fill="#e67e22" text-anchor="middle" font-weight="700">10kΩ ×2</text>
 <text x="30" y="750" font-size="14" fill="#222" text-anchor="start">U3、R3、R4 は、ジョグダイヤルを Pico につなぐときだけ使います。ダイヤルを Cardputer の Grove に直接つなぐときは Pico ユニットを外します。</text>
-<text x="30" y="774" font-size="14" fill="#222" text-anchor="start">USB単体確認のときは、5V の線を VSYS(39) ではなく VBUS(40) につなぎ、Grove は外します。</text>
+<text x="30" y="774" font-size="14" fill="#222" text-anchor="start">Pico に USB をつなぐときは、Grove を外します。</text>
 </svg>

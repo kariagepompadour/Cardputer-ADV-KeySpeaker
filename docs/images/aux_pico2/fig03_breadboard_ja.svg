@@ -508,5 +508,5 @@
 <rect x="765.75" y="74" width="28.5" height="24" rx="4" fill="#fff" stroke="#222222" stroke-width="1.8"/>
 <text x="780" y="91" font-size="13" fill="#222222" text-anchor="middle" font-weight="700">黒</text>
 <text x="40" y="736" font-size="14.5" fill="#222" text-anchor="start">ラベルの先：DATA・BCLK・LRCK・VDD・GND は PCM1808 基板へ。白・黄・赤・黒 は Grove ケーブルへ。</text>
-<text x="40" y="760" font-size="14.5" fill="#c62828" text-anchor="start" font-weight="700">赤の線（2番の列 → ＋レール）が VSYS です。USB単体確認のときだけ、この線を 1番の列（VBUS）に挿します。</text>
+<text x="40" y="760" font-size="14.5" fill="#c62828" text-anchor="start" font-weight="700">赤の線（j2 → ＋レール）が、Pico と基板の電源の線です。</text>
 </svg>

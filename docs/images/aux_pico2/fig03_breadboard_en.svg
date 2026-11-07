@@ -508,5 +508,5 @@
 <rect x="751.5" y="74" width="57.0" height="24" rx="4" fill="#fff" stroke="#222222" stroke-width="1.8"/>
 <text x="780" y="91" font-size="13" fill="#222222" text-anchor="middle" font-weight="700">black</text>
 <text x="40" y="736" font-size="14.5" fill="#222" text-anchor="start">Labels: DATA, BCLK, LRCK, VDD and GND go to the PCM1808 board. White, yellow, red and black go to the Grove cable.</text>
-<text x="40" y="760" font-size="14.5" fill="#c62828" text-anchor="start" font-weight="700">The red wire from row 2 to the + rail is VSYS. Only for the USB bench check, move it to row 1 (VBUS).</text>
+<text x="40" y="760" font-size="14.5" fill="#c62828" text-anchor="start" font-weight="700">The red wire from j2 to the + rail is the power line for the Pico and the board.</text>
 </svg>

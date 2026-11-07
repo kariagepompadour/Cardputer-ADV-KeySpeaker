@@ -79,5 +79,5 @@
 <text x="864" y="500" font-size="12" fill="#6d4c41" text-anchor="start" font-weight="700">R4</text>
 <text x="825" y="445" font-size="12.5" fill="#e67e22" text-anchor="middle" font-weight="700">10kΩ ×2</text>
 <text x="30" y="750" font-size="14" fill="#222" text-anchor="start">U3, R3 and R4 are only for a jog dial on the Pico. A dial plugged straight into the Cardputer's Grove replaces the Pico unit.</text>
-<text x="30" y="774" font-size="14" fill="#222" text-anchor="start">For the USB bench check, use VBUS (40) instead of VSYS (39) and unplug Grove.</text>
+<text x="30" y="774" font-size="14" fill="#222" text-anchor="start">Unplug Grove before connecting USB to the Pico.</text>
 </svg>
