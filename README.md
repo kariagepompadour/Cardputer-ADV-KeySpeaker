@@ -73,6 +73,8 @@ Pictures of every screen: [`docs/SCREENS.md`](docs/SCREENS.md).
 
 *Flight mode on the device, 3 seconds (recorded on an earlier build, which still showed the status line at the top).*
 
+**Meteor zone:** every few minutes while music plays, the terrain sinks low and meteors stream from right to left. The fighter stops firing and weaves through them. The louder the music, the more meteors.
+
 Without USB (over Bluetooth LE), the keyboard screen is shown first; `Fn+M` then moves to the other screens.
 
 **Microphone input (`Fn+I`):** the built-in microphone listens to the sound around you and moves the screen (the fighter, the
