@@ -135,15 +135,16 @@ While the Cardputer probes I²C, meaningless signals reach the Pico's RX. The Pi
 | Offset | Size | Content |
 |---|---|---|
 | 0 | 2 | Sync `A5 5A` |
-| 2 | 1 | Type (1 = sound and dial, 2 = dial only, 3 = HELLO reply) |
+| 2 | 1 | Type (1 = sound and dial, 2 = dial only) |
 | 3 | 1 | Sequence number |
-| 4 | 1 | Dial change (signed) |
-| 5 | 1 | Button (0 = up, 1 = down) |
-| 6 | 2 | Sample count n |
-| 8 | 2n | Samples (16-bit, little-endian, mono) |
-| 8+2n | 2 | CRC-16 |
+| 4 | 2 | Dial count (signed) |
+| 6 | 1 | Flags (bit 0 = dial attached, bit 1 = button down) |
+| 7 | 1 | Reserved (0) |
+| 8 | 2 | Sample count n |
+| 10 | 2n | Samples (16-bit, little-endian, mono) |
+| 10+2n | 2 | CRC-16 (CCITT, start FFFF, from after the sync bytes) |
 
-Sound goes out as 240 samples (480 bytes) every 5 ms. A frame is 490 bytes, 200 times a second: 🟡 980,000 bps, about 49% of 2,000,000 bps.
+Sound goes out as 240 samples (480 bytes) every 5 ms. A frame is 492 bytes, 200 times a second: 🟡 984,000 bps, about 49% of 2,000,000 bps. The dial's count itself is sent, not its change, so a lost frame loses no turns. The reply to HELLO is a type 2 frame.
 
 While sound is stopped, type 2 goes out every 20 ms. A frame with a bad CRC is dropped and its time is filled with silence.
 
@@ -181,8 +182,8 @@ While AUX is selected, USB audio is dropped and only AUX sound enters the ring.
 ## 8. The Pico's side (not written)
 
 - ✅ I²S reception starts from `KariPom/pico2-pcm1808/karipom_pico2/karipom_pico2.ino` (setSlave, 32-bit, sync check).
-- 🟡 FFT and text output are replaced by the FIR and UART frames.
-- 🟡 DMA or both cores keep reception and sending from blocking each other. To be decided during implementation.
+- FFT and text output are replaced by the FIR (63 taps, flat to 20 kHz, -64 dB at 28 kHz) and UART frames.
+- Core 0 runs I²S and the FIR, core 1 runs the UART and the dial.
 - The dial is read every 20 ms: I²C1 (`Wire1`), 100 kHz, address 0x40, registers 0x10 (rotation) and 0x20 (button).
 - A missing dial does not stop the sound.
 

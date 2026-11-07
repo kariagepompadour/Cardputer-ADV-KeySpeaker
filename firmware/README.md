@@ -6,6 +6,8 @@ Cardputer ADV firmware. Each stage is its own sketch folder with its app-only `.
 | --- | --- | --- |
 | [`KeySpeaker_S0/`](KeySpeaker_S0/) | S0: USB Audio Class 1 speaker only; measures the buffer and the clock drift. S0-3 adds a flight visualizer screen (`v`). S1 (now `S1-6`) corrects the clock drift and fixes two USB restarts | On a Mac and Windows 11: 8 hours with no dropouts (without the S1 correction, one every 1.4 hours); ten pause/resume cycles without a restart. Now `S9-1`: USB keyboard, media keys and a tilt mouse too, a spinning Earth on the keyboard screen, Media Jog's jog dial if it is plugged in, a BLE keyboard and mouse without USB as a spare (`BleHid.h`), a start screen with a round-hole grille, and, on the flight screen while music plays, a space monster that now and then reaches for the fighter (`FlightViz.h`). Test plan: [`../docs/S0_TEST.md`](../docs/S0_TEST.md) |
 
+[`AuxPico2/`](AuxPico2/) is the program for the Pico 2 H in the AUX unit (S12-1), and [`aux_pico2_check/`](aux_pico2_check/) a check program for the same board. See `docs/AUX_PICO2_DESIGN.md`. `AuxFrame.h` is the same file in `AuxPico2/` and `KeySpeaker_S0/`.
+
 ## Building
 
 ```bash
