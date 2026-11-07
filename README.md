@@ -77,15 +77,22 @@ Without USB (over Bluetooth LE), the keyboard screen is shown first; `Fn+M` then
 
 **Microphone input (`Fn+I`):** the built-in microphone listens to the sound around you and moves the screen (the fighter, the
 terrain, the equalizer). Nothing is played, so the speaker is silent. It works without USB, and `-` / `=` set the sensitivity
-(the default is usually enough). While it is on, a green `MIC` shows at the bottom left of the keyboard screen. `Fn+I` again
-returns to the USB sound. The green `USB` there only says the cable is connected.
+(the default is usually enough). While it is on, a green `MIC` shows at the bottom left of the keyboard screen. The green `USB`
+there only says the cable is connected.
+
+**AUX input (`Fn+I`):** with the optional Pico 2 AUX unit on the Grove port, sound from a computer's earphone jack or any other
+player comes out of the Cardputer's speaker. The unit runs on the Cardputer's power and can stay connected. See the
+[build guide (Japanese)](docs/AUX_PICO2_BUILD_JA.md) and the [design](docs/AUX_PICO2_DESIGN.md).
+
+Each press of `Fn+I` moves on to the next input: USB, MIC, then AUX when the unit is there. The fighter crosses the screen and
+leaves the input in big letters behind it, or `NO USB` or `NO AUX` in red when that source is missing.
 
 In every mode:
 
 | Key | Does |
 | --- | --- |
 | `Fn+M` | Next mode (works without USB too) |
-| `Fn+I` | Input: USB sound ↔ the built-in microphone (see below) |
+| `Fn+I` | Input: USB sound, the built-in microphone, AUX (see below) |
 | `Fn+O` | Mac ↔ Windows profile (remembered) |
 
 Speaker and playback keys (measure mode and flight mode):
