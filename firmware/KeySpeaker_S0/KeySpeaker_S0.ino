@@ -118,6 +118,12 @@
       so the red word would come up on every round of Fn+I (the user's call). The dial's turning, its button and NO AUX were seen working on S12-2.
     - (S13-1) The meteor zone on the game screen (FlightViz.h): every few minutes while music plays the terrain sinks low and meteors stream
       past the fighter, which weaves through them without firing. Tried in the web demo first (the user's idea, no searchlights in it).
+    - (S14-1) A damaged city on the game screen (FlightViz.h), from the web demo: three to five buildings (shield-like corner damage, a black
+      doorway, a fire now and then) flow by with the terrain, small people wait on the roofs and lean out of windows, and the fighter flies
+      to the nearest and saves it by overlapping (a small light, no score); a few run out of the doorways, chase the fighter and wave.
+      Layers: the buildings in front of the monsters' arms, the fighter in front of the buildings, the arms in front of the fighter, all
+      behind the equalizer. The searchlight base is a T of four cells with a yellow lamp, and one monster visit in twenty is flat
+      shocking pink (the user's ideas). Frame time and heap not yet measured on the device.
     - (S11-2) Searchlights on the game screen (FlightViz.h): a city on alert. Up to three stand on the ground, each with a small base (a
       3 x 3 dot light grey square with a blue window), flow from right to left with the terrain and sweep the sky with a slim beam that
       widens and fades toward the top, in a cool blue-white added to the stars' light. A new one comes every 10 to 35 s, only while
@@ -199,7 +205,7 @@
 #define KS_BLE 1  // (S5-5) 0: build without BLE, to compare
 #include "BleHid.h"
 
-#define BUILD_TAG "S13-1"
+#define BUILD_TAG "S14-1"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."

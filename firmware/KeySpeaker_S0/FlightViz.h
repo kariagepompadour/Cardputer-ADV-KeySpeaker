@@ -37,6 +37,13 @@
   without firing. The louder the music, the more meteors, and a beat brings a big one. Each meteor is placed to miss the fighter's
   path, so the fighter always slips past.
 
+  A damaged city comes now and then (S14-1): three to five buildings side by side flow by with the terrain (they do not react to the
+  sound), small people wait on the roofs and lean out of windows, waving for help, and the fighter flies to the nearest one and saves
+  them by overlapping them (a small light, no score). A few people run out of the doorways after the fighter and wave to it. The
+  buildings are in front of the monsters' arms, the fighter in front of the buildings, the arms in front of the fighter, and all of it
+  behind the equalizer. The searchlight's base is a T of four cells with a yellow lamp, and once in twenty visits a monster comes in
+  flat shocking pink. Tried in the web demo first.
+
   Plain C++ on a 240 x 135 RGB565 frame buffer laid out like M5Canvas's (16-bit pixels, high byte first), so the same
   code also runs on a computer for previews.
 */
@@ -275,6 +282,42 @@ struct MeteorZone {
   uint32_t nextMs = 0, startMs = 0;
 };
 
+// The city (S14-1). See the top of this file.
+constexpr int CITY_W = 10, CITY_FLOOR_MIN = 3, CITY_FLOOR_MAX = 8, CITY_N_MIN = 3, CITY_N_MAX = 5;  // a building: 10 dots wide, 3 to 8 floors of 2 dots
+constexpr int CITY_ROWS = 1 + 2 * CITY_FLOOR_MAX;   // the tallest building's dot rows
+constexpr uint32_t CITY_MS_MIN = 12000, CITY_MS_MAX = 25000, CITY_FIRST_MS = 8000;
+constexpr int PERSON_W = 10, PERSON_H = 11;
+constexpr int MAX_CIT = 8, MAX_SPARKS = 6;
+struct Building {
+  int ox = 0;                           // px from the row's left end
+  int h = 0;                            // px
+  int8_t f = 0;                         // floors
+  bool collapsed = false, hasWin = false;
+  int8_t fire = -1;                     // the column that burns, or -1
+  int8_t winFl = 0, winPh = 0;          // a figure leans out of the window on this floor
+  uint8_t lit[CITY_FLOOR_MAX * 3] = {}; // windows: 0 dark, 1 lit, 2 burning
+  uint8_t top[CITY_W] = {};             // rows broken off the top of each column
+  uint8_t gone[CITY_ROWS * CITY_W] = {};  // 1: bitten away
+};
+struct Person { int8_t bi = 0; int ox = 0; uint8_t ph = 0; bool saved = false; };
+struct City {
+  bool on = false;
+  float x = 0;                          // the left end, px
+  int n = 0;
+  Building b[CITY_N_MAX];
+  Person p[CITY_N_MAX];
+  int np = 0;
+};
+struct Citizen {                        // somebody who came out of a doorway
+  bool on = false;
+  uint8_t mode = 0;                     // 0 waits to start, 1 runs left after the fighter, 2 runs back right, 3 stands and waves
+  bool back = false;                    // after the ground has carried it off to the left it runs back to the middle and waves again
+  float x = 0, t = 0;
+  uint8_t ph = 0;
+  int stop = 0, backTo = 0;
+};
+struct Spark { bool on = false; float x = 0, y = 0, t = 0; };
+
 struct Kong {
   uint8_t ph = K_IDLE;
   float t = 0, x = W;        // time in this phase; the left edge of the body
@@ -335,6 +378,12 @@ struct State {
   uint8_t next = 0;          // the pattern a sinking equalizer gives way to
   Light lt[MAX_LIGHTS];
   uint32_t nextLightMs = 0;
+  City city;
+  uint32_t nextCityMs = 0;
+  Citizen cit[MAX_CIT];
+  Spark spark[MAX_SPARKS];
+  float citAcc = 0;
+  bool cityForce = false, pinkForce = false;  // for previews on a computer: a city at once, every monster pink
   MeteorZone mz;
   Meteor met[MZ_MAX];
   Dust dust[MZ_DUST_MAX];
@@ -420,6 +469,11 @@ static void init(State& s, uint32_t nowMs) {
   s.k.nextMs = nowMs + KONG_FIRST_MS;
   for (auto& l : s.lt) l = Light();
   s.nextLightMs = nowMs + LIGHT_FIRST_MS;
+  s.city = City();
+  s.nextCityMs = 0;
+  for (auto& c : s.cit) c = Citizen();
+  for (auto& k : s.spark) k = Spark();
+  s.citAcc = 0;
   s.mz = MeteorZone();
   s.mz.nextMs = nowMs + MZ_FIRST_MS;
   for (auto& m : s.met) m = Meteor();
@@ -657,19 +711,20 @@ static inline void kongShoulder2(int bx, float& sx, float& sy) { sx = (float)(bx
 
 // The monster's colours (S9-3): six palettes of three colours (the lit edge, the dark body, the eyes), each visit draws one by lot.
 // The eyes are chosen to stand out from the body in every colour. Nothing new is drawn, so this costs a few numbers.
-static const uint16_t KPAL[6][3] = {
+static const uint16_t KPAL[7][3] = {
   {swap(rgb(212, 38, 46)), swap(rgb(40, 20, 24)), swap(rgb(255, 226, 64))},    // 0 red, the original
   {swap(rgb(70, 120, 235)), swap(rgb(16, 22, 46)), swap(rgb(120, 255, 255))},  // 1 blue
   {swap(rgb(60, 190, 84)), swap(rgb(14, 34, 20)), swap(rgb(255, 90, 60))},     // 2 green
   {swap(rgb(176, 76, 224)), swap(rgb(34, 16, 44)), swap(rgb(120, 255, 160))},  // 3 purple
   {swap(rgb(240, 192, 56)), swap(rgb(54, 38, 10)), swap(rgb(255, 255, 255))},  // 4 gold, rare
   {swap(rgb(222, 232, 255)), swap(rgb(38, 42, 62)), swap(rgb(255, 60, 90))},   // 5 ghost white
+  {swap(rgb(255, 142, 222)), swap(rgb(255, 40, 170)), swap(rgb(255, 226, 64))},  // 6 shocking pink all over, lighter where the light falls, yellow eyes (S14-1)
 };
-static const uint8_t KPAL_PERCENT[6] = {30, 16, 16, 16, 10, 12};  // how often each comes (sums to 100)
+static const uint8_t KPAL_PERCENT[7] = {28, 15, 15, 15, 10, 12, 5};  // how often each comes (sums to 100); the pink one: one visit in twenty
 static inline uint8_t pickKongPal(State& s) {
   uint32_t r = nextRandom(s) % 100;
   uint8_t i = 0;
-  while (i < 5 && r >= KPAL_PERCENT[i]) r -= KPAL_PERCENT[i++];
+  while (i < 6 && r >= KPAL_PERCENT[i]) r -= KPAL_PERCENT[i++];
   return i;
 }
 
@@ -687,7 +742,7 @@ static const float SQ_ROOT[7] = {-3, -2, -1, 0, 1, 2, 3};     // where each tent
 static const float SQ_FLARE[7] = {15, 11, 7, 3, 7, 11, 15};   // how high (px) above the ground it starts to bend outward
 static const float SQ_ENDX[7] = {-14, -10, -6, 2, 6, 10, 14};  // and where it ends on the ground (dots from the root, sideways) ...
 static const float SQ_ENDY[7] = {-1, 2, -2, 2, -2, 2, -1};     // ... and (dots) toward or away from us, as if lying around it like rays
-static const uint8_t SQ_PAL_PERCENT[6] = {10, 10, 25, 10, 35, 10};  // yellow and green most often (sums to 100)
+static const uint8_t SQ_PAL_PERCENT[7] = {9, 10, 24, 9, 34, 9, 5};  // yellow and green most often, the pink one visit in twenty (sums to 100)
 // A tentacle that stretches: its first control point's offset from the neck (d1), its second one's from the tip (d2), and where the tip
 // lands relative to the fighter (o), all in dots. Four per scenario: the two on the fighter's side first, then the other two.
 struct SqReach { int8_t leg; float d1x, d1y, d2x, d2y, ox, oy; };
@@ -700,7 +755,7 @@ static const SqReach SQ_SC[4][4] = {
 static inline uint8_t pickSquidPal(State& s) {
   uint32_t r = nextRandom(s) % 100;
   uint8_t i = 0;
-  while (i < 5 && r >= SQ_PAL_PERCENT[i]) r -= SQ_PAL_PERCENT[i++];
+  while (i < 6 && r >= SQ_PAL_PERCENT[i]) r -= SQ_PAL_PERCENT[i++];
   return i;
 }
 static inline int squidTop(const Kong& k) { return H - KH - 2 - (int)lrintf(SQ_RISE_PX * k.rise); }
@@ -776,9 +831,10 @@ static float updateKong(State& s, uint32_t nowMs, float dt, float shipCx, float 
       k.doThreat = nextRandom(s) % 100 < 55;
       k.noReach = nextRandom(s) % 100 < 12;
       k.kind = s.kongForce >= 0 ? (uint8_t)s.kongForce : (uint8_t)(nextRandom(s) % 100 < 50 ? 1 : 0);  // this visit: the ape or the squid, half and half
+      if (s.pinkForce && k.kind == 0) k.pal = 6;
       if (k.kind == 1) {
         k.doThreat = false, k.chase = false, k.noReach = false;
-        k.pal = pickSquidPal(s);
+        k.pal = s.pinkForce ? 6 : pickSquidPal(s);
         k.doPre = nextRandom(s) % 100 < 60, k.doPost = nextRandom(s) % 100 < 50, k.preDone = k.postDone = false;
         k.sc = 0, k.flip = 0, k.legs = 0, k.rise = 0;
       }
@@ -956,6 +1012,145 @@ static void updateMeteorZone(State& s, uint32_t nowMs, float dt, int sx) {
   for (auto& l : s.lt) if (l.on) l.x -= w;
 }
 
+// ---- The city (S14-1): where the people are, who is saved, who comes out of a doorway. Designed in the web demo first. ----
+static void newCity(State& s) {
+  City& g = s.city;
+  g = City();
+  g.on = true;
+  g.x = (float)(W + 4);
+  g.n = CITY_N_MIN + (int)(nextRandom(s) % (CITY_N_MAX - CITY_N_MIN + 1));
+  for (int i = 0; i < g.n; i++) {
+    Building& b = g.b[i];
+    bool collapsed = nextRandom(s) % 100 < 5;
+    int f = collapsed ? 1 + (int)(nextRandom(s) % 2) : CITY_FLOOR_MIN + (int)(nextRandom(s) % (CITY_FLOOR_MAX - CITY_FLOOR_MIN + 1));
+    int R = 1 + 2 * f;
+    b.ox = i * CITY_W * DOT, b.f = (int8_t)f, b.h = R * DOT, b.collapsed = collapsed;
+    for (int r = 0; r < f * 3; r++) { uint32_t q = nextRandom(s) % 100; b.lit[r] = q < 20 ? 1 : q < 26 ? 2 : 0; }
+    // a little like a Space Invaders defence shield, but only at the corners: chamfered top corners, a small arch at the bottom
+    // (the door), and a rough bite out of a corner now and then
+    if (collapsed) for (int c = 0; c < CITY_W; c++) b.top[c] = (uint8_t)(nextRandom(s) % (2 * f));
+    else {
+      b.top[0] = b.top[9] = (uint8_t)(1 + nextRandom(s) % 2);
+      b.top[1] = b.top[8] = (uint8_t)(nextRandom(s) % 2);
+    }
+    if (f >= 2) for (int r = R - 2; r < R; r++) for (int c = 4; c <= 5; c++) b.gone[r * CITY_W + c] = 1;
+    const int CORN[4][2] = {{2, 0}, {2, CITY_W - 1}, {R - 3, 0}, {R - 3, CITY_W - 1}};
+    for (const auto& cn : CORN) {
+      if (collapsed || nextRandom(s) % 100 >= 34) continue;
+      float rr = 0.9f + (nextRandom(s) % 100) / 100.0f * 0.8f;
+      for (int dr = -2; dr <= 2; dr++)
+        for (int dc = -2; dc <= 2; dc++) {
+          int r = cn[0] + dr, c = cn[1] + dc;
+          if (r < 2 || r >= R || c < 0 || c >= CITY_W || (r < 2 && c >= 3 && c <= 6)) continue;
+          float d = hypotf((float)dr, (float)dc);
+          if (d <= rr + 0.5f && (float)(nextRandom(s) % 100) < 100 * (1 - d / (rr + 1.2f)) + 25) b.gone[r * CITY_W + c] = 1;
+        }
+    }
+    if (!collapsed && nextRandom(s) % 100 < 18) b.fire = (int8_t)(nextRandom(s) % 2 ? 9 : 0);
+    if (!collapsed && f >= 3 && nextRandom(s) % 100 < 40) {  // somebody leans out of a lit window, waving
+      b.hasWin = true, b.winFl = (int8_t)(nextRandom(s) % (f - 1)), b.lit[b.winFl * 3 + 1] = 1, b.winPh = (int8_t)(nextRandom(s) % 7);
+    }
+    if (!collapsed && nextRandom(s) % 100 < 45) {
+      Person& p = g.p[g.np++];
+      p.bi = (int8_t)i, p.ox = 2 + (int)(nextRandom(s) % (CITY_W * DOT - PERSON_W - 3)), p.ph = (uint8_t)(nextRandom(s) % 7), p.saved = false;
+    }
+  }
+}
+// where a person stands on the screen (px): the top left; the size is PERSON_W x PERSON_H
+static inline void personAt(const City& g, const Person& p, int& x, int& y) {
+  const Building& b = g.b[p.bi];
+  x = (int)lrintf(g.x) + b.ox + p.ox, y = H - GROUND - b.h - PERSON_H;
+}
+// The nearest one still waiting ahead of the fighter: its middle height, or false.
+static bool nearestWaiting(const State& s, int sx, float& midY) {
+  const City& g = s.city;
+  if (!g.on) return false;
+  int best = 1 << 20;
+  bool found = false;
+  for (int i = 0; i < g.np; i++) {
+    const Person& p = g.p[i];
+    if (p.saved) continue;
+    int x, y;
+    personAt(g, p, x, y);
+    if (x > sx + SHIP_W + 6 && x < W - 30 && x < best) best = x, midY = y + PERSON_H / 2.0f, found = true;
+  }
+  return found;
+}
+static void updateCity(State& s, uint32_t nowMs, float dt, int sx, int sy) {
+  if (s.nextCityMs == 0) s.nextCityMs = nowMs + (s.cityForce ? 300 : CITY_FIRST_MS);
+  City& g = s.city;
+  if (g.on) {
+    g.x -= SCROLL_PX_S * dt;
+    for (int i = 0; i < g.np; i++) {
+      Person& p = g.p[i];
+      if (p.saved) continue;
+      int x, y;
+      personAt(g, p, x, y);
+      if (fabsf(x + PERSON_W / 2.0f - (sx + SHIP_W / 2.0f)) < (SHIP_W + PERSON_W) / 2.0f && fabsf(y + PERSON_H / 2.0f - (sy + SHIP_H / 2.0f)) < (SHIP_H + PERSON_H) / 2.0f) {
+        p.saved = true;  // saved: a small light
+        for (auto& k : s.spark)
+          if (!k.on) { k = {true, x + PERSON_W / 2.0f, y + PERSON_H / 2.0f, 0}; break; }
+      }
+    }
+    if (g.x < -g.n * CITY_W * DOT) {
+      g.on = false;
+      s.nextCityMs = nowMs + CITY_MS_MIN + nextRandom(s) % (CITY_MS_MAX - CITY_MS_MIN);
+    }
+  } else if (!s.mz.ph && (s.prevDb > DB_SILENT || s.cityForce) && (int32_t)(nowMs - s.nextCityMs) >= 0) {
+    newCity(s);
+  }
+  // now and then a few people come out of a doorway all at once and run after the fighter; after a while each stops and waves
+  if (g.on) {
+    s.citAcc -= dt;
+    if (s.citAcc <= 0) {
+      int ok[CITY_N_MAX], nok = 0, used = 0;
+      for (int i = 0; i < g.n; i++) {
+        int dx = (int)lrintf(g.x) + g.b[i].ox + 5 * DOT;
+        if (!g.b[i].collapsed && g.b[i].f >= 2 && dx > 110 && dx < W - 20) ok[nok++] = i;
+      }
+      for (const auto& c : s.cit) used += c.on;
+      if (nok && used < 4) {
+        const Building& b = g.b[ok[nextRandom(s) % nok]];
+        int n = 3 + (int)(nextRandom(s) % 3);
+        float x0 = (float)((int)lrintf(g.x) + b.ox + 5 * DOT - PERSON_W / 2);
+        for (int k = 0; k < n; k++) {
+          Citizen* c = nullptr;
+          for (auto& q : s.cit) if (!q.on) { c = &q; break; }
+          if (!c) break;
+          *c = Citizen();
+          c->on = true, c->x = x0, c->mode = 0, c->t = -k * 0.13f, c->ph = (uint8_t)(nextRandom(s) % 7);
+          c->stop = 22 + (int)(nextRandom(s) % 70), c->back = nextRandom(s) % 100 < 35, c->backTo = 100 + (int)(nextRandom(s) % 60);
+        }
+      }
+      s.citAcc = 5.0f + (nextRandom(s) % 50) / 10.0f;
+    }
+  }
+  float fc = sx + SHIP_W / 2.0f;
+  for (auto& c : s.cit) {
+    if (!c.on) continue;
+    c.t += dt;
+    if (c.mode == 0) {
+      c.x -= SCROLL_PX_S * dt;
+      if (c.t >= 0) c.mode = 1;
+    } else if (c.mode == 1) {
+      c.x -= (SCROLL_PX_S + 42) * dt;
+      if (c.x + PERSON_W / 2.0f - fc <= c.stop) c.mode = 3, c.t = 0;
+    } else if (c.mode == 2) {  // running back to the right, against the ground
+      c.x += (72 - SCROLL_PX_S) * dt;
+      if (c.x + PERSON_W / 2.0f >= c.backTo) c.mode = 3, c.t = 0, c.back = false;
+    } else {  // standing and waving, carried along by the ground
+      c.x -= SCROLL_PX_S * dt;
+      if (c.back && c.x + PERSON_W / 2.0f < 60) c.mode = 2;  // carried past the fighter: some turn round
+    }
+    if (c.x <= -PERSON_W - 2) c.on = false;
+  }
+  for (auto& k : s.spark) {
+    if (!k.on) continue;
+    k.t += dt;
+    if (k.t >= 0.5f) k.on = false;
+  }
+}
+
 // Moves the fighter, laser shots, targets, bombs and bursts to nowMs.
 static void update(State& s, uint32_t nowMs) {
   float dt = (nowMs - s.lastFrameMs) * 0.001f;
@@ -1012,6 +1207,8 @@ static void update(State& s, uint32_t nowMs) {
     break;
   }
   if (!threat) s.dodging = false;
+  float waitY;
+  if (!s.mz.ph && !threat && nearestWaiting(s, sx, waitY)) target = waitY - SHIP_H / 2.0f, ease = CHASE_EASE_S;  // somebody waits ahead: the fighter flies to them
   if (target < TOP + 4) target = TOP + 4;
   if (s.mz.u > 0) {  // in the zone the fighter keeps to its way through the meteors
     target += (mzPath(s, nowMs) - target) * s.mz.u;
@@ -1022,6 +1219,7 @@ static void update(State& s, uint32_t nowMs) {
   float evadeTgt = updateKong(s, nowMs, dt, sx + SHIP_W / 2.0f, s.shipY + bobY(nowMs) + SHIP_H / 2.0f);
   s.evadeCur += (evadeTgt - s.evadeCur) * (1.0f - expf(-dt / (evadeTgt != 0 ? 0.07f : 0.5f)));
   int sy = (int)lrintf(s.shipY + bobY(nowMs) + s.evadeCur);
+  updateCity(s, nowMs, dt, sx, sy);
 
   for (auto& m : s.m) {
     if (!m.on) continue;
@@ -1199,8 +1397,10 @@ static void update(State& s, uint32_t nowMs) {
   }
 }
 
+// Nothing is drawn outside this rectangle (the whole screen unless a few things are redrawn over the fighter only).
+static int clipX0 = 0, clipY0 = 0, clipX1 = W, clipY1 = H;
 static inline void px(uint16_t* fb, int x, int y, uint16_t c) {
-  if ((unsigned)x < (unsigned)W && (unsigned)y < (unsigned)H) fb[y * W + x] = c;
+  if (x >= clipX0 && x < clipX1 && y >= clipY0 && y < clipY1) fb[y * W + x] = c;
 }
 // One big dot (DOT x DOT px) with its top-left corner at x, y.
 static inline void dot(uint16_t* fb, int x, int y, uint16_t c) {
@@ -1317,7 +1517,7 @@ static void drawSquidLeg(uint16_t* fb, const Pt* p, int gx, int gy, bool rest, c
 static void drawSquid(const State& s, uint16_t* fb, uint32_t nowMs, bool front) {
   const Kong& k = s.k;
   if (k.ph == K_IDLE) return;
-  const uint16_t* P = KPAL[k.pal < 6 ? k.pal : 0];
+  const uint16_t* P = KPAL[k.pal < 7 ? k.pal : 0];
   int bx = (int)lrintf(k.x), by = squidTop(k);
   if (!front) {
     const uint16_t mouth = mix565(P[2], P[1], 0.4f);
@@ -1439,7 +1639,7 @@ static void drawSearchlights(const State& s, uint16_t* fb, uint32_t nowMs) {
     float sn = sinf(l.a), cs = cosf(l.a);
     int side = l.x < midX ? -1 : 1;  // which side of the monster the light stands on
     for (int t = 0; t < LIGHT_LEN; t += DOT) {
-      float fade = 1.0f - (float)t / LIGHT_LEN, cx = l.x + sn * t, y = (float)(H - 1) - cs * t;
+      float fade = 1.0f - (float)t / LIGHT_LEN, cx = l.x + sn * t, y = (float)(H - GROUND - 4) - cs * t;
       int hw = 1 + t / 42;  // the beam widens: dots either side of its middle
       if (monsterAt(k, cx, y) && (cx - midX) * side <= 0) break;  // it runs on over the monster up to its centre line, and stops there
       if (cx >= fx && cx < fx + SHIP_W && y >= fy && y < fy + SHIP_H) break;  // and on the fighter
@@ -1451,14 +1651,15 @@ static void drawSearchlights(const State& s, uint16_t* fb, uint32_t nowMs) {
     }
   }
 }
-// The searchlights' bases: a 3 x 3 dot square of light grey with a blue window in the middle, where each beam starts (always seen).
+// The searchlights' bases: a T of four cells, like a Tetris piece: three light grey cells and, on top, the yellow lamp. They stand on the
+// terrain's second row (the bottom row stays colourful), where each beam starts.
 static void drawLightBases(const State& s, uint16_t* fb) {
-  static const uint16_t GREY = swap(rgb(206, 208, 214)), SHADE = swap(rgb(168, 170, 178)), WIN = swap(rgb(70, 140, 255));
+  static const uint16_t GREY = swap(rgb(206, 208, 214)), LAMP = swap(rgb(255, 226, 90));
   for (const auto& l : s.lt) {
     if (!l.on) continue;
-    int gx = (int)lrintf(l.x) - 4, gy = H - 3 * DOT;
-    for (int j = 0; j < 3; j++)
-      for (int i = 0; i < 3; i++) dot(fb, gx + i * DOT, gy + j * DOT, (i == 1 && j == 1) ? WIN : (j == 2 || i == 2) ? SHADE : GREY);
+    int gx = (int)lrintf(l.x) - 4, gy = H - GROUND - 2 * DOT;
+    for (int i = 0; i < 3; i++) dot(fb, gx + i * DOT, gy + DOT, GREY);
+    dot(fb, gx + DOT, gy, LAMP);
   }
 }
 
@@ -1469,7 +1670,7 @@ static void drawKongBody(const State& s, uint16_t* fb, uint32_t nowMs) {
   const Kong& k = s.k;
   if (k.ph == K_IDLE) return;
   if (k.kind == 1) return drawSquid(s, fb, nowMs, false);  // the squid (S11-1)
-  const uint16_t* P = KPAL[k.pal < 6 ? k.pal : 0];
+  const uint16_t* P = KPAL[k.pal < 7 ? k.pal : 0];
   int bx = (int)lrintf(k.x), by = H - KH;
   bool walking = k.ph == K_WALK || k.ph == K_LEAVE;
   int frame = (nowMs / 330) & 1;
@@ -1539,7 +1740,7 @@ static void drawKongArms(const State& s, uint16_t* fb, uint32_t nowMs) {
   const Kong& k = s.k;
   if (k.ph == K_IDLE) return;
   if (k.kind == 1) return drawSquid(s, fb, nowMs, true);  // the squid's stretching tentacles
-  const uint16_t* P = KPAL[k.pal < 6 ? k.pal : 0];
+  const uint16_t* P = KPAL[k.pal < 7 ? k.pal : 0];
   int bx = (int)lrintf(k.x), by = H - KH;
   const float sy0 = (float)(by + 7 * DOT + 2);
   const float sx[2] = {(float)(bx + 7), (float)(bx + 21 * DOT)}, sy[2] = {sy0, sy0}, ds[2] = {-1.0f, 1.0f};
@@ -1604,6 +1805,102 @@ static void drawKongArms(const State& s, uint16_t* fb, uint32_t nowMs) {
   for (int i = 1; i >= 0; i--) drawKongArm(fb, sx[i], sy[i], hx[i], hy[i], (int)ds[i], open[i], bx, by, P);
 }
 
+// ---- The city and its people (S14-1) ----
+// SOUND TERRARIUM's waving runner (its wave frames, played in the order 0, 1, 2, 1) and its running frames (it runs to the right): w white,
+// o orange, b blue.
+static const char* const WAVER[3][11] = {
+  {"....ww.w..", "...wwwww..", "...wwww...", "....ww....", "...wwww...", "..wwww....", "....ww....", "....ww....", "...wwww...", "...w..w...", "..ww..ww.."},
+  {"....ww..w.", "...wwww.w.", "...wwww.w.", "....ww.w..", "...wwww...", "..wwww....", "....ww....", "....ww....", "...wwww...", "...w..w...", "..ww..ww.."},
+  {"....ww....", "...wwww...", "...wwww...", "....ww....", "...wwwwwww", "..wwww....", "....ww....", "....ww....", "...wwww...", "...w..w...", "..ww..ww.."}};
+static const char* const RUNNER[3][11] = {
+  {"......b...", ".....www..", ".....www..", "....www...", "..wwowww..", ".wwbww..ww", "....ww....", "....www...", ".wwwwbww..", "......ww..", "......ww.."},
+  {"......b...", ".....www..", ".....www..", ".....ww...", "....www...", "...wwwww..", "...wwwwbww", ".....www..", "....wwww..", "...www....", "....ww...."},
+  {"......b...", ".....www..", ".....www..", ".....ww...", "...wwwwbb.", "..wwowww..", ".....ww...", "....wwww..", "...ww..ww.", "..ww...ww.", "..ww......"}};
+static const uint8_t WAVE_SEQ[4] = {0, 1, 2, 1};
+// The figure with a black outline, as in SOUND TERRARIUM; hh rows of it.
+static void drawFigure(uint16_t* fb, const char* const* rows, int hh, int x, int y, bool mirror) {
+  static const uint16_t FW = swap(rgb(255, 255, 255)), FO = swap(rgb(255, 140, 32)), FB = swap(rgb(40, 168, 255));
+  auto at = [&](int yy, int xx) -> char { return (yy < 0 || yy >= hh || xx < 0 || xx >= PERSON_W) ? '.' : rows[yy][mirror ? PERSON_W - 1 - xx : xx]; };
+  for (int yy = -1; yy <= hh; yy++)
+    for (int xx = -1; xx <= PERSON_W; xx++) {
+      if (at(yy, xx) != '.') continue;
+      bool near = false;
+      for (int oy = -1; oy <= 1 && !near; oy++)
+        for (int ox = -1; ox <= 1; ox++)
+          if (at(yy + oy, xx + ox) != '.') { near = true; break; }
+      if (near) px(fb, x + xx, y + yy, 0);
+    }
+  for (int yy = 0; yy < hh; yy++)
+    for (int xx = 0; xx < PERSON_W; xx++) {
+      char ch = at(yy, xx);
+      if (ch != '.') px(fb, x + xx, y + yy, ch == 'w' ? FW : ch == 'o' ? FO : FB);
+    }
+}
+static void drawCity(const State& s, uint16_t* fb, uint32_t nowMs) {
+  static const uint16_t BODY = swap(rgb(52, 62, 94)), EDGE = swap(rgb(116, 134, 186)), ROOF = swap(rgb(158, 172, 210)), OFF = swap(rgb(16, 20, 34)),
+                        ON = swap(rgb(255, 214, 110)), FIRE1 = swap(rgb(255, 150, 40)), FIRE2 = swap(rgb(255, 70, 20));
+  const City& g = s.city;
+  if (g.on) {
+    int blink = (int)(nowMs / 140);
+    for (int bi = 0; bi < g.n; bi++) {
+      const Building& b = g.b[bi];
+      int bx = (int)lrintf(g.x) + b.ox, by = H - GROUND - b.h, R = b.h / DOT;
+      if (bx > W || bx < -CITY_W * DOT) continue;
+      for (int r = 0; r < R; r++)
+        for (int c = 0; c < CITY_W; c++) {
+          if (b.f >= 2 && r >= R - 2 && c >= 4 && c <= 5) { dot(fb, bx + c * DOT, by + r * DOT, 0); continue; }  // the doorway: black
+          if (r < b.top[c] || b.gone[r * CITY_W + c]) continue;
+          bool open = r == b.top[c] || (r > 0 && b.gone[(r - 1) * CITY_W + c]);  // nothing above: a lit edge
+          uint16_t col = BODY;
+          if (open) col = ROOF;
+          else if (c == 0) col = EDGE;
+          else if ((r - 1) % 2 == 0 && c % 3 != 0) {  // windows: 2 x 1 dots, like one block of the terrain
+            int w = b.lit[((r - 1) / 2) * 3 + (c - 1) / 3];
+            col = w == 1 ? ON : w == 2 ? (((blink + bi) & 1) ? FIRE1 : FIRE2) : OFF;
+          }
+          dot(fb, bx + c * DOT, by + r * DOT, col);
+        }
+      if (b.fire >= 0) {  // a fire on the broken corner, flickering, and its smoke rising and thinning
+        int fx = bx + b.fire * DOT, fy = by + b.top[(int)b.fire] * DOT, f1 = (blink + bi) & 1;
+        dot(fb, fx, fy - DOT, f1 ? FIRE1 : FIRE2);
+        dot(fb, fx, fy - 2 * DOT, f1 ? FIRE2 : FIRE1);
+        if (((blink + bi) & 3) != 0) dot(fb, fx + (f1 ? DOT : -DOT), fy - DOT, FIRE2);
+        for (int k = 0; k < 4; k++) {
+          float u = fmodf(nowMs / 1100.0f + k / 4.0f + bi * 0.37f, 1.0f);
+          int sx = fx + roundi(sinf(u * 5 + k * 1.7f) * 4) - 1, sy = fy - 3 * DOT - roundi(u * 26), v = roundi(150 * (1 - u)) + 30;
+          dot(fb, sx, sy, swap(rgb(v, v, v + 12)));
+        }
+      }
+      if (b.hasWin) {  // head and a waving hand out of the window: the upper body of the waver, its bottom row on the sill
+        int wx = bx + (1 + 1 * 3) * DOT + DOT - 5, wy = by + (1 + 2 * b.winFl) * DOT + DOT - 6;
+        drawFigure(fb, WAVER[WAVE_SEQ[(nowMs / 200 + b.winPh) % 4]], 6, wx, wy, false);
+      }
+    }
+    for (int i = 0; i < g.np; i++) {
+      const Person& p = g.p[i];
+      if (p.saved) continue;
+      int x, y;
+      personAt(g, p, x, y);
+      drawFigure(fb, WAVER[WAVE_SEQ[(nowMs / 230 + p.ph) % 4]], PERSON_H, x, y, false);
+    }
+  }
+  for (const auto& c : s.cit) {  // the people who came out of the buildings
+    if (!c.on || c.mode == 0) continue;
+    bool run = c.mode == 1 || c.mode == 2;
+    int gy = H - GROUND - PERSON_H;
+    drawFigure(fb, run ? RUNNER[(nowMs / 110) % 3] : WAVER[WAVE_SEQ[(nowMs / 230 + c.ph) % 4]], PERSON_H, (int)lrintf(c.x), gy, c.mode == 1);  // running left: mirrored
+  }
+  for (const auto& k : s.spark) {  // a small light where somebody was saved: a plus that opens, then fades
+    if (!k.on) continue;
+    float u = k.t / 0.5f, a = 1 - u;
+    int r = 1 + roundi(u * 2), cr = (int)lrintf(255 * a + 40), cb = (int)lrintf(180 * a + 20);
+    if (cr > 255) cr = 255;
+    uint16_t c = swap(rgb(cr, cr, cb));
+    const int D[5][2] = {{0, 0}, {r, 0}, {-r, 0}, {0, r}, {0, -r}};
+    for (const auto& d : D) dot(fb, (int)lrintf(k.x - 1) + d[0] * DOT, (int)lrintf(k.y - 1) + d[1] * DOT, c);
+  }
+}
+
 // Draws the whole frame (black sky with stars, terrain, bursts, targets, mines, their bullets, laser beams, bombs, fighter) into fb.
 static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
   for (int i = 0; i < W * H; i++) fb[i] = 0;
@@ -1636,6 +1933,39 @@ static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
     }
   }
   drawSearchlights(s, fb, nowMs);  // in front of the terrain and the monster's body, behind the equalizer
+  drawKongArms(s, fb, nowMs);      // both arms: in front of the terrain and the beams, behind the city
+  drawCity(s, fb, nowMs);          // the city and its people: in front of the arms, behind the equalizer
+  drawLightBases(s, fb);           // the searchlights' bases, on the ground, in front of the city
+  {  // the fighter: in front of the city, behind the equalizer. The arms are drawn once more over it, but only where it is, so a hand
+     // or a tentacle closes in front of the fighter while the buildings stay in front of the arms.
+    static const uint16_t Wh = swap(rgb(236, 236, 236)), B = swap(rgb(120, 128, 160)), M = swap(rgb(224, 48, 200)),
+                          C = swap(rgb(0, 224, 255)), F1 = swap(rgb(255, 120, 0)), F2 = swap(rgb(255, 240, 96));
+    int sx = shipX(nowMs) + (int)lrintf(s.lunge), sy = (int)lrintf(s.shipY + bobY(nowMs) + s.evadeCur);
+    for (int y = 0; y < SHIP_DH; y++)
+      for (int x = 0; x < SHIP_DW; x++) {
+        char c = SHIP[y][x];
+        if (c == '.') continue;
+        dot(fb, sx + x * DOT, sy + y * DOT, c == 'W' ? Wh : c == 'B' ? B : c == 'M' ? M : C);
+      }
+    // Shield after a hit: a bright arc of dots around the nose, flickering.
+    if ((int32_t)(s.shieldUntil - nowMs) > 0 && ((nowMs / 50) & 1)) {
+      static const uint16_t SH = swap(rgb(120, 240, 255));
+      int fx = sx + SHIP_W + DOT;
+      for (int y = -1; y <= SHIP_DH; y++) dot(fb, fx + (y < 0 || y == SHIP_DH ? -DOT : 0), sy + y * DOT, SH);
+      dot(fb, sx + SHIP_W / 2, sy - 2 * DOT, SH);
+      dot(fb, sx + SHIP_W / 2, sy + SHIP_H + DOT, SH);
+    }
+    // Engine flame behind the hull (dot row 2), flickering between one and two dots.
+    dot(fb, sx - DOT, sy + 2 * DOT, F2);
+    if ((nowMs / 90) & 1) dot(fb, sx - 2 * DOT, sy + 2 * DOT, F1);
+    if (s.mz.u > 0.5f) {  // a longer flame at the zone's speed
+      dot(fb, sx - 2 * DOT, sy + 2 * DOT, F1);
+      if ((nowMs / 60) & 1) dot(fb, sx - 3 * DOT, sy + 2 * DOT, F2);
+    }
+    clipX0 = sx - 3 * DOT, clipY0 = sy - 2 * DOT, clipX1 = sx + SHIP_W + 2 * DOT, clipY1 = sy + SHIP_H + 2 * DOT;
+    drawKongArms(s, fb, nowMs);
+    clipX0 = 0, clipY0 = 0, clipX1 = W, clipY1 = H;
+  }
   if (s.eq) {  // the equalizer in front: its own gap rows black, so it reads as LEDs over the terrain
     static const uint16_t PEAK = swap(rgb(255, 255, 255));
     for (int j = 0; j < EQ_BANDS; j++) {
@@ -1712,32 +2042,6 @@ static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
   for (const auto& b : s.b)
     if (b.on) dot(fb, (int)b.x, (int)b.y, BOMB_BODY);
 
-  static const uint16_t Wh = swap(rgb(236, 236, 236)), B = swap(rgb(120, 128, 160)), M = swap(rgb(224, 48, 200)),
-                        C = swap(rgb(0, 224, 255)), F1 = swap(rgb(255, 120, 0)), F2 = swap(rgb(255, 240, 96));
-  int sx = shipX(nowMs) + (int)lrintf(s.lunge), sy = (int)lrintf(s.shipY + bobY(nowMs) + s.evadeCur);
-  for (int y = 0; y < SHIP_DH; y++)
-    for (int x = 0; x < SHIP_DW; x++) {
-      char c = SHIP[y][x];
-      if (c == '.') continue;
-      dot(fb, sx + x * DOT, sy + y * DOT, c == 'W' ? Wh : c == 'B' ? B : c == 'M' ? M : C);
-    }
-  // Shield after a hit: a bright arc of dots around the nose, flickering.
-  if ((int32_t)(s.shieldUntil - nowMs) > 0 && ((nowMs / 50) & 1)) {
-    static const uint16_t SH = swap(rgb(120, 240, 255));
-    int fx = sx + SHIP_W + DOT;
-    for (int y = -1; y <= SHIP_DH; y++) dot(fb, fx + (y < 0 || y == SHIP_DH ? -DOT : 0), sy + y * DOT, SH);
-    dot(fb, sx + SHIP_W / 2, sy - 2 * DOT, SH);
-    dot(fb, sx + SHIP_W / 2, sy + SHIP_H + DOT, SH);
-  }
-  // Engine flame behind the hull (dot row 2), flickering between one and two dots.
-  dot(fb, sx - DOT, sy + 2 * DOT, F2);
-  if ((nowMs / 90) & 1) dot(fb, sx - 2 * DOT, sy + 2 * DOT, F1);
-  if (s.mz.u > 0.5f) {  // a longer flame at the zone's speed
-    dot(fb, sx - 2 * DOT, sy + 2 * DOT, F1);
-    if ((nowMs / 60) & 1) dot(fb, sx - 3 * DOT, sy + 2 * DOT, F2);
-  }
-  drawLightBases(s, fb);       // the searchlights' bases, on the ground
-  drawKongArms(s, fb, nowMs);  // both arms: in front of the terrain, the equalizer and the fighter
 }
 
 }  // namespace flightviz
