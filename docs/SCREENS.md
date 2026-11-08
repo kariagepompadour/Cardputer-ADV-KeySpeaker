@@ -79,9 +79,14 @@ A screen saver to watch while music plays, not a game: no score, nothing to lose
   Half of the visits are a second monster instead (S11-1), a Space Invaders squid of the same size: a pointed head with slanted eyes and a
   small grumpy mouth over seven tentacles that hang side by side and lie out along the ground. It floats in, and before the fighter passes
   and again after it has passed it may stretch the two tentacles on the fighter's side (now and then the other two as well) toward it.
-- Searchlights (S11-2): a city on alert. Up to three stand on the ground, each with a small base (a light grey square with a blue window),
+- Searchlights (S11-2): a city on alert. Up to three stand on the ground, each with a small base (a T of four cells, light grey with a yellow lamp on top),
   flow from right to left with the terrain and sweep the sky with a slim beam. A beam stops at a monster's centre line and on the
   fighter. They come only while music plays, one every 10 to 35 seconds, and are on screen about 60 % of the time.
+- A damaged city (S14-1): now and then three to five buildings flow by with the terrain (they do not react to the sound), with shield-like
+  corner damage, a black doorway and sometimes a fire. Small people wait on the roofs and lean out of windows, waving for help; the fighter
+  flies to the nearest and saves it by overlapping (a small light, no score). A few run out of the doorways, chase the fighter and wave.
+  The buildings are in front of the monsters' arms, the fighter in front of the buildings, the arms in front of the fighter, all behind
+  the equalizer. One monster visit in twenty it comes flat shocking pink.
 - Now and then a graphic equalizer like an old hi-fi's rises in front of the terrain: 30 bands with falling peak
   dots, in the aqua of a fluorescent display or in KariPom's colors. The patterns take turns every minute.
 - Nothing else on it while all is well: a line at the top shows only when something is wrong (`not connected` in
