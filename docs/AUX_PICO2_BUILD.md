@@ -9,6 +9,8 @@ Japanese version: [AUX_PICO2_BUILD_JA.md](AUX_PICO2_BUILD_JA.md). Design: [AUX_P
 - This unit uses a Raspberry Pi Pico 2 H and a PCM1808 board. The wiring comes from the author's other project, KariPom Ear ( https://github.com/kariagepompadour/KariPom ), where it already works.
 - **KeySpeaker is S12-3 and the Pico program is S12-1.** The author confirmed sound with the unit running only on the Cardputer's power.
 - No soldering is needed, as long as the Pico 2 H and the PCM1808 board both come with pin headers.
+- "Pico 2" in this repository's names (such as `AUX_PICO2`) means the Raspberry Pi Pico 2 family. The author's unit uses the **Pico 2 H**, which is the Pico 2 with pin headers already fitted (Raspberry Pi's naming; not checked by the author).
+- A plain Pico 2 (no headers) is also fine if you solder the two rows of 20 pin headers on yourself. You need a soldering iron and a little practice, and the author has only built the unit with the Pico 2 H. A beginner should buy the H version.
 - If you reuse a Pico or a board from another project, step 6 shows whether it still works.
 
 ## 1. What the finished unit does
@@ -36,7 +38,7 @@ The author's build. The extra wires on the Grove cable are from an earlier proje
 
 | Part | Qty | Notes |
 |---|---|---|
-| Raspberry Pi Pico 2 H | 1 | With pin headers |
+| Raspberry Pi Pico 2 H | 1 | With pin headers already fitted. A plain Pico 2 works too if you solder the headers on yourself (see above) |
 | PCM1808 board | 1 | Turns sound into numbers. Get one with 3.5 mm line input, I²S output and 5 V DC power |
 | Resistor, 330 Ω, 1/4 W | 2 | Stops too much current flowing (Grove wires) |
 | Breadboard, 400 holes | 1 | |
