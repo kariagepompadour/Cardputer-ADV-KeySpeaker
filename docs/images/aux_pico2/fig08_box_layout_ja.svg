@@ -161,19 +161,21 @@
 <text x="940" y="672" font-size="11.5" fill="#d62728" text-anchor="middle" font-weight="700">VDD</text>
 <text x="920" y="728" font-size="12" fill="#444" text-anchor="middle" font-weight="700">POWER</text>
 <path d="M100 322 L130 322 L130 150 L1200 150 L1200 620 L940 620 L940 650" fill="none" stroke="#d62728" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="130" cy="150" r="0.1" fill="#d62728" stroke="#d62728" stroke-width="1.5"/>
-<circle cx="434" cy="150" r="4.5" fill="#d62728" stroke="#d62728" stroke-width="1.5"/>
-<path d="M434 150 L434 330" fill="none" stroke="#d62728" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M130 322 L130 128 L434 128 L434 330" fill="none" stroke="#d62728" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="940" cy="650" r="5" fill="#d62728" stroke="#d62728" stroke-width="1.5"/>
+<circle cx="130" cy="322" r="8" fill="#fff" stroke="#d62728" stroke-width="3"/>
+<text x="142" y="316" font-size="11.5" fill="#d62728" text-anchor="start" font-weight="700">2分岐</text>
 <path d="M100 347 L150 347 L150 175 L1170 175 L1170 595 L900 595 L900 650" fill="none" stroke="#222222" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="468" cy="175" r="4.5" fill="#222222" stroke="#222222" stroke-width="1.5"/>
-<path d="M468 175 L468 330" fill="none" stroke="#222222" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M150 347 L150 190 L468 190 L468 330" fill="none" stroke="#222222" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="900" cy="650" r="5" fill="#222222" stroke="#222222" stroke-width="1.5"/>
+<circle cx="150" cy="347" r="8" fill="#fff" stroke="#222222" stroke-width="3"/>
+<text x="162" y="366" font-size="11.5" fill="#222222" text-anchor="start" font-weight="700">2分岐</text>
 <path d="M638 330 L638 205 L1140 205 L1140 570 L750 570 L750 650" fill="none" stroke="#0b3fb8" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="750" cy="650" r="5" fill="#0b3fb8" stroke="#0b3fb8" stroke-width="1.5"/>
 <text x="860" y="142" font-size="12" fill="#d62728" text-anchor="start" font-weight="700">VDD へ</text>
 <text x="860" y="168" font-size="12" fill="#222222" text-anchor="start" font-weight="700">POWER の GND へ</text>
 <text x="860" y="198" font-size="12" fill="#0b3fb8" text-anchor="start" font-weight="700">CN3 の GND へ</text>
+<text x="30" y="854" font-size="14" fill="#222" text-anchor="start" font-weight="700">2分岐: Grove の線 1 本に、ジャンパー線 2 本を半田付けし、つなぎ目に熱収縮チューブをかぶせます（製作説明書を見てください）。</text>
 <text x="30" y="876" font-size="14" fill="#2e7d32" text-anchor="start" font-weight="400">基板の POWER の GND と I²S OUT の GND は、基板の中でつながっているので、I²S の GND のピンは空けておけます。</text>
 <text x="30" y="900" font-size="14" fill="#222" text-anchor="start" font-weight="400">線は、ピンに直接挿します。R1、R2 は 330Ω の抵抗です。</text>
 <text x="30" y="922" font-size="14" fill="#222" text-anchor="start" font-weight="400">Grove の赤と黒は、それぞれ2本に分けます。青: Pico の AGND（33番）と、基板の CN3 の GND（真ん中のピン）。</text>

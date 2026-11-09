@@ -27,13 +27,15 @@
 <text x="252" y="335" font-size="13.5" fill="#d62728" text-anchor="end" font-weight="700">5V (red)</text>
 <path d="M260 340 L520 340" fill="none" stroke="#d62728" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
 <text x="530" y="345" font-size="13.5" fill="#d62728" text-anchor="start" font-weight="700">VSYS (39)</text>
-<circle cx="470" cy="340" r="4" fill="#d62728" stroke="#d62728" stroke-width="1.5"/>
+<circle cx="470" cy="340" r="7" fill="#fff" stroke="#d62728" stroke-width="2.5"/>
+<text x="476" y="360" font-size="11.5" fill="#d62728" text-anchor="start" font-weight="700">split</text>
 <path d="M470 340 L470 78 L900 78 L900 150 L960 150" fill="none" stroke="#d62728" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
 <text x="970" y="155" font-size="13.5" fill="#d62728" text-anchor="start" font-weight="700">VDD</text>
 <text x="252" y="395" font-size="13.5" fill="#222222" text-anchor="end" font-weight="700">GND (black)</text>
 <path d="M260 400 L520 400" fill="none" stroke="#222222" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
 <text x="530" y="405" font-size="13.5" fill="#222222" text-anchor="start" font-weight="700">GND (38)</text>
-<circle cx="490" cy="400" r="4" fill="#222222" stroke="#222222" stroke-width="1.5"/>
+<circle cx="490" cy="400" r="7" fill="#fff" stroke="#222222" stroke-width="2.5"/>
+<text x="496" y="420" font-size="11.5" fill="#222222" text-anchor="start" font-weight="700">split</text>
 <path d="M490 400 L490 700 L930 700 L930 430 L960 430" fill="none" stroke="#222222" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
 <text x="970" y="435" font-size="13.5" fill="#222222" text-anchor="start" font-weight="700">POWER GND</text>
 <text x="750" y="225" font-size="13.5" fill="#f07f13" text-anchor="end" font-weight="700">GP2 DIN (4)</text>
