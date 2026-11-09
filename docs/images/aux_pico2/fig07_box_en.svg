@@ -6,38 +6,38 @@
 <rect x="30" y="130" width="230" height="300" rx="6" fill="#fdf1e3" stroke="#222" stroke-width="1.5"/>
 <text x="145" y="158" font-size="16" fill="#222" text-anchor="middle" font-weight="700">Cardputer ADV</text>
 <text x="145" y="178" font-size="13" fill="#666" text-anchor="middle" font-weight="400">Grove (Port A)</text>
-<rect x="290" y="300" width="170" height="150" rx="6" fill="#fffbea" stroke="#c9a400" stroke-width="1.5" stroke-dasharray="6 4"/>
-<text x="375" y="470" font-size="11.5" fill="#8a6d00" text-anchor="middle" font-weight="700">Mini breadboard (25 holes)</text>
+<rect x="290" y="106" width="170" height="200" rx="6" fill="#fffbea" stroke="#c9a400" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="375" y="128" font-size="11.5" fill="#8a6d00" text-anchor="middle" font-weight="700">Mini breadboard (25 holes)</text>
 <rect x="520" y="100" width="240" height="470" rx="6" fill="#e9f6ec" stroke="#222" stroke-width="1.5"/>
 <text x="640" y="128" font-size="17" fill="#222" text-anchor="middle" font-weight="700">U1  Pico 2 H</text>
 <rect x="960" y="100" width="280" height="470" rx="6" fill="#e8f1fb" stroke="#222" stroke-width="1.5"/>
 <text x="1100" y="128" font-size="16" fill="#222" text-anchor="middle" font-weight="700">U2  PCM1808 board</text>
-<text x="252" y="215" font-size="13.5" fill="#222222" text-anchor="end" font-weight="700">GND (black)</text>
-<path d="M260 220 L520 220" fill="none" stroke="#222222" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="530" y="225" font-size="13.5" fill="#222222" text-anchor="start" font-weight="700">GND (38)</text>
-<circle cx="490" cy="220" r="7" fill="#fff" stroke="#222222" stroke-width="2.5"/>
-<text x="484" y="242" font-size="11.5" fill="#222222" text-anchor="end" font-weight="700">split</text>
-<path d="M490 220 L490 76 L930 76 L930 190 L960 190" fill="none" stroke="#222222" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="970" y="195" font-size="13.5" fill="#222222" text-anchor="start" font-weight="700">POWER GND</text>
-<text x="252" y="265" font-size="13.5" fill="#d62728" text-anchor="end" font-weight="700">5V (red)</text>
-<path d="M260 270 L520 270" fill="none" stroke="#d62728" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="530" y="275" font-size="13.5" fill="#d62728" text-anchor="start" font-weight="700">VSYS (39)</text>
-<circle cx="505" cy="270" r="7" fill="#fff" stroke="#d62728" stroke-width="2.5"/>
-<text x="499" y="292" font-size="11.5" fill="#d62728" text-anchor="end" font-weight="700">split</text>
-<path d="M505 270 L505 90 L900 90 L900 150 L960 150" fill="none" stroke="#d62728" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="252" y="215" font-size="13.5" fill="#7f7f7f" text-anchor="end" font-weight="700">G1 (grey mark)</text>
+<path d="M260 220 L330 220" fill="none" stroke="#7f7f7f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="330" y="209" width="60" height="22" rx="2" fill="#fff" stroke="#7f7f7f" stroke-width="2"/>
+<text x="360" y="204" font-size="12.5" fill="#7f7f7f" text-anchor="middle" font-weight="700">R1 330Ω</text>
+<path d="M390 220 L520 220" fill="none" stroke="#7f7f7f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="530" y="225" font-size="13.5" fill="#7f7f7f" text-anchor="start" font-weight="700">GP0 TX (1)</text>
+<text x="252" y="265" font-size="13.5" fill="#c9a400" text-anchor="end" font-weight="700">G2 (yellow mark)</text>
+<path d="M260 270 L330 270" fill="none" stroke="#c9a400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="330" y="259" width="60" height="22" rx="2" fill="#fff" stroke="#c9a400" stroke-width="2"/>
+<text x="360" y="254" font-size="12.5" fill="#c9a400" text-anchor="middle" font-weight="700">R2 330Ω</text>
+<path d="M390 270 L520 270" fill="none" stroke="#c9a400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="530" y="275" font-size="13.5" fill="#c9a400" text-anchor="start" font-weight="700">GP1 RX (2)</text>
+<text x="252" y="335" font-size="13.5" fill="#d62728" text-anchor="end" font-weight="700">5V (red)</text>
+<path d="M260 340 L520 340" fill="none" stroke="#d62728" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="530" y="345" font-size="13.5" fill="#d62728" text-anchor="start" font-weight="700">VSYS (39)</text>
+<circle cx="470" cy="340" r="7" fill="#fff" stroke="#d62728" stroke-width="2.5"/>
+<text x="476" y="360" font-size="11.5" fill="#d62728" text-anchor="start" font-weight="700">split</text>
+<path d="M470 340 L470 78 L900 78 L900 150 L960 150" fill="none" stroke="#d62728" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
 <text x="970" y="155" font-size="13.5" fill="#d62728" text-anchor="start" font-weight="700">VDD</text>
-<text x="252" y="335" font-size="13.5" fill="#c9a400" text-anchor="end" font-weight="700">G2 (yellow mark)</text>
-<path d="M260 340 L330 340" fill="none" stroke="#c9a400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-<rect x="330" y="329" width="60" height="22" rx="2" fill="#fff" stroke="#c9a400" stroke-width="2"/>
-<text x="360" y="324" font-size="12.5" fill="#c9a400" text-anchor="middle" font-weight="700">R2 330Ω</text>
-<path d="M390 340 L520 340" fill="none" stroke="#c9a400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="530" y="345" font-size="13.5" fill="#c9a400" text-anchor="start" font-weight="700">GP1 RX (2)</text>
-<text x="252" y="395" font-size="13.5" fill="#7f7f7f" text-anchor="end" font-weight="700">G1 (grey mark)</text>
-<path d="M260 400 L330 400" fill="none" stroke="#7f7f7f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-<rect x="330" y="389" width="60" height="22" rx="2" fill="#fff" stroke="#7f7f7f" stroke-width="2"/>
-<text x="360" y="384" font-size="12.5" fill="#7f7f7f" text-anchor="middle" font-weight="700">R1 330Ω</text>
-<path d="M390 400 L520 400" fill="none" stroke="#7f7f7f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="530" y="405" font-size="13.5" fill="#7f7f7f" text-anchor="start" font-weight="700">GP0 TX (1)</text>
+<text x="252" y="395" font-size="13.5" fill="#222222" text-anchor="end" font-weight="700">GND (black)</text>
+<path d="M260 400 L520 400" fill="none" stroke="#222222" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="530" y="405" font-size="13.5" fill="#222222" text-anchor="start" font-weight="700">GND (38)</text>
+<circle cx="490" cy="400" r="7" fill="#fff" stroke="#222222" stroke-width="2.5"/>
+<text x="482" y="424" font-size="11.5" fill="#222222" text-anchor="end" font-weight="700">split</text>
+<path d="M490 400 L490 700 L930 700 L930 430 L960 430" fill="none" stroke="#222222" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="970" y="435" font-size="13.5" fill="#222222" text-anchor="start" font-weight="700">POWER GND</text>
 <text x="750" y="225" font-size="13.5" fill="#f07f13" text-anchor="end" font-weight="700">GP2 DIN (4)</text>
 <path d="M760 220 L960 220" fill="none" stroke="#f07f13" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
 <text x="970" y="225" font-size="13.5" fill="#f07f13" text-anchor="start" font-weight="700">DATA</text>
@@ -50,8 +50,7 @@
 <text x="970" y="370" font-size="13" fill="#666" text-anchor="start" font-weight="400">MCLK: not connected</text>
 <text x="970" y="402" font-size="13" fill="#888" text-anchor="start" font-weight="400">I²S OUT GND: left empty</text>
 <text x="948" y="403" font-size="16" fill="#aa2222" text-anchor="end" font-weight="700">×</text>
-<text x="972" y="424" font-size="11.5" fill="#2e7d32" text-anchor="start" font-weight="400">POWER GND and I²S OUT GND are joined</text>
-<text x="972" y="440" font-size="11.5" fill="#2e7d32" text-anchor="start" font-weight="400">on the board (author's beep test)</text>
+<text x="1230" y="458" font-size="11.5" fill="#2e7d32" text-anchor="end" font-weight="400">Joined on the board (author's beep test)</text>
 <text x="750" y="505" font-size="13.5" fill="#0b3fb8" text-anchor="end" font-weight="700">AGND (33)</text>
 <path d="M760 500 L960 500" fill="none" stroke="#0b3fb8" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
 <text x="970" y="505" font-size="13.5" fill="#0b3fb8" text-anchor="start" font-weight="700">CN3 GND (between R_IN and L_IN)</text>
