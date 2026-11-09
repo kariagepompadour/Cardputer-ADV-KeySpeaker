@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1270 940" width="1270" height="940" font-family="'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans CJK JP','Noto Sans JP','Yu Gothic',Meiryo,sans-serif" role="img" aria-label="Figure 8  Layout of the box version">
-<title>Figure 8  Layout of the box version</title><rect width="1270" height="940" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1270 960" width="1270" height="960" font-family="'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans CJK JP','Noto Sans JP','Yu Gothic',Meiryo,sans-serif" role="img" aria-label="Figure 8  Layout of the box version">
+<title>Figure 8  Layout of the box version</title><rect width="1270" height="960" fill="#ffffff"/>
 <text x="24" y="36" font-size="22" fill="#222" text-anchor="start" font-weight="700">Figure 8  Layout of the box version</text>
 <text x="24" y="60" font-size="14" fill="#666" text-anchor="start" font-weight="400">Where each wire goes, drawn like Figure 3. The boards are turned so that their pins face each other; read the pin names, not the positions.</text>
 <rect x="380" y="315" width="686" height="180" rx="6" fill="#e9f6ec" stroke="#222" stroke-width="1.5"/>
@@ -52,8 +52,8 @@
 <text x="468" y="374" font-size="11.5" fill="#222222" text-anchor="middle" font-weight="700">38 GND</text>
 <circle cx="638" cy="330" r="6" fill="#0b3fb8" stroke="#0b3fb8" stroke-width="1.5"/>
 <text x="638" y="356" font-size="11.5" fill="#0b3fb8" text-anchor="middle" font-weight="700">33 AGND</text>
-<circle cx="400" cy="480" r="6" fill="#8e44ad" stroke="#8e44ad" stroke-width="1.5"/>
-<text x="400" y="464" font-size="11.5" fill="#8e44ad" text-anchor="middle" font-weight="700">1 GP0</text>
+<circle cx="400" cy="480" r="6" fill="#7f7f7f" stroke="#7f7f7f" stroke-width="1.5"/>
+<text x="400" y="464" font-size="11.5" fill="#7f7f7f" text-anchor="middle" font-weight="700">1 GP0</text>
 <circle cx="434" cy="480" r="6" fill="#c9a400" stroke="#c9a400" stroke-width="1.5"/>
 <text x="434" y="446" font-size="11.5" fill="#c9a400" text-anchor="middle" font-weight="700">2 GP1</text>
 <circle cx="502" cy="480" r="6" fill="#f07f13" stroke="#f07f13" stroke-width="1.5"/>
@@ -72,10 +72,10 @@
 <text x="94" y="326" font-size="11" fill="#d62728" text-anchor="end" font-weight="700">5V red</text>
 <circle cx="100" cy="347" r="5" fill="#222222" stroke="#222222" stroke-width="1.5"/>
 <text x="94" y="351" font-size="11" fill="#222222" text-anchor="end" font-weight="700">GND black</text>
-<circle cx="100" cy="372" r="5" fill="#8e44ad" stroke="#8e44ad" stroke-width="1.5"/>
-<text x="94" y="376" font-size="11" fill="#8e44ad" text-anchor="end" font-weight="700">G1 yellow</text>
+<circle cx="100" cy="372" r="5" fill="#7f7f7f" stroke="#7f7f7f" stroke-width="1.5"/>
+<text x="94" y="376" font-size="11" fill="#7f7f7f" text-anchor="end" font-weight="700">G1 grey</text>
 <circle cx="100" cy="397" r="5" fill="#c9a400" stroke="#c9a400" stroke-width="1.5"/>
-<text x="94" y="401" font-size="11" fill="#c9a400" text-anchor="end" font-weight="700">G2 white</text>
+<text x="94" y="401" font-size="11" fill="#c9a400" text-anchor="end" font-weight="700">G2 yellow</text>
 <rect x="120" y="425" width="150" height="150" rx="6" fill="#fffbea" stroke="#c9a400" stroke-width="1.5"/>
 <text x="195" y="592" font-size="12" fill="#8a6d00" text-anchor="middle" font-weight="700">Mini breadboard (25 holes)</text>
 <line x1="140" y1="450" x2="236" y2="450" stroke="#e5d9a8" stroke-width="9" stroke-linecap="round"/>
@@ -109,16 +109,16 @@
 <circle cx="212" cy="546" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
 <circle cx="236" cy="546" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
 <text x="122" y="418" font-size="11" fill="#8a6d00" text-anchor="start" font-weight="400">Each row of 5 holes is joined inside</text>
-<rect x="181" y="455" width="14" height="14" rx="2" fill="#fff" stroke="#8e44ad" stroke-width="2.5"/>
-<text x="200" y="466.0" font-size="11.5" fill="#8e44ad" text-anchor="start" font-weight="700">R1</text>
+<rect x="181" y="455" width="14" height="14" rx="2" fill="#fff" stroke="#7f7f7f" stroke-width="2.5"/>
+<text x="200" y="466.0" font-size="11.5" fill="#7f7f7f" text-anchor="start" font-weight="700">R1</text>
 <rect x="181" y="527" width="14" height="14" rx="2" fill="#fff" stroke="#c9a400" stroke-width="2.5"/>
 <text x="200" y="538.0" font-size="11.5" fill="#c9a400" text-anchor="start" font-weight="700">R2</text>
-<path d="M100 372 L120 372 L120 450 L140 450" fill="none" stroke="#8e44ad" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="140" cy="450" r="4.5" fill="#8e44ad" stroke="#8e44ad" stroke-width="1.5"/>
+<path d="M100 372 L120 372 L120 450 L140 450" fill="none" stroke="#7f7f7f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="140" cy="450" r="4.5" fill="#7f7f7f" stroke="#7f7f7f" stroke-width="1.5"/>
 <path d="M100 397 L112 397 L112 522 L140 522" fill="none" stroke="#c9a400" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="140" cy="522" r="4.5" fill="#c9a400" stroke="#c9a400" stroke-width="1.5"/>
-<path d="M236 474 L300 474 L300 560 L400 560 L400 480" fill="none" stroke="#8e44ad" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="236" cy="474" r="4.5" fill="#8e44ad" stroke="#8e44ad" stroke-width="1.5"/>
+<path d="M236 474 L300 474 L300 560 L400 560 L400 480" fill="none" stroke="#7f7f7f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="236" cy="474" r="4.5" fill="#7f7f7f" stroke="#7f7f7f" stroke-width="1.5"/>
 <path d="M236 546 L276 546 L276 610 L434 610 L434 480" fill="none" stroke="#c9a400" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="236" cy="546" r="4.5" fill="#c9a400" stroke="#c9a400" stroke-width="1.5"/>
 <rect x="330" y="650" width="730" height="190" rx="6" fill="#e8f1fb" stroke="#222" stroke-width="1.5"/>
@@ -179,4 +179,5 @@
 <text x="30" y="876" font-size="14" fill="#2e7d32" text-anchor="start" font-weight="400">The board's POWER GND and I²S OUT GND are joined on the board, so the I²S GND pin can stay empty.</text>
 <text x="30" y="900" font-size="14" fill="#222" text-anchor="start" font-weight="400">Wires are plugged straight onto the pins. R1 and R2 are 330 Ω resistors.</text>
 <text x="30" y="922" font-size="14" fill="#222" text-anchor="start" font-weight="400">Red and black from the Grove cable are each split in two. Blue: Pico AGND (33) to the board's CN3 GND (the middle pin).</text>
+<text x="30" y="944" font-size="13" fill="#555" text-anchor="start" font-weight="400">Wire colours follow the marks on the Cardputer's port (G1 grey, G2 yellow). Cables differ: the author's cable has yellow on G1 and white on G2.</text>
 </svg>

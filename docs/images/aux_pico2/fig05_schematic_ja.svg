@@ -12,15 +12,15 @@
 <text x="1095" y="138" font-size="16" fill="#222" text-anchor="middle" font-weight="700">U2  PCM1808基板</text>
 <rect x="960" y="470" width="270" height="180" rx="6" fill="#fff" stroke="#00897b" stroke-width="1.5" stroke-dasharray="6 4"/>
 <text x="1095" y="498" font-size="15" fill="#00897b" text-anchor="middle" font-weight="700">U3  Unit Encoder（任意）</text>
-<text x="262" y="240" font-size="13.5" fill="#8e44ad" text-anchor="end" font-weight="700">G1（黄）</text>
-<text x="262" y="290" font-size="13.5" fill="#c9a400" text-anchor="end" font-weight="700">G2（白）</text>
+<text x="262" y="240" font-size="13.5" fill="#7f7f7f" text-anchor="end" font-weight="700">G1（灰色の札）</text>
+<text x="262" y="290" font-size="13.5" fill="#c9a400" text-anchor="end" font-weight="700">G2（黄色の札）</text>
 <text x="262" y="340" font-size="13.5" fill="#d62728" text-anchor="end" font-weight="700">5V（赤）</text>
 <text x="262" y="390" font-size="13.5" fill="#222222" text-anchor="end" font-weight="700">GND（黒）</text>
-<line x1="270" y1="235" x2="350" y2="235" stroke="#8e44ad" stroke-width="2.5" stroke-linecap="round"/>
-<rect x="350" y="224" width="60" height="22" rx="2" fill="#fff" stroke="#8e44ad" stroke-width="2"/>
-<text x="380" y="219" font-size="12.5" fill="#8e44ad" text-anchor="middle" font-weight="700">R1 330Ω</text>
-<line x1="410" y1="235" x2="490" y2="235" stroke="#8e44ad" stroke-width="2.5" stroke-linecap="round"/>
-<text x="500" y="240" font-size="13.5" fill="#8e44ad" text-anchor="start" font-weight="700">GP0 TX (1)</text>
+<line x1="270" y1="235" x2="350" y2="235" stroke="#7f7f7f" stroke-width="2.5" stroke-linecap="round"/>
+<rect x="350" y="224" width="60" height="22" rx="2" fill="#fff" stroke="#7f7f7f" stroke-width="2"/>
+<text x="380" y="219" font-size="12.5" fill="#7f7f7f" text-anchor="middle" font-weight="700">R1 330Ω</text>
+<line x1="410" y1="235" x2="490" y2="235" stroke="#7f7f7f" stroke-width="2.5" stroke-linecap="round"/>
+<text x="500" y="240" font-size="13.5" fill="#7f7f7f" text-anchor="start" font-weight="700">GP0 TX (1)</text>
 <line x1="270" y1="285" x2="350" y2="285" stroke="#c9a400" stroke-width="2.5" stroke-linecap="round"/>
 <rect x="350" y="274" width="60" height="22" rx="2" fill="#fff" stroke="#c9a400" stroke-width="2"/>
 <text x="380" y="269" font-size="12.5" fill="#c9a400" text-anchor="middle" font-weight="700">R2 330Ω</text>
@@ -80,4 +80,5 @@
 <text x="825" y="445" font-size="12.5" fill="#e67e22" text-anchor="middle" font-weight="700">10kΩ ×2</text>
 <text x="30" y="750" font-size="14" fill="#222" text-anchor="start">U3、R3、R4 は、ジョグダイヤルを Pico につなぐときだけ使います。ダイヤルを Cardputer の Grove に直接つなぐときは Pico ユニットを外します。</text>
 <text x="30" y="774" font-size="14" fill="#222" text-anchor="start">Pico に USB をつなぐときは、Grove を外します。</text>
+<text x="30" y="726" font-size="13" fill="#555" text-anchor="start">線の色は、Cardputer のポートの札の色に合わせています（G1 は灰色、G2 は黄色）。ケーブルによって違い、作者のケーブルは、G1 が黄、G2 が白です。</text>
 </svg>
