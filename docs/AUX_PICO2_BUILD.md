@@ -51,7 +51,7 @@ The author's build. The extra wires on the Grove cable are from an earlier proje
 - The two 330 Ω resistors sit on a small 25-hole mini breadboard (Akizuki Denshi 113329, yellow, 20 × 15 mm).
 - The Grove red and black wires are each split in two: red to the Pico's VSYS (pin 39) and the PCM1808 board's VDD; black to the Pico's GND (pin 38) and the board's GND.
 - The Pico's AGND (pin 33) is joined to the board's CN3 GND (the middle pin, between R_IN and L_IN) with one extra wire.
-- The I²S-side GND pin of the board is left empty, and the unit works that way. The author's continuity test (beep mode, Grove unplugged) shows the board's POWER GND and I²S OUT GND are already joined on the board, which is why it works. The breadboard version in this guide connects it anyway, which does no harm.
+- The I²S-side GND pin of the board is left empty, and the unit works that way. The author's continuity test (beep mode, all wires removed from the board) shows the board's POWER GND and I²S OUT GND are already joined on the board, which is why it works. The breadboard version in this guide connects it anyway, which does no harm.
 - The wires are plugged straight onto the pins, so the hole names such as a22 do not apply.
 - The box itself is still being tuned (as of 2026-11-09). Each board sits on four bosses, and a short pin on each boss goes through the board's mounting hole. The model files are not in this repository yet, so no print instructions are given here.
 

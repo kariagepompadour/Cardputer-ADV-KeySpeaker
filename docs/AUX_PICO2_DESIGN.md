@@ -52,7 +52,7 @@ Why the design moved to the Pico 2:
 | Grove yellow (G1) | R1, then Pico GP0 (pin 1, UART TX) |
 | Grove white (G2) | R2, then Pico GP1 (pin 2, UART RX) |
 | Grove red (5 V) | Pico VSYS (pin 39), PCM1808 board VDD |
-| Grove black (GND) | Pico GND (pin 38), PCM1808 board GND. "Two places" means the POWER GND and the I²S OUT GND. The author's beep test (2026-11-09) shows these two are joined on the board, so one of them is enough electrically. CN3's GND was not measured; the author's box joins it to the Pico's AGND (pin 33). The build guide connects both POWER and I²S OUT. |
+| Grove black (GND) | Pico GND (pin 38), PCM1808 board GND. "Two places" means the POWER GND and the I²S OUT GND. The author's beep test (2026-11-09, board alone with all wires removed) shows these two are joined on the board, so one of them is enough electrically. CN3's GND was not measured; the author's box joins it to the Pico's AGND (pin 33). The build guide connects both POWER and I²S OUT. |
 | PCM1808 DATA | Direct to Pico GP2 (pin 4) |
 | PCM1808 BCLK | Direct to Pico GP3 (pin 5) |
 | PCM1808 LRCK | Direct to Pico GP4 (pin 6) |
