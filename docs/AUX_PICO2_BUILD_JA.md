@@ -59,6 +59,12 @@
 
 Grove のケーブルは色が違うことがあるので、線の色ではなく、Cardputer のポートの G1、G2、5V、GND の表示を見てください。箱とその文字は [AUX_PICO2_BOX_JA.md](AUX_PICO2_BOX_JA.md) を見てください。
 
+箱の版を、図3と同じ描き方にしたものです。先に線の配置図、次に、同じ配線を回路図にしたものです。
+
+![箱の版の配置図](images/aux_pico2/fig08_box_layout_ja.svg)
+
+![箱の版の配線図](images/aux_pico2/fig07_box_ja.svg)
+
 ジョグダイヤルを Pico につなぐときは、次も用意します。
 
 | 部品 | 数 |

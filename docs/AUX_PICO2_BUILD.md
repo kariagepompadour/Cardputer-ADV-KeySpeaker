@@ -59,6 +59,12 @@ The author's build. The extra wires on the Grove cable are from an earlier proje
 
 Go by the marks G1, G2, 5V and GND on the Cardputer's port, not by wire colours, because Grove cables differ. See [AUX_PICO2_BOX.md](AUX_PICO2_BOX.md) for the box and its labels.
 
+The box version, drawn like Figure 3: the layout of the wires, then the same wiring as a schematic.
+
+![Layout of the box version](images/aux_pico2/fig08_box_layout_en.svg)
+
+![Wiring of the box version](images/aux_pico2/fig07_box_en.svg)
+
 If you put the jog dial on the Pico, you also need these:
 
 | Part | Qty |

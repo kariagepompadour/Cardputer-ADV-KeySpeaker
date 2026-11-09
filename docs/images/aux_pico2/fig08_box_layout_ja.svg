@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1270 940" width="1270" height="940" font-family="'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans CJK JP','Noto Sans JP','Yu Gothic',Meiryo,sans-serif" role="img" aria-label="図8  箱の版の配置図">
+<title>図8  箱の版の配置図</title><rect width="1270" height="940" fill="#ffffff"/>
+<text x="24" y="36" font-size="22" fill="#222" text-anchor="start" font-weight="700">図8  箱の版の配置図</text>
+<text x="24" y="60" font-size="14" fill="#666" text-anchor="start" font-weight="400">どの線がどこへ行くかを、図3と同じ描き方で示します。2枚の基板は、ピンが向かい合うように回して描いてあります。位置ではなく、ピンの名前を見てください。</text>
+<rect x="380" y="315" width="686" height="180" rx="6" fill="#e9f6ec" stroke="#222" stroke-width="1.5"/>
+<rect x="345" y="375" width="36" height="46" rx="4" fill="#ccc" stroke="#222" stroke-width="1.5"/>
+<text x="363" y="403" font-size="11" fill="#222" text-anchor="middle" font-weight="700">USB</text>
+<text x="723" y="404" font-size="17" fill="#222" text-anchor="middle" font-weight="700">Pico 2 H（USB は左）</text>
+<circle cx="400" cy="330" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="400" cy="480" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="434" cy="330" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="434" cy="480" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="468" cy="330" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="468" cy="480" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="502" cy="330" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="502" cy="480" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="536" cy="330" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="536" cy="480" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="570" cy="330" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="570" cy="480" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="604" cy="330" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="604" cy="480" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="638" cy="330" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="638" cy="480" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="672" cy="330" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="672" cy="480" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="706" cy="330" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="706" cy="480" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="740" cy="330" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="740" cy="480" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="774" cy="330" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="774" cy="480" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="808" cy="330" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="808" cy="480" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="842" cy="330" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="842" cy="480" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="876" cy="330" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="876" cy="480" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="910" cy="330" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="910" cy="480" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="944" cy="330" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="944" cy="480" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="978" cy="330" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="978" cy="480" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="1012" cy="330" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="1012" cy="480" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="1046" cy="330" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="1046" cy="480" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<circle cx="434" cy="330" r="6" fill="#d62728" stroke="#d62728" stroke-width="1.5"/>
+<text x="434" y="356" font-size="11.5" fill="#d62728" text-anchor="middle" font-weight="700">39 VSYS</text>
+<circle cx="468" cy="330" r="6" fill="#222222" stroke="#222222" stroke-width="1.5"/>
+<text x="468" y="374" font-size="11.5" fill="#222222" text-anchor="middle" font-weight="700">38 GND</text>
+<circle cx="638" cy="330" r="6" fill="#0b3fb8" stroke="#0b3fb8" stroke-width="1.5"/>
+<text x="638" y="356" font-size="11.5" fill="#0b3fb8" text-anchor="middle" font-weight="700">33 AGND</text>
+<circle cx="400" cy="480" r="6" fill="#8e44ad" stroke="#8e44ad" stroke-width="1.5"/>
+<text x="400" y="464" font-size="11.5" fill="#8e44ad" text-anchor="middle" font-weight="700">1 GP0</text>
+<circle cx="434" cy="480" r="6" fill="#c9a400" stroke="#c9a400" stroke-width="1.5"/>
+<text x="434" y="446" font-size="11.5" fill="#c9a400" text-anchor="middle" font-weight="700">2 GP1</text>
+<circle cx="502" cy="480" r="6" fill="#f07f13" stroke="#f07f13" stroke-width="1.5"/>
+<text x="502" y="464" font-size="11.5" fill="#f07f13" text-anchor="middle" font-weight="700">4 GP2</text>
+<circle cx="536" cy="480" r="6" fill="#1f77b4" stroke="#1f77b4" stroke-width="1.5"/>
+<text x="536" y="446" font-size="11.5" fill="#1f77b4" text-anchor="middle" font-weight="700">5 GP3</text>
+<circle cx="570" cy="480" r="6" fill="#2a9d3a" stroke="#2a9d3a" stroke-width="1.5"/>
+<text x="570" y="464" font-size="11.5" fill="#2a9d3a" text-anchor="middle" font-weight="700">6 GP4</text>
+<text x="400" y="318" font-size="10" fill="#888" text-anchor="middle" font-weight="400">40</text>
+<text x="1046" y="318" font-size="10" fill="#888" text-anchor="middle" font-weight="400">21</text>
+<text x="400" y="502" font-size="10" fill="#888" text-anchor="middle" font-weight="400">1</text>
+<text x="1046" y="502" font-size="10" fill="#888" text-anchor="middle" font-weight="400">20</text>
+<rect x="30" y="300" width="76" height="140" rx="6" fill="#fdf1e3" stroke="#222" stroke-width="1.5"/>
+<text x="68" y="292" font-size="12" fill="#222" text-anchor="middle" font-weight="700">Grove のプラグ</text>
+<circle cx="100" cy="322" r="5" fill="#d62728" stroke="#d62728" stroke-width="1.5"/>
+<text x="94" y="326" font-size="11" fill="#d62728" text-anchor="end" font-weight="700">5V 赤</text>
+<circle cx="100" cy="347" r="5" fill="#222222" stroke="#222222" stroke-width="1.5"/>
+<text x="94" y="351" font-size="11" fill="#222222" text-anchor="end" font-weight="700">GND 黒</text>
+<circle cx="100" cy="372" r="5" fill="#8e44ad" stroke="#8e44ad" stroke-width="1.5"/>
+<text x="94" y="376" font-size="11" fill="#8e44ad" text-anchor="end" font-weight="700">G1 黄</text>
+<circle cx="100" cy="397" r="5" fill="#c9a400" stroke="#c9a400" stroke-width="1.5"/>
+<text x="94" y="401" font-size="11" fill="#c9a400" text-anchor="end" font-weight="700">G2 白</text>
+<rect x="120" y="425" width="150" height="150" rx="6" fill="#fffbea" stroke="#c9a400" stroke-width="1.5"/>
+<text x="195" y="592" font-size="12" fill="#8a6d00" text-anchor="middle" font-weight="700">ミニブレッドボード（25穴）</text>
+<line x1="140" y1="450" x2="236" y2="450" stroke="#e5d9a8" stroke-width="9" stroke-linecap="round"/>
+<circle cx="140" cy="450" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<circle cx="164" cy="450" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<circle cx="188" cy="450" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<circle cx="212" cy="450" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<circle cx="236" cy="450" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<line x1="140" y1="474" x2="236" y2="474" stroke="#e5d9a8" stroke-width="9" stroke-linecap="round"/>
+<circle cx="140" cy="474" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<circle cx="164" cy="474" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<circle cx="188" cy="474" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<circle cx="212" cy="474" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<circle cx="236" cy="474" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<line x1="140" y1="498" x2="236" y2="498" stroke="#e5d9a8" stroke-width="9" stroke-linecap="round"/>
+<circle cx="140" cy="498" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<circle cx="164" cy="498" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<circle cx="188" cy="498" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<circle cx="212" cy="498" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<circle cx="236" cy="498" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<line x1="140" y1="522" x2="236" y2="522" stroke="#e5d9a8" stroke-width="9" stroke-linecap="round"/>
+<circle cx="140" cy="522" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<circle cx="164" cy="522" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<circle cx="188" cy="522" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<circle cx="212" cy="522" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<circle cx="236" cy="522" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<line x1="140" y1="546" x2="236" y2="546" stroke="#e5d9a8" stroke-width="9" stroke-linecap="round"/>
+<circle cx="140" cy="546" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<circle cx="164" cy="546" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<circle cx="188" cy="546" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<circle cx="212" cy="546" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<circle cx="236" cy="546" r="4" fill="#fff" stroke="#b9a35a" stroke-width="1"/>
+<text x="122" y="418" font-size="11" fill="#8a6d00" text-anchor="start" font-weight="400">5穴の横一列が、中でつながっています</text>
+<rect x="181" y="455" width="14" height="14" rx="2" fill="#fff" stroke="#8e44ad" stroke-width="2.5"/>
+<text x="200" y="466.0" font-size="11.5" fill="#8e44ad" text-anchor="start" font-weight="700">R1</text>
+<rect x="181" y="527" width="14" height="14" rx="2" fill="#fff" stroke="#c9a400" stroke-width="2.5"/>
+<text x="200" y="538.0" font-size="11.5" fill="#c9a400" text-anchor="start" font-weight="700">R2</text>
+<path d="M100 372 L120 372 L120 450 L140 450" fill="none" stroke="#8e44ad" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="140" cy="450" r="4.5" fill="#8e44ad" stroke="#8e44ad" stroke-width="1.5"/>
+<path d="M100 397 L112 397 L112 522 L140 522" fill="none" stroke="#c9a400" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="140" cy="522" r="4.5" fill="#c9a400" stroke="#c9a400" stroke-width="1.5"/>
+<path d="M236 474 L300 474 L300 560 L400 560 L400 480" fill="none" stroke="#8e44ad" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="236" cy="474" r="4.5" fill="#8e44ad" stroke="#8e44ad" stroke-width="1.5"/>
+<path d="M236 546 L276 546 L276 610 L434 610 L434 480" fill="none" stroke="#c9a400" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="236" cy="546" r="4.5" fill="#c9a400" stroke="#c9a400" stroke-width="1.5"/>
+<rect x="330" y="650" width="730" height="190" rx="6" fill="#e8f1fb" stroke="#222" stroke-width="1.5"/>
+<text x="695" y="828" font-size="16" fill="#222" text-anchor="middle" font-weight="700">PCM1808 基板</text>
+<rect x="345" y="690" width="90" height="70" rx="4" fill="#ddd" stroke="#222" stroke-width="1.5"/>
+<text x="390" y="778" font-size="11" fill="#222" text-anchor="middle" font-weight="700">3.5mm ジャック（AUX IN）</text>
+<circle cx="502" cy="650" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<text x="502" y="672" font-size="11.5" fill="#f07f13" text-anchor="middle" font-weight="700">DATA</text>
+<path d="M502 480 L502 650" fill="none" stroke="#f07f13" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="502" cy="480" r="6" fill="#f07f13" stroke="#f07f13" stroke-width="1.5"/>
+<circle cx="502" cy="650" r="5" fill="#f07f13" stroke="#f07f13" stroke-width="1.5"/>
+<circle cx="536" cy="650" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<text x="536" y="688" font-size="11.5" fill="#1f77b4" text-anchor="middle" font-weight="700">BCLK</text>
+<path d="M536 480 L536 650" fill="none" stroke="#1f77b4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="536" cy="480" r="6" fill="#1f77b4" stroke="#1f77b4" stroke-width="1.5"/>
+<circle cx="536" cy="650" r="5" fill="#1f77b4" stroke="#1f77b4" stroke-width="1.5"/>
+<circle cx="570" cy="650" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<text x="570" y="672" font-size="11.5" fill="#2a9d3a" text-anchor="middle" font-weight="700">LRCK</text>
+<path d="M570 480 L570 650" fill="none" stroke="#2a9d3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="570" cy="480" r="6" fill="#2a9d3a" stroke="#2a9d3a" stroke-width="1.5"/>
+<circle cx="570" cy="650" r="5" fill="#2a9d3a" stroke="#2a9d3a" stroke-width="1.5"/>
+<circle cx="604" cy="650" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<text x="604" y="688" font-size="11.5" fill="#666" text-anchor="middle" font-weight="700">MCLK</text>
+<circle cx="638" cy="650" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<text x="638" y="672" font-size="11.5" fill="#666" text-anchor="middle" font-weight="700">GND</text>
+<text x="604" y="704" font-size="10.5" fill="#777" text-anchor="middle" font-weight="400">つながない</text>
+<text x="660" y="720" font-size="10.5" fill="#777" text-anchor="middle" font-weight="400">空き</text>
+<text x="638" y="638" font-size="18" fill="#aa2222" text-anchor="middle" font-weight="700">×</text>
+<text x="536" y="734" font-size="12" fill="#444" text-anchor="middle" font-weight="700">I²S OUT</text>
+<circle cx="710" cy="650" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<text x="710" y="672" font-size="11.5" fill="#666" text-anchor="middle" font-weight="700">L_IN</text>
+<circle cx="750" cy="650" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<text x="750" y="672" font-size="11.5" fill="#0b3fb8" text-anchor="middle" font-weight="700">GND</text>
+<circle cx="790" cy="650" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<text x="790" y="672" font-size="11.5" fill="#666" text-anchor="middle" font-weight="700">R_IN</text>
+<text x="750" y="728" font-size="12" fill="#444" text-anchor="middle" font-weight="700">CN3</text>
+<circle cx="900" cy="650" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<text x="900" y="672" font-size="11.5" fill="#222222" text-anchor="middle" font-weight="700">GND</text>
+<circle cx="940" cy="650" r="5" fill="#444" stroke="#222" stroke-width="1"/>
+<text x="940" y="672" font-size="11.5" fill="#d62728" text-anchor="middle" font-weight="700">VDD</text>
+<text x="920" y="728" font-size="12" fill="#444" text-anchor="middle" font-weight="700">POWER</text>
+<path d="M100 322 L130 322 L130 150 L1200 150 L1200 620 L940 620 L940 650" fill="none" stroke="#d62728" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="130" cy="150" r="0.1" fill="#d62728" stroke="#d62728" stroke-width="1.5"/>
+<circle cx="434" cy="150" r="4.5" fill="#d62728" stroke="#d62728" stroke-width="1.5"/>
+<path d="M434 150 L434 330" fill="none" stroke="#d62728" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="940" cy="650" r="5" fill="#d62728" stroke="#d62728" stroke-width="1.5"/>
+<path d="M100 347 L150 347 L150 175 L1170 175 L1170 595 L900 595 L900 650" fill="none" stroke="#222222" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="468" cy="175" r="4.5" fill="#222222" stroke="#222222" stroke-width="1.5"/>
+<path d="M468 175 L468 330" fill="none" stroke="#222222" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="900" cy="650" r="5" fill="#222222" stroke="#222222" stroke-width="1.5"/>
+<path d="M638 330 L638 205 L1140 205 L1140 570 L750 570 L750 650" fill="none" stroke="#0b3fb8" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="750" cy="650" r="5" fill="#0b3fb8" stroke="#0b3fb8" stroke-width="1.5"/>
+<text x="860" y="142" font-size="12" fill="#d62728" text-anchor="start" font-weight="700">VDD へ</text>
+<text x="860" y="168" font-size="12" fill="#222222" text-anchor="start" font-weight="700">POWER の GND へ</text>
+<text x="860" y="198" font-size="12" fill="#0b3fb8" text-anchor="start" font-weight="700">CN3 の GND へ</text>
+<text x="30" y="876" font-size="14" fill="#2e7d32" text-anchor="start" font-weight="400">基板の POWER の GND と I²S OUT の GND は、基板の中でつながっているので、I²S の GND のピンは空けておけます。</text>
+<text x="30" y="900" font-size="14" fill="#222" text-anchor="start" font-weight="400">線は、ピンに直接挿します。R1、R2 は 330Ω の抵抗です。</text>
+<text x="30" y="922" font-size="14" fill="#222" text-anchor="start" font-weight="400">Grove の赤と黒は、それぞれ2本に分けます。青: Pico の AGND（33番）と、基板の CN3 の GND（真ん中のピン）。</text>
+</svg>
