@@ -108,3 +108,7 @@ The case is still being tuned by test prints, and the figures below will change 
 - **PCM1808 board:** four pins of 3.3 mm (they were 2.0 mm in CASE4), centres 34 mm apart across and 44 mm apart along the board.
 - The engraved text is still 0.5 mm deep on both long faces.
 - Not yet checked: that the pins enter the holes of the real boards, and the lid fit. Only the author can tell after a test print.
+
+## 10. How to check that the two GNDs are joined (for beginners)
+
+On the PCM1808 board, the POWER header's GND and the I²S OUT header's left-most GND sit side by side on the lower edge of the board (IMG_6777); only the small printed words CN1 and CN2 are between them. To check, pull every wire off the board, set the multimeter to the beep (continuity) mode, and touch one probe to each of the two GND points. A beep means they are joined inside the board. On the back of the board the same two points are the solder pads next to the printed word GND: the right one of the two round pads at the top left (beside VDD), and the left-most of the five square pads at the top right. This is a safe test: beep mode only passes a tiny current. Result on the author's board: it beeps (2026-11-09).
