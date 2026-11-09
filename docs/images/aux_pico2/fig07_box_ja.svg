@@ -6,7 +6,7 @@
 <rect x="30" y="130" width="230" height="300" rx="6" fill="#fdf1e3" stroke="#222" stroke-width="1.5"/>
 <text x="145" y="158" font-size="16" fill="#222" text-anchor="middle" font-weight="700">Cardputer ADV</text>
 <text x="145" y="178" font-size="13" fill="#666" text-anchor="middle" font-weight="400">Grove（Port A）</text>
-<rect x="305" y="106" width="140" height="200" rx="6" fill="#fffbea" stroke="#c9a400" stroke-width="1.5" stroke-dasharray="6 4"/>
+<rect x="290" y="106" width="170" height="200" rx="6" fill="#fffbea" stroke="#c9a400" stroke-width="1.5" stroke-dasharray="6 4"/>
 <text x="375" y="128" font-size="11.5" fill="#8a6d00" text-anchor="middle" font-weight="700">ミニブレッドボード（25穴）</text>
 <rect x="520" y="100" width="240" height="470" rx="6" fill="#e9f6ec" stroke="#222" stroke-width="1.5"/>
 <text x="640" y="128" font-size="17" fill="#222" text-anchor="middle" font-weight="700">U1  Pico 2 H</text>
@@ -35,7 +35,7 @@
 <path d="M260 400 L520 400" fill="none" stroke="#222222" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
 <text x="530" y="405" font-size="13.5" fill="#222222" text-anchor="start" font-weight="700">GND (38)</text>
 <circle cx="490" cy="400" r="7" fill="#fff" stroke="#222222" stroke-width="2.5"/>
-<text x="496" y="420" font-size="11.5" fill="#222222" text-anchor="start" font-weight="700">2分岐</text>
+<text x="482" y="424" font-size="11.5" fill="#222222" text-anchor="end" font-weight="700">2分岐</text>
 <path d="M490 400 L490 700 L930 700 L930 430 L960 430" fill="none" stroke="#222222" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
 <text x="970" y="435" font-size="13.5" fill="#222222" text-anchor="start" font-weight="700">POWER の GND</text>
 <text x="750" y="225" font-size="13.5" fill="#f07f13" text-anchor="end" font-weight="700">GP2 DIN (4)</text>
