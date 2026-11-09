@@ -53,6 +53,7 @@ The author's build. The extra wires on the Grove cable are from an earlier proje
 - The Pico's AGND (pin 33) is joined to the board's CN3 GND (the middle pin, between R_IN and L_IN) with one extra wire.
 - The I²S-side GND pin of the board is left empty, and the unit works that way (why it works was not measured). The breadboard version in this guide connects it.
 - The wires are plugged straight onto the pins, so the hole names such as a22 do not apply.
+- The box itself is still being tuned (as of 2026-11-09). Each board sits on four bosses, and a short pin on each boss goes through the board's mounting hole. The model files are not in this repository yet, so no print instructions are given here.
 
 Go by the marks G1, G2, 5V and GND on the Cardputer's port, not by wire colours, because Grove cables differ. See [AUX_PICO2_BOX.md](AUX_PICO2_BOX.md) for the box and its labels.
 

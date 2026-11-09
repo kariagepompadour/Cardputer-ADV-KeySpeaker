@@ -97,3 +97,14 @@ Not used: "Line-in → USB" (the Pico shows up as a serial port, not as sound ov
 **Why the USB label.** Connecting the Pico's own USB while Grove is plugged in has not been measured (the Cardputer's own USB together with Grove has: that is fine). The label is an instruction, not a claim that something breaks. The manual should carry the same warning.
 
 **Engraving.** All text is a negative part (Bambu Studio: Operation = Cut) with the same depth of 0.5 mm; the CASE4 model measures 0.49 mm on both long faces, and the wall is 2 mm. Small text was made bold. Printed on the A1 mini (0.4 mm nozzle) and checked in IMG_6772 and IMG_6773: `PICO AUX` is clear; `TO CARDPUTER`, `AUX IN`, `PICO 2 USB` and `SET UP ONLY` can be read; the smallest text (`Line-in → Grove`, `Compatible: KeySpeaker`, `UNPLUG GROVE FIRST`) is only barely readable (the author's words), white on white. A marker in the grooves, or bigger and bolder text in the next print, would help. Some text sits very close to a wall corner on the front face (about 0.2 mm from the edge in the model).
+
+## 9. Where the boards sit (CASE5 model, still being tuned)
+
+The author says the case is still in fine adjustment; the holes of the Pico 2 and the PCM1808 board are being fitted to the case's pins. Read from `CASE5.stl` and `TOP5.stl` by Claude on 2026-11-09 (not printed or measured on a board yet). Treat these numbers as a draft, not as the final design.
+
+- CASE5 is the CASE4 model turned by 90 degrees (57 × 86 × 42 mm; the pin positions are the same as in CASE4). Wall 2 mm. The lid TOP5 measures 57 × 83.8 mm, 6.9 mm high with its pegs.
+- Each board sits on four bosses 3 mm tall (from the 2 mm floor to z = 5), about 8.6 mm across for the PCM1808 board. A pin 2 mm tall (z 5 to 7) rises from each boss.
+- **Pico 2:** four pins of 1.5 mm, centres 12.0 mm apart across and 47.5 mm apart along the board. (The Pico's published hole pitch is 11.4 × 47 mm, general knowledge and not in this repository, so the model is about 0.5 mm wider. The author fits it to their own board, so the final figure may change.)
+- **PCM1808 board:** four pins of 3.3 mm (they were 2.0 mm in CASE4), centres 34 mm apart across and 44 mm apart along the board.
+- The engraved text is still 0.5 mm deep on both long faces.
+- Not yet checked: that the pins enter the holes of the real boards, and the lid fit. Only the author can tell after a test print.
