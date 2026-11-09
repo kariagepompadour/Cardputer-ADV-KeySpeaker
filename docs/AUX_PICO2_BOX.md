@@ -70,7 +70,7 @@ Most connections are plug-in jumper wires. Solder is used only where the Grove c
 - Any bare joint near another one (5 V, GND, the three I²S lines) needs insulation: heat-shrink, or a small piece of tape. ⛔
 - Joints on stranded wire: tug each wire gently. A dull, round joint can be cold. Re-melt it. ⛔
 - The Grove cable needs strain relief where it leaves the box (a knot inside, a notch, or a clamp). A pulled cable otherwise tears the joints. ⛔
-- Close the lid slowly and look for wires in the slide groove. Check that no wire rests on the lid rail. ⛔
+- The lid groove is deep (author), so wires should not be pinched in the rail. But in the 2026-11-09 photo the wire loops rise above the box rim: the lid will press them down onto the Pico pins and the boards. Shorten or bundle the loops so everything sits below the rim.
 - With the power off, test 5 V against GND with a multimeter's beep mode before the first power-on (the build guide step for this stays valid).
 - The 330 Ω resistors on the two Grove lines must still be in the soldered version.
 - Put a label of 5V and GND at the Grove exit so that the cable cannot be fitted the wrong way.
