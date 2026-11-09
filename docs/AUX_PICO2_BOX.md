@@ -60,6 +60,7 @@ Not allowed: "works with any ESP32 board" or "plug and play". Other boards have 
 5. Troubleshooting additions: "No `AUX`: swap check of G1 and G2"; "Pico disappears from the computer when Grove is plugged in" is normal only if USB is also unplugged; "Cardputer restarts or the screen dims while the Pico's own USB and Grove are both connected" means stop and unplug the Pico's USB.
 6. Soldered-build checks (section 7).
 7. Two ways to build the power and ground lines. The breadboard manual uses the + and − rails, so the PCM1808 board's I²S-side GND also goes to the − rail. The author's compact box has no rails: the Grove red and black wires are each split in two (Pico and PCM1808 board), and the Pico's AGND (pin 33) is joined to the board's CN3 GND (the middle pin, between R_IN and L_IN) with one extra wire. The I²S-side GND pin is left empty, and the unit works that way (author's unit; why it works was not measured). Say in the manual that the box is the rail-less version of the same wiring.
+8. The OP1 to OP3 check in the build guide (step 4) says the pads are on the back of the board. On the author's board they are on the component face, the same side as the PCM1808 chip and the jack, and all three are open: two silver squares each with a gap and no solder (IMG_6774). Fix the guide's wording ("on the same side as the chip, next to the I²S OUT header") and keep the open/shorted table.
 
 ## 7. A first build in a box (checks for the author)
 
