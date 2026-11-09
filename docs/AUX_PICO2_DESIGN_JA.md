@@ -52,7 +52,7 @@ Pico2 に変えた理由は次のとおりです。
 | Grove 黄（G1） | R1 → Pico GP0（1番、UART TX） |
 | Grove 白（G2） | R2 → Pico GP1（2番、UART RX） |
 | Grove 赤（5V） | Pico VSYS（39番）、PCM1808 基板 VDD |
-| Grove 黒（GND） | Pico GND（38番）、PCM1808 基板 GND（2か所） |
+| Grove 黒（GND） | Pico GND（38番）、PCM1808 基板 GND。「2か所」は、POWER の GND と I²S OUT の GND のことです。作者がブザーで測ると（2026-11-09）、この2つは基板の中でつながっていたので、電気的にはどちらか1つで足ります。CN3 の GND は測っていません。作者の箱は、これを Pico の AGND（33番）につないでいます。製作マニュアルは、POWER と I²S OUT の両方をつなぎます。 |
 | PCM1808 DATA | Pico GP2（4番）に直結 |
 | PCM1808 BCLK | Pico GP3（5番）に直結 |
 | PCM1808 LRCK | Pico GP4（6番）に直結 |
