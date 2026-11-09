@@ -65,10 +65,10 @@ The box version, drawn like Figure 3: the layout of the wires, then the same wir
 
 ![Wiring of the box version](images/aux_pico2/fig07_box_en.svg)
 
-**Splitting the Grove red and black wires.** In the box version the Grove red wire and the Grove black wire each go to two places, so each one has to be split in two. This needs a soldering iron, solder, a wire stripper and heat-shrink tubing (about 2 to 3 mm wide; "heat-shrink tubing" is a plastic tube that shrinks when it is heated and wraps the joint). The author's photos show heat-shrink tubing on the joints; the tube size and the exact method were not recorded, so the steps below are general advice.
+**Splitting the Grove red and black wires.** In the box version the Grove red wire and the Grove black wire each go to two places, so each one has to be split in two. This needs a soldering iron, solder, a wire stripper and heat-shrink tubing (choose a width that slips over the finished joint, that is, the Grove wire and the two jumper wires twisted together; the right size depends on how thick your wires are; "heat-shrink tubing" is a plastic tube that shrinks when it is heated and wraps the joint). The author's photos show heat-shrink tubing on the joints; the tube size and the exact method were not recorded, so the steps below are general advice. If you are unsure of the width, hold the three wires together and try the tube over them before you start.
 
 1. Get two jumper wires for each Grove wire (a socket at one end, so that it plugs onto a pin). Cut off the other end and strip 3 to 4 mm.
-2. Slide a piece of heat-shrink tubing, about 2 cm long, onto the Grove wire **before** soldering. It cannot be put on afterwards.
+2. Slide a piece of heat-shrink tubing, long enough to cover the bare joint with a little to spare (about 2 cm is usual), onto the Grove wire **before** soldering. It cannot be put on afterwards.
 3. Strip 3 to 4 mm of the Grove wire. Twist it together with the two jumper wire ends and solder the three together.
 4. Slide the tube over the joint and warm it (a heat gun, a hair dryer, or a lighter held at a distance and kept moving) until it shrinks tight. Do not heat the Grove plug.
 5. Do the red wire and the black wire one at a time, each with its own tube, so that the two joints can never touch each other.
