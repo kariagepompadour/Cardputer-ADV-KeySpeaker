@@ -53,7 +53,7 @@ The author's build. The extra wires on the Grove cable are from an earlier proje
 - The Pico's AGND (pin 33) is joined to the board's CN3 GND (the middle pin, between R_IN and L_IN) with one extra wire.
 - The I²S-side GND pin of the board is left empty, and the unit works that way. The author's continuity test (beep mode, all wires removed from the board) shows the board's POWER GND and I²S OUT GND are already joined on the board, which is why it works. The breadboard version in this guide connects it anyway, which does no harm.
 - The wires are plugged straight onto the pins, so the hole names such as a22 do not apply.
-- Each board sits on four bosses, and a short pin on each boss goes through the board's mounting hole. The author's printed case (CASE5 and its lid TOP5, 2026-11-09) holds both boards without them falling off. The model files are in [hardware/aux-pico2-box](../hardware/aux-pico2-box) (`CASE5.stl` and `TOP5.stl`); print instructions are not written yet.
+- Each board sits on four bosses, and a short pin on each boss goes through the board's mounting hole. The author's printed case (`pico-aux-case.stl` and `pico-aux-lid.stl`, the author's CASE5 and TOP5 of 2026-11-09) holds both boards without them falling off. The model files are in [hardware/aux-pico2-box](../hardware/aux-pico2-box) (`pico-aux-case.stl` and `pico-aux-lid.stl`); print instructions are not written yet.
 
 Go by the marks G1, G2, 5V and GND on the Cardputer's port, not by wire colours, because Grove cables differ. See [AUX_PICO2_BOX.md](AUX_PICO2_BOX.md) for the box and its labels.
 
