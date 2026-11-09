@@ -90,6 +90,14 @@ player comes out of the Cardputer's speaker. The unit runs on the Cardputer's po
 
 The author's build. The extra wires on the Grove cable are from an earlier project. Follow the figures and tables, not this photo.
 
+The same unit in a 3D-printed box, with the Cardputer ADV snapped onto the lid (the [STL files](hardware/aux-pico2-box) and the [box notes](docs/AUX_PICO2_BOX.md)). Right: the data screen in AUX mode, `AUX IN bad 0 lost 0`.
+
+<p>
+  <img src="docs/images/aux_pico2/photo_box_with_cardputer.jpg" alt="The AUX unit in its 3D-printed box with the Cardputer ADV on top" width="32%">
+  <img src="docs/images/aux_pico2/photo_box_inside.jpg" alt="Inside the box: the Pico 2, the PCM1808 board and the mini breadboard" width="32%">
+  <img src="docs/images/aux_pico2/photo_box_aux_screen.jpg" alt="The KeySpeaker data screen in AUX mode: AUX IN bad 0 lost 0" width="32%">
+</p>
+
 Each press of `Fn+I` moves on to the next input: USB, MIC, then AUX when the unit is there. The fighter crosses the screen and
 leaves the input in big letters behind it, or `NO USB` or `NO AUX` in red when that source is missing.
 

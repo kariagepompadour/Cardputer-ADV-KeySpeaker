@@ -77,6 +77,14 @@ keyboard modeの画面の左下に、緑の `MIC` が出ます。そこの緑の
 
 作者の試作機です。Grove ケーブルの途中の余分な線は、前の作品のケーブルを流用したためです。配線は写真ではなく、図と表に従ってください。
 
+同じユニットを 3D プリンターの箱に入れ、蓋に Cardputer ADV をはめたところです([STL](hardware/aux-pico2-box)と[箱のメモ](docs/AUX_PICO2_BOX_JA.md))。右は、AUX のときのデータ画面で、`AUX IN bad 0 lost 0` と出ています。
+
+<p>
+  <img src="docs/images/aux_pico2/photo_box_with_cardputer.jpg" alt="3Dプリンターの箱に入れたAUXユニット。上にCardputer ADVが載っている" width="32%">
+  <img src="docs/images/aux_pico2/photo_box_inside.jpg" alt="箱の中：Pico 2、PCM1808基板、ミニブレッドボード" width="32%">
+  <img src="docs/images/aux_pico2/photo_box_aux_screen.jpg" alt="AUXのときのKeySpeakerのデータ画面：AUX IN bad 0 lost 0" width="32%">
+</p>
+
 `Fn+I` を押すたびに、入力が USB、MIC、AUX の順に変わります。AUX はユニットがあるときだけ選べます。押すと戦闘機が画面を横切り、
 今の入力が大きな文字で出ます。音源がないときは、赤で `NO USB` や `NO AUX` と出ます。
 
