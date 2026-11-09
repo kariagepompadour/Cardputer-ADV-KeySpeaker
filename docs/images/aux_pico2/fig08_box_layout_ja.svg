@@ -68,14 +68,14 @@
 <text x="1046" y="502" font-size="10" fill="#888" text-anchor="middle" font-weight="400">20</text>
 <rect x="30" y="300" width="76" height="140" rx="6" fill="#fdf1e3" stroke="#222" stroke-width="1.5"/>
 <text x="68" y="292" font-size="12" fill="#222" text-anchor="middle" font-weight="700">Grove のプラグ</text>
-<circle cx="100" cy="322" r="5" fill="#222222" stroke="#222222" stroke-width="1.5"/>
-<text x="94" y="326" font-size="11" fill="#222222" text-anchor="end" font-weight="700">GND 黒</text>
-<circle cx="100" cy="347" r="5" fill="#d62728" stroke="#d62728" stroke-width="1.5"/>
-<text x="94" y="351" font-size="11" fill="#d62728" text-anchor="end" font-weight="700">5V 赤</text>
-<circle cx="100" cy="372" r="5" fill="#c9a400" stroke="#c9a400" stroke-width="1.5"/>
-<text x="94" y="376" font-size="11" fill="#c9a400" text-anchor="end" font-weight="700">G2 黄</text>
-<circle cx="100" cy="397" r="5" fill="#7f7f7f" stroke="#7f7f7f" stroke-width="1.5"/>
-<text x="94" y="401" font-size="11" fill="#7f7f7f" text-anchor="end" font-weight="700">G1 灰</text>
+<circle cx="100" cy="322" r="5" fill="#7f7f7f" stroke="#7f7f7f" stroke-width="1.5"/>
+<text x="94" y="326" font-size="11" fill="#7f7f7f" text-anchor="end" font-weight="700">G1 灰</text>
+<circle cx="100" cy="347" r="5" fill="#c9a400" stroke="#c9a400" stroke-width="1.5"/>
+<text x="94" y="351" font-size="11" fill="#c9a400" text-anchor="end" font-weight="700">G2 黄</text>
+<circle cx="100" cy="372" r="5" fill="#d62728" stroke="#d62728" stroke-width="1.5"/>
+<text x="94" y="376" font-size="11" fill="#d62728" text-anchor="end" font-weight="700">5V 赤</text>
+<circle cx="100" cy="397" r="5" fill="#222222" stroke="#222222" stroke-width="1.5"/>
+<text x="94" y="401" font-size="11" fill="#222222" text-anchor="end" font-weight="700">GND 黒</text>
 <rect x="120" y="425" width="150" height="150" rx="6" fill="#fffbea" stroke="#c9a400" stroke-width="1.5"/>
 <text x="195" y="592" font-size="12" fill="#8a6d00" text-anchor="middle" font-weight="700">ミニブレッドボード（25穴）</text>
 <line x1="140" y1="450" x2="236" y2="450" stroke="#e5d9a8" stroke-width="9" stroke-linecap="round"/>
@@ -113,9 +113,9 @@
 <text x="200" y="466.0" font-size="11.5" fill="#7f7f7f" text-anchor="start" font-weight="700">R1</text>
 <rect x="181" y="527" width="14" height="14" rx="2" fill="#fff" stroke="#c9a400" stroke-width="2.5"/>
 <text x="200" y="538.0" font-size="11.5" fill="#c9a400" text-anchor="start" font-weight="700">R2</text>
-<path d="M100 397 L112 397 L112 450 L140 450" fill="none" stroke="#7f7f7f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M100 322 L120 322 L120 450 L140 450" fill="none" stroke="#7f7f7f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="140" cy="450" r="4.5" fill="#7f7f7f" stroke="#7f7f7f" stroke-width="1.5"/>
-<path d="M100 372 L120 372 L120 522 L140 522" fill="none" stroke="#c9a400" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M100 347 L112 347 L112 522 L140 522" fill="none" stroke="#c9a400" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="140" cy="522" r="4.5" fill="#c9a400" stroke="#c9a400" stroke-width="1.5"/>
 <path d="M236 474 L300 474 L300 560 L400 560 L400 480" fill="none" stroke="#7f7f7f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="236" cy="474" r="4.5" fill="#7f7f7f" stroke="#7f7f7f" stroke-width="1.5"/>
@@ -160,16 +160,16 @@
 <circle cx="940" cy="650" r="5" fill="#444" stroke="#222" stroke-width="1"/>
 <text x="940" y="672" font-size="11.5" fill="#d62728" text-anchor="middle" font-weight="700">VDD</text>
 <text x="920" y="728" font-size="12" fill="#444" text-anchor="middle" font-weight="700">POWER</text>
-<path d="M100 347 L130 347 L130 150 L1200 150 L1200 620 L940 620 L940 650" fill="none" stroke="#d62728" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M130 347 L130 128 L434 128 L434 330" fill="none" stroke="#d62728" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M100 372 L130 372 L130 150 L1200 150 L1200 620 L940 620 L940 650" fill="none" stroke="#d62728" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M130 372 L130 128 L434 128 L434 330" fill="none" stroke="#d62728" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="940" cy="650" r="5" fill="#d62728" stroke="#d62728" stroke-width="1.5"/>
-<circle cx="130" cy="347" r="8" fill="#fff" stroke="#d62728" stroke-width="3"/>
-<text x="144" y="366" font-size="11.5" fill="#d62728" text-anchor="start" font-weight="700">2分岐</text>
-<path d="M100 322 L150 322 L150 175 L1170 175 L1170 595 L900 595 L900 650" fill="none" stroke="#222222" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M150 322 L150 190 L468 190 L468 330" fill="none" stroke="#222222" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="130" cy="372" r="8" fill="#fff" stroke="#d62728" stroke-width="3"/>
+<text x="162" y="376" font-size="11.5" fill="#d62728" text-anchor="start" font-weight="700">2分岐</text>
+<path d="M100 397 L150 397 L150 175 L1170 175 L1170 595 L900 595 L900 650" fill="none" stroke="#222222" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M150 397 L150 190 L468 190 L468 330" fill="none" stroke="#222222" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="900" cy="650" r="5" fill="#222222" stroke="#222222" stroke-width="1.5"/>
-<circle cx="150" cy="322" r="8" fill="#fff" stroke="#222222" stroke-width="3"/>
-<text x="162" y="316" font-size="11.5" fill="#222222" text-anchor="start" font-weight="700">2分岐</text>
+<circle cx="150" cy="397" r="8" fill="#fff" stroke="#222222" stroke-width="3"/>
+<text x="164" y="401" font-size="11.5" fill="#222222" text-anchor="start" font-weight="700">2分岐</text>
 <path d="M638 330 L638 205 L1140 205 L1140 570 L750 570 L750 650" fill="none" stroke="#0b3fb8" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="750" cy="650" r="5" fill="#0b3fb8" stroke="#0b3fb8" stroke-width="1.5"/>
 <text x="860" y="142" font-size="12" fill="#d62728" text-anchor="start" font-weight="700">VDD へ</text>
