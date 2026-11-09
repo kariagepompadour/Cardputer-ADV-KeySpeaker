@@ -22,6 +22,7 @@ Marks: ✅ read in this repository's code or measured by the author, 🟡 expect
 
 - The unit is powered **from the Grove red wire** (✅ design §5: about 5.1 V under load, measured). Total draw is about 100 mA at 5 V (🟡 design figure).
 - The Pico's own USB port is **not needed in use**. It is for writing the program (BOOTSEL) and for a status text line.
+- **The Cardputer's own USB and the Grove cable may be used together** (✅ the author measured Grove red at 5.347 V on USB and ran sound this way). The rule below is only about the **Pico's** USB port.
 - **Never connect the Grove cable and the Pico's USB at the same time.** (✅ build guide §2.) Both would feed VSYS. A Pico 2 has a diode from USB (VBUS) to VSYS (🟡 Raspberry Pi's datasheet, not in this repo), so the Pico itself is protected, but the author has **never measured the two connected together** (⛔). The risk is USB current flowing back into the Cardputer's 5 V pin.
 - The red wire must stay at or below 5.5 V, the Pico 2's VSYS limit. The Cardputer gives 5.0 to 5.35 V (✅ measured), so there is only about 0.15 V of room. Do not feed the unit from a higher rail.
 - On the Cardputer ADV, the switch beside `PORT.A` must be on `5VOUT`.
@@ -56,7 +57,7 @@ Not allowed: "works with any ESP32 board" or "plug and play". Other boards have 
 2. A power warning (section 2): no Grove and USB together; 5.5 V limit; `5VOUT`.
 3. Supported boards (section 5), with "tested only with" wording.
 4. What the Pico looks like to a computer (section 3).
-5. Troubleshooting additions: "No `AUX`: swap check of G1 and G2"; "Pico disappears from the computer when Grove is plugged in" is normal only if USB is also unplugged; "Cardputer restarts or the screen dims when USB and Grove are joined" means stop and unplug.
+5. Troubleshooting additions: "No `AUX`: swap check of G1 and G2"; "Pico disappears from the computer when Grove is plugged in" is normal only if USB is also unplugged; "Cardputer restarts or the screen dims while the Pico's own USB and Grove are both connected" means stop and unplug the Pico's USB.
 6. Soldered-build checks (section 7).
 
 ## 7. First soldered build in a box (checks for the author)
