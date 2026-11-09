@@ -74,3 +74,16 @@ Most connections are plug-in jumper wires. Solder is used only where the Grove c
 - With the power off, test 5 V against GND with a multimeter's beep mode before the first power-on (the build guide step for this stays valid).
 - The 330 Ω resistors on the two Grove lines must still be in the soldered version.
 - Put a label of 5V and GND at the Grove exit so that the cable cannot be fitted the wrong way.
+
+## 8. Text on the box (author's plan, 2026-11-09)
+
+The Cardputer ADV sits on the lid (two 4 mm pegs fit its back holes), so the lid top is covered. The text goes on the sides, engraved with a 3D printer. The unit's name stays generic and KeySpeaker is named as compatible software.
+
+| Where | Text |
+|---|---|
+| Long side without holes, large | `PICO AUX` |
+| Same side, small | `Line-in → Grove`, `Compatible: KeySpeaker` |
+| Beside the round jack hole | `AUX IN` |
+| Beside the Grove notch | `TO CARDPUTER` (`DIAL` may be added when the jog dial is routed through it) |
+
+Not used: "Line-in → USB" (the Pico shows up as a serial port, not as sound over USB), and "for Cardputer ADV" (it reads as ADV-only; the unit itself is generic). Keep the strip where the Cardputer overlaps clear of text.
