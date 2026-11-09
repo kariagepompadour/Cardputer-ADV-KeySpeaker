@@ -60,9 +60,11 @@ Not allowed: "works with any ESP32 board" or "plug and play". Other boards have 
 5. Troubleshooting additions: "No `AUX`: swap check of G1 and G2"; "Pico disappears from the computer when Grove is plugged in" is normal only if USB is also unplugged; "Cardputer restarts or the screen dims while the Pico's own USB and Grove are both connected" means stop and unplug the Pico's USB.
 6. Soldered-build checks (section 7).
 
-## 7. First soldered build in a box (checks for the author)
+## 7. A first build in a box (checks for the author)
 
-Nothing here comes from photos. ⛔ = not seen.
+Most connections are plug-in jumper wires. Solder is used only where the Grove cable is split and joined to the two 330 Ω resistors (heat-shrink on the joints). Read from the author's photos of 2026-11-09; ⛔ = cannot be judged from the photos.
+
+- Plug-in (Dupont) connectors hold only by friction and can work loose when the box is moved. Put a dab of hot glue or a turn of tape over each one, especially the 5 V and GND ones. ⛔
 
 - The loose jumper bundle can shake and short against the Pico's pins or the ADC board. Tie it or fix it with hot glue or a cable tie. ⛔
 - Any bare joint near another one (5 V, GND, the three I²S lines) needs insulation: heat-shrink, or a small piece of tape. ⛔
