@@ -46,6 +46,16 @@ The author's build. The extra wires on the Grove cable are from an earlier proje
 | 3.5 mm stereo cable | 1 | |
 | Multimeter (tester) | 1 | |
 
+**Box version (the author's compact unit).** The author built the same wiring in a 3D-printed box without the 400-hole breadboard and without + and − rails. Differences, all from the author's own unit:
+
+- The two 330 Ω resistors sit on a small 25-hole mini breadboard (Akizuki Denshi 113329, yellow, 20 × 15 mm).
+- The Grove red and black wires are each split in two: red to the Pico's VSYS (pin 39) and the PCM1808 board's VDD; black to the Pico's GND (pin 38) and the board's GND.
+- The Pico's AGND (pin 33) is joined to the board's CN3 GND (the middle pin, between R_IN and L_IN) with one extra wire.
+- The I²S-side GND pin of the board is left empty, and the unit works that way (why it works was not measured). The breadboard version in this guide connects it.
+- The wires are plugged straight onto the pins, so the hole names such as a22 do not apply.
+
+Go by the marks G1, G2, 5V and GND on the Cardputer's port, not by wire colours, because Grove cables differ. See [AUX_PICO2_BOX.md](AUX_PICO2_BOX.md) for the box and its labels.
+
 If you put the jog dial on the Pico, you also need these:
 
 | Part | Qty |
@@ -126,7 +136,7 @@ With the power still off, connect these with male to female wires. Leave MCLK em
 | GND (POWER) | − rail |
 | GND (signal side) | − rail |
 
-**Check the PCM1808 board's setting.** On the back of the board are small solder pads marked `OP1`, `OP2` and `OP3`. Each one is two small metal squares side by side. Joining them with solder changes how the board works. Turn the board over and look at all three.
+**Check the PCM1808 board's setting.** On the same side as the chip and the jack, to the side of the I²S OUT header, are small solder pads marked `OP1`, `OP2` and `OP3`. Each one is two small metal squares side by side. Joining them with solder changes how the board works. Look at all three. The back of the board has a printed table that explains them (OP1 open = I²S-24 format; OP2 and OP3 both open = master, 96 kHz).
 
 | What you see | Meaning |
 |---|---|
