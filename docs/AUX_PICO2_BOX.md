@@ -75,7 +75,7 @@ Most connections are plug-in jumper wires. Solder is used only where the Grove c
 - The 330 Ω resistors on the two Grove lines must still be in the soldered version.
 - Put a label of 5V and GND at the Grove exit so that the cable cannot be fitted the wrong way.
 
-## 8. Text on the box (author's plan, 2026-11-09)
+## 8. Text on the box (author's plan; CASE4 model, 2026-11-09)
 
 The Cardputer ADV sits on the lid (two 4 mm pegs fit its back holes), so the lid top is covered. The text goes on the sides, engraved with a 3D printer. The unit's name stays generic and KeySpeaker is named as compatible software.
 
@@ -85,5 +85,10 @@ The Cardputer ADV sits on the lid (two 4 mm pegs fit its back holes), so the lid
 | Same side, small | `Line-in → Grove`, `Compatible: KeySpeaker` |
 | Beside the round jack hole | `AUX IN` |
 | Beside the Grove notch | `TO CARDPUTER` (`DIAL` may be added when the jog dial is routed through it) |
+| Above the Pico's USB hole | `PICO 2 USB`, `SET UP ONLY`, `UNPLUG GROVE`, `FIRST` (four lines) |
 
 Not used: "Line-in → USB" (the Pico shows up as a serial port, not as sound over USB), and "for Cardputer ADV" (it reads as ADV-only; the unit itself is generic). Keep the strip where the Cardputer overlaps clear of text.
+
+**Why the USB label.** Connecting the Pico's own USB while Grove is plugged in has not been measured (the Cardputer's own USB together with Grove has: that is fine). The label is an instruction, not a claim that something breaks. The manual should carry the same warning.
+
+**Engraving.** All text is a negative part (Bambu Studio: Operation = Cut) with the same depth of 0.5 mm; the CASE4 model measures 0.49 mm on both long faces, and the wall is 2 mm. Small text was made bold. Not yet checked: a test print of the smallest text (`Compatible: KeySpeaker`) on the A1 mini (0.4 mm nozzle). Some text sits very close to a wall corner on the front face (about 0.2 mm from the edge in the model).
