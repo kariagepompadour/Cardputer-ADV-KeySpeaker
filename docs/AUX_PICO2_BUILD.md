@@ -9,6 +9,8 @@ Japanese version: [AUX_PICO2_BUILD_JA.md](AUX_PICO2_BUILD_JA.md). Design: [AUX_P
 - This unit uses a Raspberry Pi Pico 2 H and a PCM1808 board. The wiring comes from the author's other project, KariPom Ear ( https://github.com/kariagepompadour/KariPom ), where it already works.
 - **KeySpeaker is S12-3 and the Pico program is S12-1.** The author confirmed sound with the unit running only on the Cardputer's power.
 - No soldering is needed, as long as the Pico 2 H and the PCM1808 board both come with pin headers.
+- "Pico 2" in this repository's names (such as `AUX_PICO2`) means the Raspberry Pi Pico 2 family. The author's unit uses the **Pico 2 H**, which is the Pico 2 with pin headers already fitted (Raspberry Pi's naming; not checked by the author).
+- A plain Pico 2 (no headers) is also fine if you solder the two rows of 20 pin headers on yourself. You need a soldering iron and a little practice, and the author has only built the unit with the Pico 2 H. A beginner should buy the H version.
 - If you reuse a Pico or a board from another project, step 6 shows whether it still works.
 
 ## 1. What the finished unit does
@@ -36,7 +38,7 @@ The author's build. The extra wires on the Grove cable are from an earlier proje
 
 | Part | Qty | Notes |
 |---|---|---|
-| Raspberry Pi Pico 2 H | 1 | With pin headers |
+| Raspberry Pi Pico 2 H | 1 | With pin headers already fitted. A plain Pico 2 works too if you solder the headers on yourself (see above) |
 | PCM1808 board | 1 | Turns sound into numbers. Get one with 3.5 mm line input, I²S output and 5 V DC power |
 | Resistor, 330 Ω, 1/4 W | 2 | Stops too much current flowing (Grove wires) |
 | Breadboard, 400 holes | 1 | |
@@ -49,13 +51,29 @@ The author's build. The extra wires on the Grove cable are from an earlier proje
 **Box version (the author's compact unit).** The author built the same wiring in a 3D-printed box without the 400-hole breadboard and without + and − rails. Differences, all from the author's own unit:
 
 - The two 330 Ω resistors sit on a small 25-hole mini breadboard (Akizuki Denshi 113329, yellow, 20 × 15 mm).
-- The Grove red and black wires are each split in two: red to the Pico's VSYS (pin 39) and the PCM1808 board's VDD; black to the Pico's GND (pin 38) and the board's GND.
+- The Grove red and black wires are each split in two: red to the Pico's VSYS (pin 39) and the PCM1808 board's VDD; black to the Pico's GND (pin 38) and the board's GND. The splits are soldered and the joints are covered with heat-shrink tubing (see "Splitting the Grove red and black wires" below).
 - The Pico's AGND (pin 33) is joined to the board's CN3 GND (the middle pin, between R_IN and L_IN) with one extra wire.
 - The I²S-side GND pin of the board is left empty, and the unit works that way. The author's continuity test (beep mode, all wires removed from the board) shows the board's POWER GND and I²S OUT GND are already joined on the board, which is why it works. The breadboard version in this guide connects it anyway, which does no harm.
 - The wires are plugged straight onto the pins, so the hole names such as a22 do not apply.
 - Each board sits on four bosses, and a short pin on each boss goes through the board's mounting hole. The author's printed case (`pico-aux-case.stl` and `pico-aux-lid.stl`, the author's CASE5 and TOP5 of 2026-11-09) holds both boards without them falling off. The model files are in [hardware/aux-pico2-box](../hardware/aux-pico2-box) (`pico-aux-case.stl` and `pico-aux-lid.stl`); print instructions are not written yet.
 
 Go by the marks G1, G2, 5V and GND on the Cardputer's port, not by wire colours, because Grove cables differ. See [AUX_PICO2_BOX.md](AUX_PICO2_BOX.md) for the box and its labels.
+
+The box version, drawn like Figure 3: the layout of the wires, then the same wiring as a schematic.
+
+![Layout of the box version](images/aux_pico2/fig08_box_layout_en.svg)
+
+![Wiring of the box version](images/aux_pico2/fig07_box_en.svg)
+
+**Splitting the Grove red and black wires.** In the box version the Grove red wire and the Grove black wire each go to two places, so each one has to be split in two. This needs a soldering iron, solder, a wire stripper and heat-shrink tubing (inner diameter about 2–3 mm before shrinking is a common choice for thin jumper wires; it has to slip over the finished joint, that is, the Grove wire and the two jumper wires twisted together. If you are buying, an assorted pack with several sizes is the safe choice. "Heat-shrink tubing" is a plastic tube that shrinks when it is heated and wraps the joint). The author's photos show heat-shrink tubing on the joints; the tube size and the exact method were not recorded, so the steps below are general advice. The 2–3 mm figure is a typical size for thin wires, not something the author measured; if you are unsure, hold the three wires together and try the tube over them before you start.
+
+1. Get two jumper wires for each Grove wire (a socket at one end, so that it plugs onto a pin). Cut off the other end and strip 3 to 4 mm.
+2. Slide a piece of heat-shrink tubing, long enough to cover the bare joint with a little to spare (about 2 cm is usual), onto the Grove wire **before** soldering. It cannot be put on afterwards.
+3. Strip 3 to 4 mm of the Grove wire. Twist it together with the two jumper wire ends and solder the three together.
+4. Slide the tube over the joint and warm it (a heat gun, a hair dryer, or a lighter held at a distance and kept moving) until it shrinks tight. Do not heat the Grove plug.
+5. Do the red wire and the black wire one at a time, each with its own tube, so that the two joints can never touch each other.
+6. With the power off, use the multimeter's beep mode to check that the two jumper sockets of one wire beep with each other, and that red and black do **not** beep.
+
 
 If you put the jog dial on the Pico, you also need these:
 
