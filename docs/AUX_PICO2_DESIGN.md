@@ -201,7 +201,7 @@ While AUX is selected, USB audio is dropped and only AUX sound enters the ring.
 
 ✅ Confirmed 2026-11-07: I²S reception from the PCM1808 board on the Pico 2 H. On a breadboard, wired directly with no resistors, on USB power, with `firmware/aux_pico2_check/aux_pico2_check.uf2`: `n=96000 mis=0 ovf=0 fft/s=25`.
 
-1. ✅ Whether Grove can carry sound continuously at 2,000,000 bps. A few minutes of play gave `bad 0 lost 0` (2026-11-07). Hours of play are not yet tried.
+1. ✅ Whether Grove can carry sound continuously at 2,000,000 bps. A few minutes of play gave `bad 0 lost 0` (2026-11-07). About three hours of continuous play in the box ran without problems (the author, 2026-11-10; the counters at the end were not written down). Longer runs are not yet tried.
 2. ✅ Sound quality. Computer sound on the Cardputer speaker had no noticeable noise, dropouts, delay or distortion (2026-11-07), both with the Pico on USB and powered only by the Cardputer. It sounds the same as USB audio. `bad 0 lost 0`, `underrun 0 overrun 0`.
 3. ✅ Grove 5 V with the unit attached. 5.025 V with the Cardputer running it, and 5.09 V while sound plays (2026-11-07).
 4. ⛔ That Launcher does not use G1 or G2 outside `_setup_gpio()`.
