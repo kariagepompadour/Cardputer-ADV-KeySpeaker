@@ -43,20 +43,18 @@ Bluetooth LE（予備）の制限:
 
 <table>
 <tr>
-<td valign="top">
+<td valign="top" width="480">
 
 起動すると、スピーカーの網目に付いたかりポムのエンブレムと、「KeySpeaker」の名前が2秒出ます。そのあと `Fn+M` で3つのモードを順に切り替えます（USBのとき）。最後に使ったモードは覚えています。measure mode（計測）では、キー操作も音もない状態が1分続くと、エンブレムに戻り、下に `h HELP  Fn+M KEYBOARD` と出ます。キーを押すまでそのままです（そのキーは画面を戻すだけです）。flight modeは眺めるための画面なので、そのままです。音楽が鳴り出すと、エンブレムがスピーカーのコーンのように、大きな音に合わせて震えます。全部の画面の絵は [`docs/SCREENS_JA.md`](docs/SCREENS_JA.md) にあります。
 
-| モード | 画面 | キー |
-| --- | --- | --- |
-| **measure mode**（計測） | バッファー、時計のずれ、音量とレベルメーター | スピーカーと再生のキー（下） |
-| **flight mode**（フライト） | 音楽の上を飛ぶ画面（音量の地形、小さな戦闘機、昭和のグライコ、ときどき戦闘機をつかもうとするモンスター） | スピーカーと再生のキー（下） |
-| **keyboard mode**（キーボード） | ゆっくり回る地球と、キーの早見表 | すべてのキーをPCへ送る |
+- **measure mode**（計測）: バッファー、時計のずれ、音量とレベルメーター。キー: スピーカーと再生のキー（下）
+- **flight mode**（フライト）: 音楽の上を飛ぶ画面（音量の地形、小さな戦闘機、昭和のグライコ、ときどき戦闘機をつかもうとするモンスター）。キー: スピーカーと再生のキー（下）
+- **keyboard mode**（キーボード）: ゆっくり回る地球と、キーの早見表。キー: すべてのキーをPCへ送る
 
 <p>
-  <img src="docs/images/photo_measure.jpg" alt="実機のmeasure mode" width="32%">
-  <img src="docs/images/photo_flight.jpg" alt="実機のflight mode" width="32%">
-  <img src="docs/images/photo_keyboard.jpg" alt="実機のkeyboard mode" width="32%">
+  <img src="docs/images/photo_measure.jpg" alt="実機のmeasure mode" width="146">
+  <img src="docs/images/photo_flight.jpg" alt="実機のflight mode" width="146">
+  <img src="docs/images/photo_keyboard.jpg" alt="実機のkeyboard mode" width="146">
 </p>
 
 *実機の画面。左から measure mode、flight mode、keyboard mode。*
@@ -68,9 +66,9 @@ Bluetooth LE（予備）の制限:
 **メテオゾーン:** 音楽が流れている間、数分に1回、地形が低くなり、流星が右から左へ流れます。戦闘機は撃つのをやめて、その間をすり抜けます。音が大きいほど、流星が増えます。
 
 </td>
-<td valign="top" width="380">
+<td valign="top" width="360">
 
-<a href="docs/images/field_guide_ja.webp"><img src="docs/images/field_guide_ja.webp" alt="KeySpeaker フライト・キャラクター図鑑：大型モンスター3種、小型ターゲット6種、街、戦闘機、巡洋艦" width="380"></a>
+<a href="docs/images/field_guide_ja.webp"><img src="docs/images/field_guide_ja.webp" alt="KeySpeaker フライト・キャラクター図鑑：大型モンスター3種、小型ターゲット6種、街、戦闘機、巡洋艦" width="360"></a>
 
 </td>
 </tr>
