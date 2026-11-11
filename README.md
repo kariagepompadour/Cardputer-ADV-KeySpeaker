@@ -55,6 +55,10 @@ key and no sound, the emblem comes back with `h HELP  Fn+M KEYBOARD` at the bott
 (that key only wakes it). Flight mode stays as it is, to be watched. When music starts again, the emblem shakes on the loud beats, like a speaker's cone.
 Pictures of every screen: [`docs/SCREENS.md`](docs/SCREENS.md).
 
+Who you may meet in flight mode (the field guide card; click for the full size):
+
+<a href="docs/images/field_guide_en.webp"><img src="docs/images/field_guide_en.webp" alt="KeySpeaker flight mode field guide: three big monsters, six small targets, the city, the fighter and the cruiser" width="420"></a>
+
 | Mode | Screen | Keys |
 | --- | --- | --- |
 | **measure mode** | Buffer, clock drift, volume and level meters | Speaker and playback keys (below) |
