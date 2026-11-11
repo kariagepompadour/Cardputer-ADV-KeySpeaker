@@ -641,6 +641,20 @@ most, 1.3 s on average, 2.2 s at the longest), never together with a monster, no
 (the S15-1 image's first 0x10000 bytes, the new app, 0xFF to 8 MiB; identical to arduino-cli's merged output) is made and **not tried**. Not measured: the
 slowest frame (`drawMaxUs`) and the memory left (`heap`) on the device, and which parts came up during the check were not reported.
 
+**S15-2, measured on the device and burned from M5Burner (2026-11-11).** The M5Burner image `KeySpeaker_S15-2_MERGED.bin` was burned onto the Cardputer ADV
+with M5Burner, and the author reports it went onto the device without a problem. The slowest frame and the memory left were then read from the once-a-second
+serial line (`draw_max=`, `heap=`) with the screen on the flight view and sound coming in through the AUX unit. In a 45-second read `draw_max` was 16.6 to
+19.8 ms; in a 10-minute read the slowest frame was 28.5 ms. In a one-hour read (3,568 seconds on the flight view, one line per second; the log kept every
+second at or above 25 ms): `draw_max` averaged 19.1 ms, 51 seconds reached 25 ms or more, and the slowest was 27.5 ms, against a budget of about 40 ms. The memory
+left stayed between 87,476 and 87,500 bytes during that hour (no sign of a leak); it was 86,344 and 87,224 bytes after two other starts, so it differs a little
+from start to start, and it was not compared with the 93,388 bytes noted for S14-1. `under`, `over` and `drop` stayed at 0 during the hour, and there was no
+restart, input change or USB drop. (Opening the serial port restarted the Cardputer once, which returned the input from AUX to USB until the author switched it
+back, and a first one-hour read stopped after 4 minutes when the USB port dropped; neither says anything about the firmware.) The same `FlightViz.h` was
+also run on a computer with the cruiser left to chance: 900 meteor zones in 3,000 simulated minutes brought it 163 times (18 %), and with five start-up seeds like the
+Cardputer's (600 minutes each) 14 to 23 %, close to the designed 1 in 5. **Not measured:** the slowest frame during the cruiser's pass, and in
+particular during the missile barrage. On the device the author saw the cruiser pass once, about 21 minutes into the hour read, and did not watch the missiles;
+no second pass was seen in the rest of the hour, so no value is tied to a pass or to a barrage.
+
 Design 5.2 (plan A: Media Jog's BLE identity and GATT table) and 5.3. Over USB nothing changes. Without USB (on the
 battery, or on a charger only) the Cardputer advertises as "KeySpeaker" after 3 seconds; the keyboard screen shows
 `BLE wait` in yellow, then `BLE` in green once a computer is connected and ready.
