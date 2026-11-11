@@ -76,17 +76,24 @@ A screen saver to watch while music plays, not a game: no score, nothing to lose
   (black and red, lit from the left, glowing yellow eyes, 69 x 90 px), now and then walks in from the right behind the
   terrain and reaches for the fighter with a clawed hand drawn in front of everything. The fighter slips away, the hand
   closes on nothing, and the monster draws its arm back and walks off (S9-1; designed in the web demo first).
-  Half of the visits are a second monster instead (S11-1), a Space Invaders squid of the same size: a pointed head with slanted eyes and a
+  Each visit is the ape, the squid or the octopus, a third each. The squid (S11-1), a Space Invaders squid of the same size: a pointed head with slanted eyes and a
   small grumpy mouth over seven tentacles that hang side by side and lie out along the ground. It floats in, and before the fighter passes
   and again after it has passed it may stretch the two tentacles on the fighter's side (now and then the other two as well) toward it.
+  The octopus (S15-1): a tall egg of a head with two small slanted eyes low on it and eight tentacles that hang packed together under it and then
+  lie far out along the ground to both sides, the outer ones curled up at the tips; it reaches the same way as the squid.
 - Searchlights (S11-2): a city on alert. Up to three stand on the ground, each with a small base (a T of four cells, light grey with a yellow lamp on top),
   flow from right to left with the terrain and sweep the sky with a slim beam. A beam stops at a monster's centre line and on the
   fighter. They come only while music plays, one every 10 to 35 seconds, and are on screen about 60 % of the time.
 - A damaged city (S14-1): now and then three to five buildings flow by with the terrain (they do not react to the sound), with shield-like
   corner damage, a black doorway and sometimes a fire. Small people wait on the roofs and lean out of windows, waving for help; the fighter
-  flies to the nearest and saves it by overlapping (a small light, no score). A few run out of the doorways, chase the fighter and wave.
+  flies to the nearest and saves it by overlapping (a small light, no score). One to three run out of a doorway at once, chase the fighter and wave.
+  A building with somebody at a window has nobody on its roof (S15-1): one waving person per building.
   The buildings are in front of the monsters' arms, the fighter in front of the buildings, the arms in front of the fighter, all behind
   the equalizer. One monster visit in twenty it comes flat shocking pink.
+- A meteor zone (S13-1) comes every few minutes while music plays: the terrain sinks low, the stars stream and meteors fly from right to left while the
+  fighter weaves through them. Rarely (about one zone in five, S15-1) a boss crosses the sky during the whole zone: a wedge-shaped capital ship as long as
+  the screen is wide, behind the meteors. It fires volleys of two or three green bolts straight at the fighter, which slips away from them (a hit
+  only lights its shield), and big meteors that strike it set it smoking, then burning; it flies on.
 - Now and then a graphic equalizer like an old hi-fi's rises in front of the terrain: 30 bands with falling peak
   dots, in the aqua of a fluorescent display or in KariPom's colors. The patterns take turns every minute.
 - Nothing else on it while all is well: a line at the top shows only when something is wrong (`not connected` in
