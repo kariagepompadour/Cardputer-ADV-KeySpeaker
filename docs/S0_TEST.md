@@ -622,15 +622,16 @@ what was looked at beyond that, so only that is claimed here.
 
 **S11-1 and S11-2: the squid and the searchlights (2026-11-06), by the user on a Cardputer ADV, burned with a launcher (not M5Burner).** S11-1 added a second big monster, a squid, beside the ape (each visit one or the other, half and half); S11-2 added the searchlights with their small bases (beams that stop at a monster's centre line and on the fighter). Both were designed with the user in the web demo first (KeySpeaker-WEB-DEMO) and run on a computer with the same `FlightViz.h` before the firmware was built (flash 31 %, 1,044,563 bytes for S11-2). **S11-2, by the user:** burned with the launcher; the ape and the squid look good, and the searchlights are right. Not measured: the slowest frame (`drawMaxUs`) and the free heap with the new code, and whether a beam ever meets the fighter on the device was not reported. The `.ino` header still says "not yet tried on the device" for S11-1 and S11-2: it was left as it was so that the `.ino.bin` in the repository stays the very file that was burned and tried (a rebuild after a comment-only edit gave a different file).
 
-**S15-1: the octopus, fewer people, and a cruiser (2026-11-11), built, not yet tried on the device.** From the web demo, designed there first with the
+**S15-1: the octopus, fewer people, and a cruiser (2026-11-11), built, and tried on the device by the user: it runs very smoothly.** From the web demo, designed there first with the
 author: a third big monster, an octopus (each visit is the ape, the squid or the octopus, a third each); a building with somebody at a window has nobody
 on its roof and one to three people run out at once (it was three to five); and a rare boss of the meteor zone, a wedge-shaped capital ship as long as the
 screen is wide (about one zone in five) that fires volleys of green bolts at the fighter. Built with `build.sh`: flash 1,072,519 bytes (32 %, about 5.9 KB
 more than S14-1), global RAM 95,300 bytes (29 %, about 1 KB more: the bolts, the smoke and the cruiser's state). The same `FlightViz.h` was run on a computer:
 over 25 simulated minutes the monsters came about a third each, and in 60 simulated minutes 2 of 19 meteor zones brought the cruiser, each pass 3 to 4 meteor
 hits and 11 bolts, never together with a monster, no errors; frames were viewed. The M5Burner image `KeySpeaker_S15-1_MERGED.bin` (the S14-1 image's first
-0x10000 bytes, the new app, 0xFF to 8 MiB; identical to arduino-cli's merged output) is made and **not tried**. **Not measured:** the slowest frame (`drawMaxUs`)
-and the memory left (`heap`) on the device, which matter here: the cruiser is a 240 px wide sprite drawn dot by dot behind the terrain.
+0x10000 bytes, the new app, 0xFF to 8 MiB; identical to arduino-cli's merged output) is made and **not tried**. **On the device (by the user, 2026-11-11):** it
+moves very well, so the equalizer is not turned off in the meteor zone (an option kept in reserve). **Not reported or measured:** the slowest frame (`drawMaxUs`),
+the memory left (`heap`), and which parts (the octopus, the cruiser) came up during the check.
 
 Design 5.2 (plan A: Media Jog's BLE identity and GATT table) and 5.3. Over USB nothing changes. Without USB (on the
 battery, or on a charger only) the Cardputer advertises as "KeySpeaker" after 3 seconds; the keyboard screen shows
