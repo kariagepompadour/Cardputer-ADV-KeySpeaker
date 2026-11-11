@@ -51,7 +51,7 @@ long texts.
 
 <table>
 <tr>
-<td valign="top">
+<td valign="top" width="480">
 
 At start, KariPom's emblem on a speaker grille and the name "KeySpeaker" show for 2 seconds. `Fn+M` then cycles
 through three modes (over USB); the last one is remembered. In measure mode, after a minute with no
@@ -59,16 +59,14 @@ key and no sound, the emblem comes back with `h HELP  Fn+M KEYBOARD` at the bott
 (that key only wakes it). Flight mode stays as it is, to be watched. When music starts again, the emblem shakes on the loud beats, like a speaker's cone.
 Pictures of every screen: [`docs/SCREENS.md`](docs/SCREENS.md).
 
-| Mode | Screen | Keys |
-| --- | --- | --- |
-| **measure mode** | Buffer, clock drift, volume and level meters | Speaker and playback keys (below) |
-| **flight mode** | A flight over the music: the volume as terrain, a little fighter, a Showa-era graphic equalizer, and now and then a space monster that reaches for the fighter | Speaker and playback keys (below) |
-| **keyboard mode** | A slowly spinning Earth and a key cheat sheet | Every key goes to the computer |
+- **measure mode**: Buffer, clock drift, volume and level meters. Keys: Speaker and playback keys (below)
+- **flight mode**: A flight over the music: the volume as terrain, a little fighter, a Showa-era graphic equalizer, and now and then a space monster that reaches for the fighter. Keys: Speaker and playback keys (below)
+- **keyboard mode**: A slowly spinning Earth and a key cheat sheet. Keys: Every key goes to the computer
 
 <p>
-  <img src="docs/images/photo_measure.jpg" alt="Measure mode on the device" width="32%">
-  <img src="docs/images/photo_flight.jpg" alt="Flight mode on the device" width="32%">
-  <img src="docs/images/photo_keyboard.jpg" alt="Keyboard mode on the device" width="32%">
+  <img src="docs/images/photo_measure.jpg" alt="Measure mode on the device" width="146">
+  <img src="docs/images/photo_flight.jpg" alt="Flight mode on the device" width="146">
+  <img src="docs/images/photo_keyboard.jpg" alt="Keyboard mode on the device" width="146">
 </p>
 
 *On the device, from left: measure mode, flight mode, keyboard mode.*
@@ -80,9 +78,9 @@ Pictures of every screen: [`docs/SCREENS.md`](docs/SCREENS.md).
 **Meteor zone:** every few minutes while music plays, the terrain sinks low and meteors stream from right to left. The fighter stops firing and weaves through them. The louder the music, the more meteors.
 
 </td>
-<td valign="top" width="380">
+<td valign="top" width="360">
 
-<a href="docs/images/field_guide_en.webp"><img src="docs/images/field_guide_en.webp" alt="KeySpeaker flight mode field guide: three big monsters, six small targets, the city, the fighter and the cruiser" width="380"></a>
+<a href="docs/images/field_guide_en.webp"><img src="docs/images/field_guide_en.webp" alt="KeySpeaker flight mode field guide: three big monsters, six small targets, the city, the fighter and the cruiser" width="360"></a>
 
 </td>
 </tr>
