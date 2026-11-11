@@ -43,6 +43,10 @@ Bluetooth LE（予備）の制限:
 
 起動すると、スピーカーの網目に付いたかりポムのエンブレムと、「KeySpeaker」の名前が2秒出ます。そのあと `Fn+M` で3つのモードを順に切り替えます（USBのとき）。最後に使ったモードは覚えています。measure mode（計測）では、キー操作も音もない状態が1分続くと、エンブレムに戻り、下に `h HELP  Fn+M KEYBOARD` と出ます。キーを押すまでそのままです（そのキーは画面を戻すだけです）。flight modeは眺めるための画面なので、そのままです。音楽が鳴り出すと、エンブレムがスピーカーのコーンのように、大きな音に合わせて震えます。全部の画面の絵は [`docs/SCREENS_JA.md`](docs/SCREENS_JA.md) にあります。
 
+flight modeで出会えるものの図鑑です（クリックすると大きく見られます）。
+
+<a href="docs/images/field_guide_ja.webp"><img src="docs/images/field_guide_ja.webp" alt="KeySpeaker フライト・キャラクター図鑑：大型モンスター3種、小型ターゲット6種、街、戦闘機、巡洋艦" width="420"></a>
+
 | モード | 画面 | キー |
 | --- | --- | --- |
 | **measure mode**（計測） | バッファー、時計のずれ、音量とレベルメーター | スピーカーと再生のキー（下） |
