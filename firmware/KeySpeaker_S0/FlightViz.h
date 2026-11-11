@@ -44,6 +44,13 @@
   behind the equalizer. The searchlight's base is a T of four cells with a yellow lamp, and once in twenty visits a monster comes in
   flat shocking pink. Tried in the web demo first.
 
+  S15-1, three things from the web demo. A third monster, an octopus (a tall egg of a head, two small slanted eyes, eight tentacles that lie
+  far out along the ground), so each visit is the ape, the squid or the octopus, a third each. A building with somebody at a window has nobody
+  on its roof, and one to three people run out at once. And a rare boss of the meteor zone, a wedge-shaped capital ship as long as the screen is
+  wide (about one zone in five, by lot): it crosses the sky slowly during the whole zone, behind the meteors and the terrain, fires volleys of
+  two or three green bolts straight at the fighter (which slips away from them; a hit only lights its shield), and when big meteors strike
+  it, it smokes and finally burns, but flies on. Not while a monster is there.
+
   Plain C++ on a 240 x 135 RGB565 frame buffer laid out like M5Canvas's (16-bit pixels, high byte first), so the same
   code also runs on a computer for previews.
 */
@@ -282,6 +289,60 @@ struct MeteorZone {
   uint32_t nextMs = 0, startMs = 0;
 };
 
+// The cruiser (S15-1): a wedge-shaped capital ship as long as the screen is wide, a rare boss of the meteor zone. See the top of this file.
+constexpr int CR_W = 80, CR_H = 25, CR_Y = 8, CR_TRAIL = 34;           // dots, dots, px from the top, px of engine trail behind it
+constexpr float CR_SPEED = (W + 2 + CR_W * 3 + CR_TRAIL) / (MZ_IN_S + MZ_RUN_S + MZ_OUT_S);   // px/s: it takes the whole zone to cross
+constexpr int CR_ZONE_PERCENT = 20;                                    // about 1 meteor zone in 5 brings it, by lot
+constexpr int CR_MAX_BOLTS = 10, CR_MAX_PUFFS = 40;
+static const uint8_t CR_ENGINES[3] = {16, 19, 22};                     // the rows of the three nozzles at the stern
+static const uint8_t CR_GUNS[3][2] = {{28, 21}, {40, 22}, {52, 23}};   // where the bolts leave when the fighter is below it (dots)
+static const uint8_t CR_TOPGUNS[5][2] = {{32, 12}, {42, 11}, {48, 11}, {58, 8}, {60, 8}};   // and when it is above it: the mounts on top
+static const uint8_t CR_DAMAGE[3][2] = {{56, 12}, {36, 15}, {20, 16}};  // where it smokes, in the order the damage builds up (dots)
+// The hull, one character per dot (made by the web demo's builder): S lit plane, H bright edge, M mid tone, D dark, K very dark, L lit face,
+// W small light, G globe, C cyan light, R maroon, E engine glow.
+static const char* const CR_ART[CR_H] = {
+    "..............................................................GS.............GS.",
+    "..............................................................LM.............LM.",
+    ".............................................................HHRRRRRRRRRRRRRRHH.",
+    ".............................................................WLWLWLWLWLWLWLWLWL.",
+    ".............................................................DDDDDSLLLDDDKDDDDD.",
+    ".................................................................SLCCLDDDK......",
+    ".................................................................SLLLLDDDDK.....",
+    "................................................................SLCCLLDDDDK.....",
+    "..........................................................M.M...SLLLLLDDDDDK....",
+    "..........................................................KKKK.SLLLLLLDDDDDK....",
+    "........................................................DHHHHHHHHHHHHHHHHHHHHHHH",
+    "..........................................M.....M.......DSRRRRRRRRRRRRRRRRRRRRSS",
+    "................................M.........KK....KK......DDDDDDDDDDDDDDDDDDDDDDDD",
+    "................................KK............HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH",
+    ".................................HHHHHHHHHHHHHSSSSSMSSSSSSSMSSSSSSSMSSSSSSSMSSSS",
+    "....................HHHHHHHHHHHHHSSMSSSSSSSMSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSKEEE",
+    ".......HHHHHHHHHHHHHSSSSSSSMSSSSSSSSSSSSSSSSSSMCDMMMDMMMDMMMDMMMDMMMDMMMDCMMKEEE",
+    "HHHHHHHSSSSMSSSSSSSMSSSSSSSSSSSSSMMMDMMMDCMMDMKMDMKMDMKMDMKMDMKMDMKCDMKMDMKMKEEE",
+    "......SSSSSSSSSSSSSSMMMMMMMMMMMMMSSSSSSSKDKDKDDDKDDDKDDDKDDDKCDMDMMMDMMMDMCMKEEE",
+    ".................SSSSSSSSSSSSMMMMKKKKKWKSSSSSSSSSSSDKDDCKDDDKDDDKDDDKDDDKDDDKEEE",
+    ".............................SSSSKKKKKKKKKKKWKKKKKWSSSSSSSSSSSSDKDDDKDDDKDDCKEEE",
+    "........................................KKKKKKKKKKKKKKKKWKKKKKWSSSSSSSSSSSDDKEEE",
+    "...................................................KKKKKKKKKKKKKKKKKWKKKKKSSKEEE",
+    "...............................................................KKKKKKKKKKKWKKEEE",
+    "..........................................................................KKKKKK",
+};
+struct Cruiser {
+  bool on = false;
+  float x = 0, puff = 0;                // the left edge, px; time to the next puff of smoke
+  uint8_t hits = 0;                     // big meteors that have struck it
+  uint8_t volley = 0;                   // bolts still to fire in this volley
+  uint32_t nextFire = 0, volleyAt = 0;
+};
+struct CrBolt {                         // a bolt, flying straight at where the fighter was
+  bool on = false;
+  float x = 0, y = 0, ox = 0, oy = 0, vx = 0, vy = 0, age = 0;
+};
+struct CrPuff {                         // smoke (or fire) left behind by a place that was hit
+  bool on = false, fire = false;
+  float x = 0, y = 0, age = 0;
+};
+
 // The city (S14-1). See the top of this file.
 constexpr int CITY_W = 10, CITY_FLOOR_MIN = 3, CITY_FLOOR_MAX = 8, CITY_N_MIN = 3, CITY_N_MAX = 5;  // a building: 10 dots wide, 3 to 8 floors of 2 dots
 constexpr int CITY_ROWS = 1 + 2 * CITY_FLOOR_MAX;   // the tallest building's dot rows
@@ -335,10 +396,10 @@ struct Kong {
   uint8_t threat = 0;        // the pose: 0 both arms up, 1 the near arm up and the far one down, 2 the other way round
   uint8_t nextAct = 0;       // after a miss: 0 walk on, 1 reach again, 2 make itself big (done when nextAt has passed)
   float nextAt = 0;
-  uint8_t kind = 0;          // which monster this visit: 0 the ape, 1 the squid (S11-1)
+  uint8_t kind = 0;          // which monster this visit: 0 the ape, 1 the squid (S11-1), 2 the octopus (S15-1)
   bool doPre = false, doPost = false, preDone = false, postDone = false;  // the squid: a reach before the fighter passes, and one after
   uint8_t sc = 0, flip = 0;  // the squid's reach: 0 up its side (fighter above), 1 ahead, 2 behind; flip: 1 up its right side
-  uint8_t legs = 0;          // bit i: tentacle i is stretching out (7 tentacles)
+  uint8_t legs = 0;          // bit i: tentacle i is stretching out (7 tentacles for the squid, 8 for the octopus)
   float rise = 0;            // how far the squid has risen (0 .. 1): up while the fighter is ahead of it, down once it has passed
 };
 
@@ -387,8 +448,12 @@ struct State {
   MeteorZone mz;
   Meteor met[MZ_MAX];
   Dust dust[MZ_DUST_MAX];
+  Cruiser cr;
+  CrBolt crb[CR_MAX_BOLTS];
+  CrPuff puff[CR_MAX_PUFFS];
+  bool cruiserForce = false;  // for previews on a computer: the cruiser comes with every meteor zone
   Kong k;
-  int8_t kongForce = -1;     // for previews on a computer: 0 only the ape, 1 only the squid, -1 by lot
+  int8_t kongForce = -1;     // for previews on a computer: 0 only the ape, 1 only the squid, 2 only the octopus, -1 by lot
   float evadeCur = 0;        // how far the fighter has slipped away from the monster's hand
   bool ready = false;
 };
@@ -476,6 +541,9 @@ static void init(State& s, uint32_t nowMs) {
   s.citAcc = 0;
   s.mz = MeteorZone();
   s.mz.nextMs = nowMs + MZ_FIRST_MS;
+  s.cr = Cruiser();
+  for (auto& q : s.crb) q = CrBolt();
+  for (auto& p : s.puff) p = CrPuff();
   for (auto& m : s.met) m = Meteor();
   for (auto& d : s.dust) d = Dust();
   s.evadeCur = 0;
@@ -743,6 +811,38 @@ static const float SQ_FLARE[7] = {15, 11, 7, 3, 7, 11, 15};   // how high (px) a
 static const float SQ_ENDX[7] = {-14, -10, -6, 2, 6, 10, 14};  // and where it ends on the ground (dots from the root, sideways) ...
 static const float SQ_ENDY[7] = {-1, 2, -2, 2, -2, 2, -1};     // ... and (dots) toward or away from us, as if lying around it like rays
 static const uint8_t SQ_PAL_PERCENT[7] = {9, 10, 24, 9, 34, 9, 5};  // yellow and green most often, the pink one visit in twenty (sums to 100)
+// The octopus (S15-1), the third monster, from the author's sketch: a tall egg of a head with two small slanted eyes low on it, a narrow neck, and
+// eight tentacles that hang packed together under it and then lie far out along the ground to both sides, the outer ones with their tips curled up.
+// It plays like the squid (the same reach, the same colours); only the shape differs, through SqSpec. pad: how far (px) the tentacles lie out
+// beyond the body, so it comes in and goes out without a pop.
+static const uint8_t OC_WID[20] = {5, 9, 11, 13, 15, 15, 17, 17, 17, 17, 17, 15, 15, 13, 13, 11, 9, 9, 7, 7};
+static const float OC_ROOT[8] = {-3.5f, -2.5f, -1.5f, -0.5f, 0.5f, 1.5f, 2.5f, 3.5f};
+static const float OC_FLARE[8] = {14, 11, 8, 5, 5, 8, 11, 14};
+static const float OC_ENDX[8] = {-22, -13, -8, -4, 4, 8, 13, 22};
+static const float OC_ENDY[8] = {-3, 1, -1, 2, 2, -1, 1, -3};
+struct SqSpec { uint8_t rows, n; int neckX, neckY, pad; const uint8_t* wid; const float *root, *flare, *endx, *endy; };
+static const SqSpec SQ_SPEC[3] = {
+  {0, 0, 0, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr},                                          // 0: the ape, not used here
+  {15, 7, SQ_NECK_X, SQ_NECK_Y, 0, SQ_WID, SQ_ROOT, SQ_FLARE, SQ_ENDX, SQ_ENDY},                        // 1: the squid
+  {20, 8, 11, 20, 40, OC_WID, OC_ROOT, OC_FLARE, OC_ENDX, OC_ENDY},                                      // 2: the octopus
+};
+static inline const SqSpec& sqSpec(uint8_t kind) { return SQ_SPEC[kind < 3 && kind ? kind : 1]; }
+// The part of the head at row r, column c of the 23 x 30 grid: 0 none, 1 body, 2 the lit edge, 3 an eye, 4 the squid's mouth.
+static inline uint8_t sqCell(uint8_t kind, int r, int c) {
+  const SqSpec& sp = sqSpec(kind);
+  if (r < 0 || r >= sp.rows) return 0;
+  int w = sp.wid[r];
+  if (!w) return 0;
+  int m = (KONG_W - w) / 2;
+  if (c < m || c >= m + w) return 0;
+  if (kind == 1) {
+    if ((r == 9 && (c == 7 || c == 15)) || (r == 10 && (c == 8 || c == 9 || c == 13 || c == 14))) return 3;
+    if ((r == 12 && c >= 9 && c <= 13) || (r == 13 && (c == 8 || c == 14))) return 4;
+  } else if ((r == 14 && (c == 8 || c == 14)) || (r == 15 && (c == 9 || c == 13))) {
+    return 3;
+  }
+  return c - m < 2 ? 2 : 1;
+}
 // A tentacle that stretches: its first control point's offset from the neck (d1), its second one's from the tip (d2), and where the tip
 // lands relative to the fighter (o), all in dots. Four per scenario: the two on the fighter's side first, then the other two.
 struct SqReach { int8_t leg; float d1x, d1y, d2x, d2y, ox, oy; };
@@ -759,7 +859,7 @@ static inline uint8_t pickSquidPal(State& s) {
   return i;
 }
 static inline int squidTop(const Kong& k) { return H - KH - 2 - (int)lrintf(SQ_RISE_PX * k.rise); }
-static inline void squidNeck(const Kong& k, float& nx, float& ny) { nx = (float)((int)lrintf(k.x) + SQ_NECK_X * DOT + 1); ny = (float)(squidTop(k) + SQ_NECK_Y * DOT); }
+static inline void squidNeck(const Kong& k, float& nx, float& ny) { const SqSpec& sp = sqSpec(k.kind); nx = (float)((int)lrintf(k.x) + sp.neckX * DOT + 1); ny = (float)(squidTop(k) + sp.neckY * DOT); }
 
 static inline bool squidNear(const Kong& k, float dxd, float dyd) {
   return sqrtf(dxd * dxd + dyd * dyd) <= SQ_REACH_DOTS && fabsf(dxd) <= SQ_REACH_DOTS && k.x < W - KW - 6;
@@ -771,7 +871,8 @@ static void squidStart(State& s, float shipCx, float shipCy, float nx, float ny)
   k.sc = (dyd < -13 && fabsf(dxd) <= 12) ? 0 : dxd < 0 ? 1 : 2;   // above it, ahead of it, or behind it
   k.flip = fabsf(dxd) < 4 ? (nextRandom(s) % 2) : dxd < 0 ? 0 : 1;  // above it: up the side the fighter is on
   bool aimLeft = k.sc == 1 || (k.sc == 0 && !k.flip);
-  uint8_t mine = aimLeft ? 0x03 : 0x60, other = aimLeft ? 0x60 : 0x03;  // the left pair is tentacles 0 and 1, the right pair 5 and 6
+  uint8_t right = (uint8_t)(3u << (sqSpec(k.kind).n - 2));  // the left pair is tentacles 0 and 1, the right pair the last two (5 and 6 of the squid's seven, 6 and 7 of the octopus's eight)
+  uint8_t mine = aimLeft ? 0x03 : right, other = aimLeft ? right : 0x03;
   k.legs = (nextRandom(s) % 100 < 50) ? (mine | other) : mine;   // half of the reaches use both sides, half only the fighter's side
 }
 
@@ -799,7 +900,7 @@ static float updateSquid(State& s, uint32_t nowMs, float dt, float shipCx, float
     evade = shipCy > 52 ? -K_EVADE_PX : K_EVADE_PX;
     if (k.t >= K_MISS_S) k.ph = K_LEAVE, k.t = 0;  // the tentacles are drawn back
   }
-  if (k.x < -KW - 4) {
+  if (k.x < -KW - 4 - sqSpec(k.kind).pad) {
     k.ph = K_IDLE;
     k.nextMs = nowMs + KONG_MS_MIN + nextRandom(s) % (KONG_MS_MAX - KONG_MS_MIN);
   }
@@ -821,7 +922,7 @@ static float updateKong(State& s, uint32_t nowMs, float dt, float shipCx, float 
   }
   bool musicOk = k.musicOn && nowMs - k.musicSince >= KONG_MUSIC_MS;
   if (k.ph == K_IDLE) {
-    if (musicOk && (int32_t)(nowMs - k.nextMs) >= 0) {
+    if (musicOk && !s.cr.on && (int32_t)(nowMs - k.nextMs) >= 0) {
       k.ph = K_WALK, k.t = 0, k.x = (float)(W + 4);
       k.chase = nextRandom(s) % 100 < K_CHASE_PERCENT;
       k.pal = pickKongPal(s);
@@ -830,9 +931,10 @@ static float updateKong(State& s, uint32_t nowMs, float dt, float shipCx, float 
       k.maxTries = r < 35 ? 1 : r < 75 ? 2 : 3;
       k.doThreat = nextRandom(s) % 100 < 55;
       k.noReach = nextRandom(s) % 100 < 12;
-      k.kind = s.kongForce >= 0 ? (uint8_t)s.kongForce : (uint8_t)(nextRandom(s) % 100 < 50 ? 1 : 0);  // this visit: the ape or the squid, half and half
+      { uint32_t q = nextRandom(s) % 100; k.kind = s.kongForce >= 0 ? (uint8_t)s.kongForce : (uint8_t)(q < 34 ? 0 : q < 67 ? 1 : 2); }  // this visit: the ape, the squid or the octopus, a third each
       if (s.pinkForce && k.kind == 0) k.pal = 6;
-      if (k.kind == 1) {
+      if (k.kind >= 1) {
+        k.x += (float)sqSpec(k.kind).pad;
         k.doThreat = false, k.chase = false, k.noReach = false;
         k.pal = s.pinkForce ? 6 : pickSquidPal(s);
         k.doPre = nextRandom(s) % 100 < 60, k.doPost = nextRandom(s) % 100 < 50, k.preDone = k.postDone = false;
@@ -841,7 +943,7 @@ static float updateKong(State& s, uint32_t nowMs, float dt, float shipCx, float 
     }
     return 0;
   }
-  if (k.kind == 1) return updateSquid(s, nowMs, dt, shipCx, shipCy);
+  if (k.kind >= 1) return updateSquid(s, nowMs, dt, shipCx, shipCy);
   k.x -= SCROLL_PX_S * kongSpeed(k.ph) * dt;
   float shx, shy, s2x, s2y;
   kongShoulder((int)lrintf(k.x), shx, shy);
@@ -947,12 +1049,27 @@ static void spawnMeteor(State& s, uint32_t nowMs, int sx, uint8_t size) {
     return;
   }
 }
+// A burst of sparks at x, y (the first free one).
+static inline void freeBurst(State& s, float x, float y) {
+  for (auto& b : s.x)
+    if (!b.on) { b = {x, y, 0, true, false}; return; }
+}
+// Is there a part of the cruiser at the screen point x, y?
+static inline bool cruiserAt(const State& s, float x, float y) {
+  if (!s.cr.on) return false;
+  int c = (int)floorf((x - lrintf(s.cr.x)) / DOT), r = (int)floorf((y - CR_Y) / DOT);
+  return r >= 0 && r < CR_H && c >= 0 && c < CR_W && CR_ART[r][c] != '.';
+}
 static void updateMeteorZone(State& s, uint32_t nowMs, float dt, int sx) {
   MeteorZone& z = s.mz;
   Kong& k = s.k;
   if (z.ph == 0) {
     if ((int32_t)(nowMs - z.nextMs) < 0 || k.ph != K_IDLE || !k.musicOn || nowMs - k.musicSince < KONG_MUSIC_MS) return;
     z.ph = 1, z.t = 0, z.acc = z.dustAcc = 0, z.ph0 = (nextRandom(s) % 628) / 100.0f, z.startMs = nowMs;
+    if (s.cruiserForce || nextRandom(s) % 100 < CR_ZONE_PERCENT) {  // the cruiser comes in with the zone
+      s.cr = Cruiser();
+      s.cr.on = true, s.cr.x = (float)(W + 2), s.cr.nextFire = nowMs + 2500;
+    }
     uint32_t after = nowMs + (uint32_t)((MZ_IN_S + MZ_RUN_S + MZ_OUT_S) * 1000) + 8000;
     if ((int32_t)(after - k.nextMs) > 0) k.nextMs = after;
   }
@@ -967,7 +1084,7 @@ static void updateMeteorZone(State& s, uint32_t nowMs, float dt, int sx) {
   } else if (z.ph == 3) {
     z.u = 1.0f - z.t / MZ_OUT_S;
     if (z.u < 0) z.u = 0;
-    if (z.t >= MZ_OUT_S && meteors == 0) {
+    if (z.t >= MZ_OUT_S && meteors == 0 && !s.cr.on) {
       z.ph = 0, z.u = 0;
       uint32_t light = nowMs + 6000;
       if ((int32_t)(light - s.nextLightMs) > 0) s.nextLightMs = light;
@@ -998,6 +1115,11 @@ static void updateMeteorZone(State& s, uint32_t nowMs, float dt, int sx) {
   for (auto& m : s.met) {
     if (!m.on) continue;
     m.x -= m.v * dt, m.y += m.vy * dt;
+    if (s.cr.on && m.size == 2 && cruiserAt(s, m.x, m.y)) {  // a big meteor strikes the cruiser: sparks, and the damage adds up
+      m.on = false, s.cr.hits++;
+      freeBurst(s, m.x, m.y);
+      continue;
+    }
     if (m.x <= -MZ_SIZE[m.size].tail * DOT - 8) m.on = false;
   }
   for (auto& d : s.dust) {
@@ -1010,6 +1132,82 @@ static void updateMeteorZone(State& s, uint32_t nowMs, float dt, int sx) {
   for (auto& b : s.eb) if (b.on) b.x -= w;
   for (auto& m : s.mine) if (m.on) m.x -= w;
   for (auto& l : s.lt) if (l.on) l.x -= w;
+}
+
+// The fighter slips up or down away from a bolt that is about to reach it.
+static float cruiserEvade(const State& s, int sx, float sy) {
+  for (const auto& q : s.crb) {
+    if (!q.on || fabsf(q.vx) < 1) continue;
+    float t = (sx + SHIP_W / 2.0f - q.x) / q.vx;  // when the bolt gets to the fighter's x
+    if (t < 0.05f || t > 0.7f) continue;
+    float y = q.y + q.vy * t;
+    if (fabsf(y - (sy + SHIP_H / 2.0f)) < SHIP_H / 2.0f + 6) return y > sy + SHIP_H / 2.0f ? -K_EVADE_PX : K_EVADE_PX;
+  }
+  return 0;
+}
+// Moves the cruiser, its volleys of bolts (two or three at a time, straight at the fighter, from the guns that face it) and its smoke.
+static void updateCruiser(State& s, uint32_t nowMs, float dt, int sx, int sy) {
+  Cruiser& b = s.cr;
+  if (b.on) {
+    b.x -= CR_SPEED * dt;
+    if ((int32_t)(nowMs - b.nextFire) >= 0) {
+      b.nextFire = nowMs + 1100 + nextRandom(s) % 900;
+      b.volley = (uint8_t)(2 + nextRandom(s) % 2), b.volleyAt = nowMs;
+    }
+    if (b.volley > 0 && (int32_t)(nowMs - b.volleyAt) >= 0) {
+      b.volley--, b.volleyAt = nowMs + 90;
+      float fcx = sx + SHIP_W / 2.0f, fcy = sy + SHIP_H / 2.0f;
+      bool below = fcy > CR_Y + 21 * DOT;  // the fighter is under the hull: the underside guns; otherwise the mounts on top
+      const uint8_t* gun = below ? CR_GUNS[nextRandom(s) % 3] : CR_TOPGUNS[nextRandom(s) % 5];
+      float gx = (float)(lrintf(b.x) + gun[0] * DOT + 1), gy = (float)(CR_Y + gun[1] * DOT);
+      if (gx > 6 && gx < W - 4) {
+        for (auto& q : s.crb) {
+          if (q.on) continue;
+          float tx = fcx + (int)(nextRandom(s) % 21) - 10, ty = fcy + (int)(nextRandom(s) % 17) - 8;  // straight at the fighter, a little off
+          float d = sqrtf((tx - gx) * (tx - gx) + (ty - gy) * (ty - gy));
+          if (d < 1) d = 1;
+          q.on = true, q.x = q.ox = gx, q.y = q.oy = gy, q.vx = (tx - gx) / d * 130.0f, q.vy = (ty - gy) / d * 130.0f, q.age = 0;
+          break;
+        }
+      }
+    }
+    b.puff -= dt;  // smoke from the places that have been hit: more hits, more places, the last one burns
+    if (b.puff <= 0 && b.hits >= 2) {
+      b.puff = 0.1f;
+      int n = b.hits >= 6 ? 3 : b.hits >= 4 ? 2 : 1;
+      for (int i = 0; i < n; i++)
+        for (auto& p : s.puff) {
+          if (p.on) continue;
+          p.on = true, p.fire = i == 2, p.age = 0, p.x = (float)(lrintf(b.x) + CR_DAMAGE[i][0] * DOT), p.y = (float)(CR_Y + CR_DAMAGE[i][1] * DOT);
+          break;
+        }
+    }
+    if (b.x < -CR_W * DOT - CR_TRAIL - 4) b.on = false;
+  }
+  int off = scrollOffset(s, nowMs);
+  for (auto& q : s.crb) {  // the bolts fly straight and are not swept away with the rest of the world
+    if (!q.on) continue;
+    q.x += q.vx * dt, q.y += q.vy * dt, q.age += dt;
+    int bx = (int)q.x;
+    int ground = H - heightAt(s, bx, off);
+    if (q.x > sx - DOT && q.x < sx + SHIP_W && q.y + DOT > sy && q.y < sy + SHIP_H) {  // on the fighter: the shield takes it, with a bigger flash
+      q.on = false;
+      s.shieldUntil = nowMs + SHIELD_MS;
+      freeBurst(s, (float)bx, q.y);
+      freeBurst(s, (float)(bx - 6), q.y + 3);
+    } else if (q.y + DOT >= ground) {
+      q.on = false;
+      carve(s, colAt(bx + 1, off), 2);
+      freeBurst(s, (float)bx, (float)(ground - 1));
+    } else if (bx < -DOT || bx > W + DOT || q.y < -DOT) {
+      q.on = false;
+    }
+  }
+  for (auto& p : s.puff) {
+    if (!p.on) continue;
+    p.age += dt, p.y -= 9.0f * dt;
+    if (p.age >= 1.3f) p.on = false;
+  }
 }
 
 // ---- The city (S14-1): where the people are, who is saved, who comes out of a doorway. Designed in the web demo first. ----
@@ -1050,7 +1248,7 @@ static void newCity(State& s) {
     if (!collapsed && f >= 3 && nextRandom(s) % 100 < 40) {  // somebody leans out of a lit window, waving
       b.hasWin = true, b.winFl = (int8_t)(nextRandom(s) % (f - 1)), b.lit[b.winFl * 3 + 1] = 1, b.winPh = (int8_t)(nextRandom(s) % 7);
     }
-    if (!collapsed && nextRandom(s) % 100 < 45) {
+    if (!collapsed && !b.hasWin && nextRandom(s) % 100 < 45) {  // a building with somebody at a window has nobody on its roof: one waving person per building
       Person& p = g.p[g.np++];
       p.bi = (int8_t)i, p.ox = 2 + (int)(nextRandom(s) % (CITY_W * DOT - PERSON_W - 3)), p.ph = (uint8_t)(nextRandom(s) % 7), p.saved = false;
     }
@@ -1111,7 +1309,7 @@ static void updateCity(State& s, uint32_t nowMs, float dt, int sx, int sy) {
       for (const auto& c : s.cit) used += c.on;
       if (nok && used < 4) {
         const Building& b = g.b[ok[nextRandom(s) % nok]];
-        int n = 3 + (int)(nextRandom(s) % 3);
+        int n = 1 + (int)(nextRandom(s) % 3);  // one to three people run out at once
         float x0 = (float)((int)lrintf(g.x) + b.ox + 5 * DOT - PERSON_W / 2);
         for (int k = 0; k < n; k++) {
           Citizen* c = nullptr;
@@ -1217,9 +1415,11 @@ static void update(State& s, uint32_t nowMs) {
   s.shipY += (target - s.shipY) * (1.0f - expf(-dt / ease));
   updateLights(s, nowMs, dt);
   float evadeTgt = updateKong(s, nowMs, dt, sx + SHIP_W / 2.0f, s.shipY + bobY(nowMs) + SHIP_H / 2.0f);
+  if (evadeTgt == 0) evadeTgt = cruiserEvade(s, sx, s.shipY + bobY(nowMs));  // or from a bolt of the cruiser
   s.evadeCur += (evadeTgt - s.evadeCur) * (1.0f - expf(-dt / (evadeTgt != 0 ? 0.07f : 0.5f)));
   int sy = (int)lrintf(s.shipY + bobY(nowMs) + s.evadeCur);
   updateCity(s, nowMs, dt, sx, sy);
+  updateCruiser(s, nowMs, dt, sx, sy);
 
   for (auto& m : s.m) {
     if (!m.on) continue;
@@ -1481,7 +1681,7 @@ static inline int roundi(float v) { return (int)floorf(v + 0.5f); }
 // One tentacle along a curve, on the body's own 3 px dot grid (gx, gy). Resting ones are three dots thick where they hang side by side
 // (shadow in straight vertical lines, one in three columns) and two along the ground, ending in a one dot tip; stretched ones are four
 // dots thick, then three, then two. A lit edge, a half tone and the dark body colour, and a fleck of shadow here and there.
-static void drawSquidLeg(uint16_t* fb, const Pt* p, int gx, int gy, bool rest, const uint16_t* P) {
+static void drawSquidLeg(uint16_t* fb, const Pt* p, int gx, int gy, bool rest, const uint16_t* P, int neckX) {
   const uint16_t lit = P[0], dark = P[1], mid = mix565(lit, dark, 0.55f);
   float len = 0;
   for (int i = 0; i < 3; i++) len += sqrtf((p[i + 1].x - p[i].x) * (p[i + 1].x - p[i].x) + (p[i + 1].y - p[i].y) * (p[i + 1].y - p[i].y));
@@ -1500,7 +1700,7 @@ static void drawSquidLeg(uint16_t* fb, const Pt* p, int gx, int gy, bool rest, c
       int cc = (ox - gx) / DOT, rr = (oy - gy) / DOT;
       uint32_t h = ((uint32_t)(int32_t)cc * 73856093u) ^ ((uint32_t)(int32_t)rr * 19349663u);
       if (rest && !flat) {
-        int m = ((cc - SQ_NECK_X) % 3 + 3) % 3;
+        int m = ((cc - neckX) % 3 + 3) % 3;
         col = m == 0 ? dark : m == 1 ? mid : lit;
       } else if (h % 5 == 0 && col != dark) {
         col = col == lit ? mid : dark;
@@ -1519,34 +1719,31 @@ static void drawSquid(const State& s, uint16_t* fb, uint32_t nowMs, bool front) 
   if (k.ph == K_IDLE) return;
   const uint16_t* P = KPAL[k.pal < 7 ? k.pal : 0];
   int bx = (int)lrintf(k.x), by = squidTop(k);
+  const SqSpec& sp = sqSpec(k.kind);
   if (!front) {
     const uint16_t mouth = mix565(P[2], P[1], 0.4f);
-    for (int r = 0; r < 15; r++) {
-      int w = SQ_WID[r];
-      if (!w) continue;
-      int m = (KONG_W - w) / 2;
-      for (int c = m; c < m + w; c++) {
-        bool eye = (r == 9 && (c == 7 || c == 15)) || (r == 10 && (c == 8 || c == 9 || c == 13 || c == 14));
-        bool mo = (r == 12 && c >= 9 && c <= 13) || (r == 13 && (c == 8 || c == 14));
-        dot(fb, bx + c * DOT, by + r * DOT, eye ? P[2] : mo ? mouth : (c - m < 2 ? P[0] : P[1]));
+    for (int r = 0; r < sp.rows; r++)
+      for (int c = 0; c < KONG_W; c++) {
+        uint8_t t = sqCell(k.kind, r, c);
+        if (t) dot(fb, bx + c * DOT, by + r * DOT, t == 3 ? P[2] : t == 4 ? mouth : t == 2 ? P[0] : P[1]);
       }
-    }
   }
-  float nx = (float)(bx + SQ_NECK_X * DOT + 1), ny = (float)(by + SQ_NECK_Y * DOT);
+  float nx = (float)(bx + sp.neckX * DOT + 1), ny = (float)(by + sp.neckY * DOT);
   bool reaching = k.ph == K_REACH || k.ph == K_GRAB || k.ph == K_MISS;
   float w = k.ph == K_REACH ? ease3(k.t / K_REACH_S) : reaching ? 1.0f : k.ph == K_LEAVE ? 1.0f - ease3(k.t / K_RETRACT_S) : 0.0f;  // 0 at rest ... 1 stretched out
   const SqReach* tab = SQ_SC[(k.sc == 0 && k.flip) ? 3 : k.sc];
   float gy = (float)(H - 8);
-  for (int i = 0; i < 7; i++) {
+  for (int i = 0; i < sp.n; i++) {
     bool moving = w > 0 && ((k.legs >> i) & 1);
     if (moving != front) continue;  // resting tentacles are drawn with the body (behind), stretching ones in front
-    Pt R0 = {nx + SQ_ROOT[i] * DOT, ny};
+    Pt R0 = {nx + sp.root[i] * DOT, ny};
     // at rest: a packed bundle hanging down, flaring out like a trumpet (the outer ones start higher) and lying along the ground
-    Pt p[4] = {R0, {R0.x, gy - SQ_FLARE[i]}, {R0.x + SQ_ENDX[i] * 0.2f * DOT, gy}, {R0.x + SQ_ENDX[i] * DOT, gy + SQ_ENDY[i] * DOT}};
+    Pt p[4] = {R0, {R0.x, gy - sp.flare[i]}, {R0.x + sp.endx[i] * 0.2f * DOT, gy}, {R0.x + sp.endx[i] * DOT, gy + sp.endy[i] * DOT}};
     if (moving) {
       const SqReach* sc = nullptr;
+      int want = i == 0 ? 0 : i == 1 ? 1 : i == sp.n - 2 ? 5 : 6;  // the scenarios name the squid's tentacles 0, 1, 5 and 6; the octopus's right pair is its last two
       for (int j = 0; j < 4; j++)
-        if (tab[j].leg == i) sc = &tab[j];
+        if (tab[j].leg == want) sc = &tab[j];
       if (sc) {
         Pt q2 = {k.tx + sc->ox * DOT, k.ty + sc->oy * DOT};
         float wob = sinf(nowMs * 0.009f + i) * 0.8f * DOT * w;
@@ -1554,7 +1751,7 @@ static void drawSquid(const State& s, uint16_t* fb, uint32_t nowMs, bool front) 
         for (int n = 0; n < 4; n++) p[n].x += (r[n].x - p[n].x) * w, p[n].y += (r[n].y - p[n].y) * w;
       }
     }
-    drawSquidLeg(fb, p, bx, by, !moving, P);
+    drawSquidLeg(fb, p, bx, by, !moving, P, sp.neckX);
   }
 }
 
@@ -1617,16 +1814,10 @@ static void drawMeteors(const State& s, uint16_t* fb) {
 // Is there a part of the monster at the screen point x, y? The ape's silhouette, or the squid's head (its tentacles let light through).
 static bool monsterAt(const Kong& k, float x, float y) {
   if (k.ph == K_IDLE) return false;
-  int bx = (int)lrintf(k.x), by = k.kind == 1 ? squidTop(k) : H - KH;
+  int bx = (int)lrintf(k.x), by = k.kind >= 1 ? squidTop(k) : H - KH;
   int c = (int)floorf((x - bx) / DOT), r = (int)floorf((y - by) / DOT);
   if (c < 0 || c >= KONG_W || r < 0) return false;
-  if (k.kind == 1) {
-    if (r >= 15) return false;
-    int w = SQ_WID[r];
-    if (!w) return false;
-    int m = (KONG_W - w) / 2;
-    return c >= m && c < m + w;
-  }
+  if (k.kind >= 1) return sqCell(k.kind, r, c) != 0;   // the head only; the tentacles let light through
   return kongSeg(r, c) >= 0;
 }
 // The beams, in front of the monsters' bodies and the terrain (the monster's arms and the equalizer are drawn over them).
@@ -1669,7 +1860,7 @@ static void drawLightBases(const State& s, uint16_t* fb) {
 static void drawKongBody(const State& s, uint16_t* fb, uint32_t nowMs) {
   const Kong& k = s.k;
   if (k.ph == K_IDLE) return;
-  if (k.kind == 1) return drawSquid(s, fb, nowMs, false);  // the squid (S11-1)
+  if (k.kind >= 1) return drawSquid(s, fb, nowMs, false);  // the squid (S11-1) and the octopus (S15-1)
   const uint16_t* P = KPAL[k.pal < 7 ? k.pal : 0];
   int bx = (int)lrintf(k.x), by = H - KH;
   bool walking = k.ph == K_WALK || k.ph == K_LEAVE;
@@ -1739,7 +1930,7 @@ static inline float kongMix(float a, float b, float u) { return a + (b - a) * u;
 static void drawKongArms(const State& s, uint16_t* fb, uint32_t nowMs) {
   const Kong& k = s.k;
   if (k.ph == K_IDLE) return;
-  if (k.kind == 1) return drawSquid(s, fb, nowMs, true);  // the squid's stretching tentacles
+  if (k.kind >= 1) return drawSquid(s, fb, nowMs, true);  // the stretching tentacles
   const uint16_t* P = KPAL[k.pal < 7 ? k.pal : 0];
   int bx = (int)lrintf(k.x), by = H - KH;
   const float sy0 = (float)(by + 7 * DOT + 2);
@@ -1902,6 +2093,76 @@ static void drawCity(const State& s, uint16_t* fb, uint32_t nowMs) {
 }
 
 // Draws the whole frame (black sky with stars, terrain, bursts, targets, mines, their bullets, laser beams, bombs, fighter) into fb.
+// The cruiser: the hull from CR_ART, the engines' glow and exhaust, and the smoke or fire from the places that were hit.
+static uint16_t crColor(char ch) {
+  static const uint16_t S = swap(rgb(206, 212, 222)), H = swap(rgb(242, 246, 252)), M = swap(rgb(138, 146, 162)), D = swap(rgb(80, 88, 106)),
+                        K = swap(rgb(34, 38, 52)), L = swap(rgb(184, 192, 206)), W = swap(rgb(255, 222, 150)), G = swap(rgb(246, 249, 255)),
+                        C = swap(rgb(110, 226, 226)), R = swap(rgb(150, 50, 62));
+  switch (ch) {
+    case 'S': return S;
+    case 'H': return H;
+    case 'M': return M;
+    case 'D': return D;
+    case 'K': return K;
+    case 'L': return L;
+    case 'W': return W;
+    case 'G': return G;
+    case 'C': return C;
+    default: return R;
+  }
+}
+static void drawCruiser(const State& s, uint16_t* fb, uint32_t nowMs) {
+  const Cruiser& b = s.cr;
+  if (!b.on) return;
+  int bx = (int)lrintf(b.x);
+  uint32_t fr = nowMs / 70;
+  static const uint16_t E1 = swap(rgb(120, 176, 255)), E2 = swap(rgb(180, 220, 255));
+  for (int r = 0; r < CR_H; r++)
+    for (int c = 0; c < CR_W; c++) {
+      int x = bx + c * DOT;
+      if (x + DOT <= 0 || x >= W) continue;
+      char ch = CR_ART[r][c];
+      if (ch == '.') continue;
+      dot(fb, x, CR_Y + r * DOT, ch == 'E' ? (((fr + r) & 1) ? E1 : E2) : crColor(ch));
+    }
+  for (int e = 0; e < 3; e++) {  // the engines' exhaust: a flickering streak of blue behind each
+    int ey = CR_ENGINES[e];
+    int n = 5 + (int)((fr * 2654435761u + (uint32_t)ey * 7u) % 5u);
+    for (int k = 0; k < n; k++) {
+      int x = bx + (CR_W + k) * DOT;
+      if (x + DOT <= 0 || x >= W) continue;
+      float f = 1.0f - k / 10.0f;
+      dot(fb, x, CR_Y + ey * DOT, swap(rgb((int)(40 + 110 * f), (int)(80 + 120 * f), (int)(150 + 105 * f))));
+    }
+  }
+  for (const auto& p : s.puff) {
+    if (!p.on) continue;
+    float f = fmaxf(0.0f, 1.0f - p.age / 1.3f);
+    int v = (int)lrintf(40 + 110 * f);
+    uint16_t col = (p.fire && p.age < 0.5f) ? (((nowMs / 70) & 1) ? swap(rgb(255, 150, 40)) : swap(rgb(255, 80, 20))) : swap(rgb(v, v, v + 4));
+    dot(fb, (int)lrintf(p.x + p.age * 6.0f), (int)lrintf(p.y), col);
+  }
+}
+// The cruiser's bolts: a long tail fading into green, a white-green head, and a muzzle flash at the gun for a moment.
+static void drawCruiserBolts(const State& s, uint16_t* fb) {
+  for (const auto& q : s.crb) {
+    if (!q.on) continue;
+    float l = sqrtf(q.vx * q.vx + q.vy * q.vy);
+    if (l < 1) l = 1;
+    float ux = q.vx / l, uy = q.vy / l;
+    for (int i = 7; i >= 1; i--) {
+      float f = 1.0f - i / 8.0f;
+      int w = i < 3 ? 3 : 2;
+      fillRect(fb, (int)lrintf(q.x - ux * i * 3.5f) - 1, (int)lrintf(q.y - uy * i * 3.5f) - 1, w, w, swap(rgb((int)(30 + 110 * f), (int)(120 + 135 * f), (int)(50 + 130 * f))));
+    }
+    dot(fb, (int)q.x - 1, (int)q.y - 1, swap(rgb(230, 255, 235)));
+    if (q.age < 0.12f) {
+      static const int8_t F[5][2] = {{0, 0}, {-DOT, 0}, {DOT, 0}, {0, -DOT}, {0, DOT}};
+      for (const auto& d : F) dot(fb, (int)lrintf(q.ox) - 1 + d[0], (int)lrintf(q.oy) - 1 + d[1], (d[0] || d[1]) ? swap(rgb(120, 255, 150)) : swap(rgb(255, 255, 255)));
+    }
+  }
+}
+
 static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
   for (int i = 0; i < W * H; i++) fb[i] = 0;
   int off = scrollOffset(s, nowMs);
@@ -1922,6 +2183,7 @@ static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
     for (int t = (int)lrintf(s.mz.u * (st.near ? 10 : 4)); t > 0; t--) px(fb, x + 1 + t, y, STAR_C[st.kind]);  // streaks in the zone
   }
 
+  drawCruiser(s, fb, nowMs);   // the cruiser: in the sky, behind everything but the stars
   drawKongBody(s, fb, nowMs);  // behind the terrain
 
   for (int i = 0; i < COLS; i++) {
@@ -2021,6 +2283,7 @@ static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
     const EBullet& b = s.eb[i];
     if (b.on) dot(fb, (int)b.x, (int)b.y, ((nowMs / 80 + i) & 1) ? EB_A : EB_B);
   }
+  drawCruiserBolts(s, fb);
   drawMeteors(s, fb);
 
   // Laser beams: bands of color running along the beam, a white head, the last stretch before the tail in dashes.

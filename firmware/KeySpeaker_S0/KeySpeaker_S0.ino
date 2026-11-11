@@ -124,6 +124,12 @@
       Layers: the buildings in front of the monsters' arms, the fighter in front of the buildings, the arms in front of the fighter, all
       behind the equalizer. The searchlight base is a T of four cells with a yellow lamp, and one monster visit in twenty is flat
       shocking pink (the user's ideas). Frame time and heap not yet measured on the device.
+    - (S15-1) Three more things on the game screen (FlightViz.h), from the web demo: a third monster, an octopus (a tall egg of a head, two small
+      slanted eyes low on it, eight tentacles that lie far out along the ground), so each visit is the ape, the squid or the octopus, a third each;
+      a building with somebody at a window has nobody on its roof, and one to three people run out at once (it was three to five); and a rare
+      boss of the meteor zone, a wedge-shaped capital ship as long as the screen is wide, about one zone in five: it crosses slowly during the
+      whole zone, fires volleys of green bolts at the fighter (which slips away; a hit only lights its shield), and when big meteors strike it
+      it smokes, then burns, but flies on (the author's ideas and drawings). About 1 KB of RAM more. Not yet tried on the device.
     - (S11-2) Searchlights on the game screen (FlightViz.h): a city on alert. Up to three stand on the ground, each with a small base (a
       3 x 3 dot light grey square with a blue window), flow from right to left with the terrain and sweep the sky with a slim beam that
       widens and fades toward the top, in a cool blue-white added to the stars' light. A new one comes every 10 to 35 s, only while
@@ -205,7 +211,7 @@
 #define KS_BLE 1  // (S5-5) 0: build without BLE, to compare
 #include "BleHid.h"
 
-#define BUILD_TAG "S14-1"
+#define BUILD_TAG "S15-1"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
