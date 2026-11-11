@@ -49,15 +49,15 @@ long texts.
 
 ## Modes and keys
 
+<table>
+<tr>
+<td valign="top">
+
 At start, KariPom's emblem on a speaker grille and the name "KeySpeaker" show for 2 seconds. `Fn+M` then cycles
 through three modes (over USB); the last one is remembered. In measure mode, after a minute with no
 key and no sound, the emblem comes back with `h HELP  Fn+M KEYBOARD` at the bottom, and stays until you press a key
 (that key only wakes it). Flight mode stays as it is, to be watched. When music starts again, the emblem shakes on the loud beats, like a speaker's cone.
 Pictures of every screen: [`docs/SCREENS.md`](docs/SCREENS.md).
-
-Who you may meet in flight mode (the field guide card; click for the full size):
-
-<a href="docs/images/field_guide_en.webp"><img src="docs/images/field_guide_en.webp" alt="KeySpeaker flight mode field guide: three big monsters, six small targets, the city, the fighter and the cruiser" width="420"></a>
 
 | Mode | Screen | Keys |
 | --- | --- | --- |
@@ -78,6 +78,15 @@ Who you may meet in flight mode (the field guide card; click for the full size):
 *Flight mode on the device, 3 seconds (recorded on an earlier build, which still showed the status line at the top).*
 
 **Meteor zone:** every few minutes while music plays, the terrain sinks low and meteors stream from right to left. The fighter stops firing and weaves through them. The louder the music, the more meteors.
+
+</td>
+<td valign="top" width="380">
+
+<a href="docs/images/field_guide_en.webp"><img src="docs/images/field_guide_en.webp" alt="KeySpeaker flight mode field guide: three big monsters, six small targets, the city, the fighter and the cruiser" width="380"></a>
+
+</td>
+</tr>
+</table>
 
 Without USB (over Bluetooth LE), the keyboard screen is shown first; `Fn+M` then moves to the other screens.
 
