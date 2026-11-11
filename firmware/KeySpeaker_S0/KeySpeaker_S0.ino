@@ -130,6 +130,10 @@
       boss of the meteor zone, a wedge-shaped capital ship as long as the screen is wide, about one zone in five: it crosses slowly during the
       whole zone, fires volleys of green bolts at the fighter (which slips away; a hit only lights its shield), and when big meteors strike it
       it smokes, then burns, but flies on (the author's ideas and drawings). About 1 KB of RAM more. Not yet tried on the device.
+    - (S15-2) The cruiser's barrage (FlightViz.h), from the web demo: once in a pass, about halfway across, its underside glows red for a moment,
+      then twelve missiles leave it a moment apart in a fan from down-left to up-left; they speed up, curve toward the fighter and wobble a
+      little, trailing smoke and a flame, and burst on the ground, on the fighter (its shield flashes) or when they burn out. The fighter slips
+      away from them as from the bolts; the ordinary volleys pause meanwhile (the author's idea). About 1.2 KB of RAM more.
     - (S11-2) Searchlights on the game screen (FlightViz.h): a city on alert. Up to three stand on the ground, each with a small base (a
       3 x 3 dot light grey square with a blue window), flow from right to left with the terrain and sweep the sky with a slim beam that
       widens and fades toward the top, in a cool blue-white added to the stars' light. A new one comes every 10 to 35 s, only while
@@ -211,7 +215,7 @@
 #define KS_BLE 1  // (S5-5) 0: build without BLE, to compare
 #include "BleHid.h"
 
-#define BUILD_TAG "S15-1"
+#define BUILD_TAG "S15-2"
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."

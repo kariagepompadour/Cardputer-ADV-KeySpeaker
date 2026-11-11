@@ -633,6 +633,14 @@ hits and 11 bolts, never together with a monster, no errors; frames were viewed.
 moves very well, so the equalizer is not turned off in the meteor zone (an option kept in reserve). **Not reported or measured:** the slowest frame (`drawMaxUs`),
 the memory left (`heap`), and which parts (the octopus, the cruiser) came up during the check.
 
+**S15-2: the cruiser's barrage (2026-11-11), built, and tried on the device by the author: nothing felt wrong, and it is very well made.** From the web demo, designed there first with the author: once in a
+pass, about halfway across, the cruiser's underside glows red for a moment, then twelve missiles leave it in a fan; they curve toward the fighter trailing
+smoke (the ordinary volleys pause meanwhile). Built with `build.sh`: flash 1,074,671 bytes (32 %, about 2.1 KB more than S15-1), global RAM 96,604 bytes (29 %,
+about 1.3 KB more). The same `FlightViz.h` was run on a computer: in 12 simulated minutes 4 cruiser passes brought 4 barrages and 48 missiles (12 in the air at
+most, 1.3 s on average, 2.2 s at the longest), never together with a monster, no errors; a frame was viewed. The M5Burner image `KeySpeaker_S15-2_MERGED.bin`
+(the S15-1 image's first 0x10000 bytes, the new app, 0xFF to 8 MiB; identical to arduino-cli's merged output) is made and **not tried**. Not measured: the
+slowest frame (`drawMaxUs`) and the memory left (`heap`) on the device, and which parts came up during the check were not reported.
+
 Design 5.2 (plan A: Media Jog's BLE identity and GATT table) and 5.3. Over USB nothing changes. Without USB (on the
 battery, or on a charger only) the Cardputer advertises as "KeySpeaker" after 3 seconds; the keyboard screen shows
 `BLE wait` in yellow, then `BLE` in green once a computer is connected and ready.

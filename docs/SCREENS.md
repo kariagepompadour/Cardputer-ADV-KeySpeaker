@@ -93,7 +93,8 @@ A screen saver to watch while music plays, not a game: no score, nothing to lose
 - A meteor zone (S13-1) comes every few minutes while music plays: the terrain sinks low, the stars stream and meteors fly from right to left while the
   fighter weaves through them. Rarely (about one zone in five, S15-1) a boss crosses the sky during the whole zone: a wedge-shaped capital ship as long as
   the screen is wide, behind the meteors. It fires volleys of two or three green bolts straight at the fighter, which slips away from them (a hit
-  only lights its shield), and big meteors that strike it set it smoking, then burning; it flies on.
+  only lights its shield), and big meteors that strike it set it smoking, then burning; it flies on. Once in a pass, about halfway across, its underside glows red
+  for a moment and a barrage of twelve missiles leaves it in a fan; they curve toward the fighter trailing smoke (S15-2).
 - Now and then a graphic equalizer like an old hi-fi's rises in front of the terrain: 30 bands with falling peak
   dots, in the aqua of a fluorescent display or in KariPom's colors. The patterns take turns every minute.
 - Nothing else on it while all is well: a line at the top shows only when something is wrong (`not connected` in

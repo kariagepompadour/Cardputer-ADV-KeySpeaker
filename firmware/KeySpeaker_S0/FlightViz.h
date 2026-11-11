@@ -49,7 +49,8 @@
   on its roof, and one to three people run out at once. And a rare boss of the meteor zone, a wedge-shaped capital ship as long as the screen is
   wide (about one zone in five, by lot): it crosses the sky slowly during the whole zone, behind the meteors and the terrain, fires volleys of
   two or three green bolts straight at the fighter (which slips away from them; a hit only lights its shield), and when big meteors strike
-  it, it smokes and finally burns, but flies on. Not while a monster is there.
+  it, it smokes and finally burns, but flies on. Not while a monster is there. S15-2: about halfway across, its underside glows red, then a barrage of twelve
+  missiles leaves it in a fan; they curve toward the fighter trailing smoke (once in a pass; the ordinary volleys pause meanwhile).
 
   Plain C++ on a 240 x 135 RGB565 frame buffer laid out like M5Canvas's (16-bit pixels, high byte first), so the same
   code also runs on a computer for previews.
@@ -294,6 +295,12 @@ constexpr int CR_W = 80, CR_H = 25, CR_Y = 8, CR_TRAIL = 34;           // dots, 
 constexpr float CR_SPEED = (W + 2 + CR_W * 3 + CR_TRAIL) / (MZ_IN_S + MZ_RUN_S + MZ_OUT_S);   // px/s: it takes the whole zone to cross
 constexpr int CR_ZONE_PERCENT = 20;                                    // about 1 meteor zone in 5 brings it, by lot
 constexpr int CR_MAX_BOLTS = 10, CR_MAX_PUFFS = 40;
+// The barrage (S15-2): once in a pass, about halfway across (the cruiser's left edge at CR_BARRAGE_X px), its underside glows red for CR_WARN_S, then it
+// launches CR_MISSILES missiles from the bay along its underside, in a fan from down-left to up-left (the terrain is low in the zone, so a downward fan
+// would hit the ground at once). They speed up, curve toward the fighter and wobble a little, trailing smoke.
+constexpr int CR_MISSILES = 12, CR_TRAIL_N = 9, CR_BARRAGE_X = 50, CR_BAY0 = 26, CR_BAY1 = 60;
+constexpr float CR_WARN_S = 0.9f, CR_MISSILE_GAP_S = 0.08f, CR_MISSILE_LIFE = 3.4f, CR_MISSILE_TURN = 1.8f, CR_MISSILE_V0 = 60.0f, CR_MISSILE_VMAX = 115.0f;
+static inline float crBot(float x) { return 17.0f + 7.0f * x / (CR_W - 1); }  // the underside's row at column x
 static const uint8_t CR_ENGINES[3] = {16, 19, 22};                     // the rows of the three nozzles at the stern
 static const uint8_t CR_GUNS[3][2] = {{28, 21}, {40, 22}, {52, 23}};   // where the bolts leave when the fighter is below it (dots)
 static const uint8_t CR_TOPGUNS[5][2] = {{32, 12}, {42, 11}, {48, 11}, {58, 8}, {60, 8}};   // and when it is above it: the mounts on top
@@ -333,10 +340,19 @@ struct Cruiser {
   uint8_t hits = 0;                     // big meteors that have struck it
   uint8_t volley = 0;                   // bolts still to fire in this volley
   uint32_t nextFire = 0, volleyAt = 0;
+  uint8_t barrage = 0, fired = 0;       // 0 waiting, 1 warning, 2 launching, 3 done; missiles launched so far
+  float bt = 0;                         // time in the warning
+  uint32_t nextMissile = 0;
 };
 struct CrBolt {                         // a bolt, flying straight at where the fighter was
   bool on = false;
   float x = 0, y = 0, ox = 0, oy = 0, vx = 0, vy = 0, age = 0;
+};
+struct CrMissile {                      // a missile of the barrage: it turns toward the fighter and leaves a smoke trail
+  bool on = false;
+  uint8_t seed = 0, nt = 0;             // its wobble's phase; how many trail points it has
+  float x = 0, y = 0, th = 0, v = 0, vx = 0, vy = 0, age = 0, tt = 0;
+  float tx[CR_TRAIL_N] = {}, ty[CR_TRAIL_N] = {};
 };
 struct CrPuff {                         // smoke (or fire) left behind by a place that was hit
   bool on = false, fire = false;
@@ -450,6 +466,7 @@ struct State {
   Dust dust[MZ_DUST_MAX];
   Cruiser cr;
   CrBolt crb[CR_MAX_BOLTS];
+  CrMissile ms[CR_MISSILES];
   CrPuff puff[CR_MAX_PUFFS];
   bool cruiserForce = false;  // for previews on a computer: the cruiser comes with every meteor zone
   Kong k;
@@ -543,6 +560,7 @@ static void init(State& s, uint32_t nowMs) {
   s.mz.nextMs = nowMs + MZ_FIRST_MS;
   s.cr = Cruiser();
   for (auto& q : s.crb) q = CrBolt();
+  for (auto& m : s.ms) m = CrMissile();
   for (auto& p : s.puff) p = CrPuff();
   for (auto& m : s.met) m = Meteor();
   for (auto& d : s.dust) d = Dust();
@@ -1134,15 +1152,20 @@ static void updateMeteorZone(State& s, uint32_t nowMs, float dt, int sx) {
   for (auto& l : s.lt) if (l.on) l.x -= w;
 }
 
-// The fighter slips up or down away from a bolt that is about to reach it.
+// The fighter slips up or down away from a bolt or a missile that is about to reach it.
+static inline float dodgeFrom(float qx, float qy, float qvx, float qvy, int sx, float sy) {
+  if (fabsf(qvx) < 1) return 0;
+  float t = (sx + SHIP_W / 2.0f - qx) / qvx;  // when it gets to the fighter's x
+  if (t < 0.05f || t > 0.7f) return 0;
+  float y = qy + qvy * t;
+  if (fabsf(y - (sy + SHIP_H / 2.0f)) < SHIP_H / 2.0f + 6) return y > sy + SHIP_H / 2.0f ? -K_EVADE_PX : K_EVADE_PX;
+  return 0;
+}
 static float cruiserEvade(const State& s, int sx, float sy) {
-  for (const auto& q : s.crb) {
-    if (!q.on || fabsf(q.vx) < 1) continue;
-    float t = (sx + SHIP_W / 2.0f - q.x) / q.vx;  // when the bolt gets to the fighter's x
-    if (t < 0.05f || t > 0.7f) continue;
-    float y = q.y + q.vy * t;
-    if (fabsf(y - (sy + SHIP_H / 2.0f)) < SHIP_H / 2.0f + 6) return y > sy + SHIP_H / 2.0f ? -K_EVADE_PX : K_EVADE_PX;
-  }
+  for (const auto& q : s.crb)
+    if (q.on) { float e = dodgeFrom(q.x, q.y, q.vx, q.vy, sx, sy); if (e != 0) return e; }
+  for (const auto& m : s.ms)
+    if (m.on) { float e = dodgeFrom(m.x, m.y, m.vx, m.vy, sx, sy); if (e != 0) return e; }
   return 0;
 }
 // Moves the cruiser, its volleys of bolts (two or three at a time, straight at the fighter, from the guns that face it) and its smoke.
@@ -1150,7 +1173,25 @@ static void updateCruiser(State& s, uint32_t nowMs, float dt, int sx, int sy) {
   Cruiser& b = s.cr;
   if (b.on) {
     b.x -= CR_SPEED * dt;
-    if ((int32_t)(nowMs - b.nextFire) >= 0) {
+    if (b.barrage == 0 && b.x <= CR_BARRAGE_X && b.volley == 0) b.barrage = 1, b.bt = 0;  // about halfway across: the warning
+    if (b.barrage == 1) {
+      b.bt += dt;
+      if (b.bt >= CR_WARN_S) b.barrage = 2, b.fired = 0, b.nextMissile = nowMs;
+    } else if (b.barrage == 2 && (int32_t)(nowMs - b.nextMissile) >= 0) {  // then the missiles, a moment apart, in a fan
+      int i = b.fired++;
+      float f = i / (float)(CR_MISSILES - 1), xd = CR_BAY0 + (CR_BAY1 - CR_BAY0) * f;  // the left ones leave from the left end of the bay
+      for (auto& m : s.ms) {
+        if (m.on) continue;
+        m = CrMissile();
+        m.on = true, m.seed = (uint8_t)i, m.v = CR_MISSILE_V0;
+        m.x = (float)lrintf(b.x) + xd * DOT, m.y = CR_Y + (crBot(xd) + 1.5f) * DOT;
+        m.th = (float)M_PI + (-70.0f + 140.0f * f) * (float)M_PI / 180.0f;
+        break;
+      }
+      b.nextMissile = nowMs + (uint32_t)(CR_MISSILE_GAP_S * 1000);
+      if (b.fired >= CR_MISSILES) b.barrage = 3, b.nextFire = nowMs + 2500;  // done: the ordinary volleys come back after a pause
+    }
+    if (b.barrage != 1 && b.barrage != 2 && (int32_t)(nowMs - b.nextFire) >= 0) {
       b.nextFire = nowMs + 1100 + nextRandom(s) % 900;
       b.volley = (uint8_t)(2 + nextRandom(s) % 2), b.volleyAt = nowMs;
     }
@@ -1201,6 +1242,44 @@ static void updateCruiser(State& s, uint32_t nowMs, float dt, int sx, int sy) {
       freeBurst(s, (float)bx, (float)(ground - 1));
     } else if (bx < -DOT || bx > W + DOT || q.y < -DOT) {
       q.on = false;
+    }
+  }
+  for (auto& m : s.ms) {  // the missiles: they speed up, turn toward the fighter and wobble a little
+    if (!m.on) continue;
+    m.age += dt;
+    float fx = sx + SHIP_W / 2.0f, fy = sy + SHIP_H / 2.0f;
+    float d = atan2f(fy - m.y, fx - m.x) - m.th;
+    while (d > (float)M_PI) d -= 2.0f * (float)M_PI;
+    while (d < -(float)M_PI) d += 2.0f * (float)M_PI;
+    float turn = CR_MISSILE_TURN * dt;
+    m.th += fmaxf(-turn, fminf(turn, d)) + sinf(m.age * 9.0f + m.seed) * 0.4f * dt;
+    m.v = fminf(CR_MISSILE_VMAX, CR_MISSILE_V0 + 60.0f * m.age);
+    m.vx = cosf(m.th) * m.v, m.vy = sinf(m.th) * m.v;
+    m.x += m.vx * dt, m.y += m.vy * dt;
+    m.tt -= dt;
+    if (m.tt <= 0) {  // a new trail point, the older ones move along
+      m.tt = 0.035f;
+      for (int i = CR_TRAIL_N - 1; i > 0; i--) m.tx[i] = m.tx[i - 1], m.ty[i] = m.ty[i - 1];
+      m.tx[0] = m.x, m.ty[0] = m.y;
+      if (m.nt < CR_TRAIL_N) m.nt++;
+    }
+    int bx = (int)m.x;
+    int ground = H - heightAt(s, bx, off);
+    if (m.x > sx - DOT && m.x < sx + SHIP_W && m.y + DOT > sy && m.y < sy + SHIP_H) {  // on the fighter: the shield takes it, with a bigger flash
+      m.on = false;
+      s.shieldUntil = nowMs + SHIELD_MS;
+      freeBurst(s, (float)bx, m.y);
+      freeBurst(s, (float)(bx - 6), m.y + 3);
+      freeBurst(s, (float)(bx + 5), m.y - 4);
+    } else if (m.y + DOT >= ground) {
+      m.on = false;
+      carve(s, colAt(bx + 1, off), 2);
+      freeBurst(s, (float)bx, (float)(ground - 1));
+    } else if (m.age >= CR_MISSILE_LIFE) {  // it burns out in a burst
+      m.on = false;
+      freeBurst(s, m.x, m.y);
+    } else if (bx < -8 || bx > W + 8 || m.y < -8) {
+      m.on = false;
     }
   }
   for (auto& p : s.puff) {
@@ -2125,6 +2204,15 @@ static void drawCruiser(const State& s, uint16_t* fb, uint32_t nowMs) {
       if (ch == '.') continue;
       dot(fb, x, CR_Y + r * DOT, ch == 'E' ? (((fr + r) & 1) ? E1 : E2) : crColor(ch));
     }
+  if (b.barrage == 1) {  // the warning: the underside glows red, flickering faster toward the launch
+    float u = b.bt / CR_WARN_S;
+    bool on = ((nowMs / (uint32_t)(170.0f - 110.0f * u)) & 1) == 0;
+    for (int xd = CR_BAY0 - 2; xd <= CR_BAY1 + 2; xd++) {
+      int x = bx + xd * DOT;
+      if (x + DOT <= 0 || x >= W) continue;
+      dot(fb, x, CR_Y + ((int)floorf(crBot((float)xd) + 0.5f) + 1) * DOT, on ? swap(rgb(255, 70, 40)) : swap(rgb(140, 28, 22)));
+    }
+  }
   for (int e = 0; e < 3; e++) {  // the engines' exhaust: a flickering streak of blue behind each
     int ey = CR_ENGINES[e];
     int n = 5 + (int)((fr * 2654435761u + (uint32_t)ey * 7u) % 5u);
@@ -2141,6 +2229,25 @@ static void drawCruiser(const State& s, uint16_t* fb, uint32_t nowMs) {
     int v = (int)lrintf(40 + 110 * f);
     uint16_t col = (p.fire && p.age < 0.5f) ? (((nowMs / 70) & 1) ? swap(rgb(255, 150, 40)) : swap(rgb(255, 80, 20))) : swap(rgb(v, v, v + 4));
     dot(fb, (int)lrintf(p.x + p.age * 6.0f), (int)lrintf(p.y), col);
+  }
+}
+// The barrage's missiles: a smoke trail (older points greyer and fainter), a flame, a bright head and a flash at the launch.
+static void drawCruiserMissiles(const State& s, uint16_t* fb, uint32_t nowMs) {
+  for (const auto& m : s.ms) {
+    if (!m.on) continue;
+    for (int i = 0; i < m.nt; i++) {
+      float f = 1.0f - i / (float)m.nt;
+      int v = (int)lrintf(60 + 110 * f);
+      fillRect(fb, roundi(m.tx[i]) - 1, roundi(m.ty[i]) - 1, 2, 2, swap(rgb(v, v > 12 ? v - 12 : 0, v > 32 ? v - 32 : 0)));
+    }
+    float ux = cosf(m.th), uy = sinf(m.th);
+    fillRect(fb, roundi(m.x - ux * 4) - 1, roundi(m.y - uy * 4) - 1, 2, 2, swap(rgb(255, 200, 80)));  // the flame
+    fillRect(fb, roundi(m.x - ux * 7) - 1, roundi(m.y - uy * 7) - 1, 2, 2, (((nowMs / 60) + m.seed) & 1) ? swap(rgb(255, 110, 30)) : swap(rgb(255, 150, 50)));
+    dot(fb, (int)m.x - 1, (int)m.y - 1, swap(rgb(255, 240, 205)));  // the head
+    if (m.age < 0.1f) {
+      static const int8_t F[5][2] = {{0, 0}, {-DOT, 0}, {DOT, 0}, {0, -DOT}, {0, DOT}};
+      for (const auto& d : F) dot(fb, roundi(m.x) - 1 + d[0], roundi(m.y) - 1 + d[1], (d[0] || d[1]) ? swap(rgb(255, 150, 50)) : swap(rgb(255, 255, 255)));
+    }
   }
 }
 // The cruiser's bolts: a long tail fading into green, a white-green head, and a muzzle flash at the gun for a moment.
@@ -2284,6 +2391,7 @@ static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
     if (b.on) dot(fb, (int)b.x, (int)b.y, ((nowMs / 80 + i) & 1) ? EB_A : EB_B);
   }
   drawCruiserBolts(s, fb);
+  drawCruiserMissiles(s, fb, nowMs);
   drawMeteors(s, fb);
 
   // Laser beams: bands of color running along the beam, a white head, the last stretch before the tail in dashes.
