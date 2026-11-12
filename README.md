@@ -41,6 +41,9 @@ time?
 - **Unplug it (a spare):** it becomes a Bluetooth LE keyboard and mouse by itself, a few seconds later.
 - **Nothing to install on the other device.** Only KeySpeaker goes onto the Cardputer, through a launcher or
   M5Burner ([Install](#install)).
+- **A Cardputer ADV and a USB-C cable are all you need.** Everything on this page works with just those: the speaker,
+  the keyboard, the tilt mouse and the flight mode. The Pico 2 AUX unit, its 3D-printed box and the jog dial are
+  optional extras (see [Hardware](#hardware)). No soldering, no 3D printer.
 
 Limits of the Bluetooth LE spare:
 
@@ -226,6 +229,13 @@ power pass-through (USB PD) lets it charge while in use. The Cardputer's power s
 - M5Stack **Cardputer ADV** (ESP32-S3FN8, ES8311 codec, 1 W speaker, TCA8418 keyboard). The original Cardputer is
   not a target.
 - USB-C **data** cable.
+
+That is everything you need. Optional extras, none of them required:
+
+- **AUX unit** (Pico 2 + PCM1808): takes sound from a computer's earphone jack or another line source
+  ([build guide](docs/AUX_PICO2_BUILD.md)).
+- **3D-printed box** for the AUX unit ([STL files](hardware/aux-pico2-box)). Only needed if you build the AUX unit.
+- **Jog dial** (M5Stack Unit Encoder U135): volume and play / pause by hand.
 
 ## License
 
