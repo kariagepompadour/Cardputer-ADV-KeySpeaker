@@ -4,9 +4,22 @@
 
 **PCにも、スマホにも、ゲーム機にも。カバンに入れておける、小さなスピーカー＆キーボード。**
 
+<table>
+<tr>
+<td valign="top" width="480">
+
 <img src="docs/images/photo_start.jpg" alt="Cardputer ADVに出たKeySpeakerの起動画面：スピーカーの網目に、かりポムのエンブレム" width="480">
 
 [English README](README.md)
+
+</td>
+<td valign="top" width="360">
+
+<img src="docs/images/poster_ja.webp" alt="KeySpeakerのポスター：音で出来た地形の上を戦闘機が飛び、後ろに3体のモンスター、手前にCardputer ADV" width="360">
+
+</td>
+</tr>
+</table>
 
 > **状態: 開発中です。** MacとWindows 11では、USB-Cケーブル1本で、スピーカーとキーボードの両方が使えるようになりました。十分な音量で鳴り（8時間続けて音切れなし、一時停止と再開も問題なし）、
 > キーボードで文字が打て、音量や再生のキーも効きます。USBでつないだiPhone 15でも使え、傾きで動かすマウスも使えます。予備として、ケーブルを抜くとBluetooth LEのキーボードとマウスにもなります（MacとWindows 11で確認。USBに戻すには、電源スイッチを切ってリセットボタンを押します）。

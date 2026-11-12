@@ -4,9 +4,22 @@
 
 **A pocket speaker and keyboard for your computer, phone or console. Keep it in your bag.**
 
+<table>
+<tr>
+<td valign="top" width="480">
+
 <img src="docs/images/photo_start.jpg" alt="KeySpeaker's start screen on the Cardputer ADV: KariPom's emblem on a speaker grille" width="480">
 
 [日本語版 README](README_JA.md)
+
+</td>
+<td valign="top" width="360">
+
+<img src="docs/images/poster_en.webp" alt="KeySpeaker poster: a fighter flies over a terrain built from sound, with three monsters behind it and the Cardputer ADV in the corner" width="360">
+
+</td>
+</tr>
+</table>
 
 > **Status: in development.** On a Mac and on Windows 11, one USB-C cable now gives you both: the speaker plays at
 > a good level (8 hours without a dropout, pause and resume work) and the keyboard types, with volume and playback keys.
