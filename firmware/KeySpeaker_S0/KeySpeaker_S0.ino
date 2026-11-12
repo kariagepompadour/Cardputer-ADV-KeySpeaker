@@ -215,7 +215,13 @@
 #define KS_BLE 1  // (S5-5) 0: build without BLE, to compare
 #include "BleHid.h"
 
+#define KS_DIAG 1  // (MP3 stage 0) 1: heap / task diagnostics on the serial port (KsDiag.h), nothing else changes
+#if KS_DIAG
+#include "KsDiag.h"
+#define BUILD_TAG "S15-2+D0"
+#else
 #define BUILD_TAG "S15-2"
+#endif
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
 #error "Tools > USB Mode must be 'USB-OTG (TinyUSB)'. In 'Hardware CDC and JTAG' mode there is no USB audio."
@@ -1962,6 +1968,9 @@ void setup() {
   xTaskCreatePinnedToCore(auxTask, "aux", 4096, nullptr, 3, nullptr, PRO_CPU_NUM);
   Serial.printf("[BOOT] IMU %s\n", M5.Imu.isEnabled() ? "on" : "not found");
   Serial.printf("[BOOT] ready, heap %u\n", (unsigned)ESP.getFreeHeap());
+#if KS_DIAG
+  ksdiag::heapLine("boot");
+#endif
 }
 
 void loop() {
@@ -2062,6 +2071,18 @@ void loop() {
     static uint32_t crashLogs = 0;
     if (crashLogs++ % 10 == 0) Serial.printf("[CRASH] saved dump: %s\n", crashInfo);
   }
+#if KS_DIAG
+  {
+    static uint32_t lastDiag = 0;
+    if (now - lastDiag >= 10000) {
+      lastDiag = now;
+      ksdiag::report(now);
+    }
+    while (Serial.available()) {  // 'P': run the MP3 heap probe (KsDiag.h)
+      if (Serial.read() == 'P') ksdiag::heapProbe(50);
+    }
+  }
+#endif
   diagMark(diagLoop, 0);
   delay(5);
 }
