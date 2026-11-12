@@ -218,7 +218,7 @@
 #define KS_DIAG 1  // (MP3 stage 0) 1: heap / task diagnostics on the serial port (KsDiag.h), nothing else changes
 #if KS_DIAG
 #include "KsDiag.h"
-#define BUILD_TAG "S15-2+D0"
+#define BUILD_TAG "S15-2+D1"
 #else
 #define BUILD_TAG "S15-2"
 #endif
@@ -1877,6 +1877,18 @@ static void drawKeys() {
   }
   // (S5-13) The S5-5 / S5-6 diagnostics at the bottom right (uac, free memory, BLE subscriptions and reports) are gone
   // from the screen now that BLE works; they looked left over (the user noticed). The serial log keeps [LINK] lines.
+#if KS_DIAG
+  {  // (MP3 stage 0, diagnostic build only) the heap on the keyboard screen, so it can be read over BLE without a serial port:
+    // F = free now, m = lowest free since start, B = largest free block, in bytes.
+    multi_heap_info_t hi;
+    heap_caps_get_info(&hi, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    char hl[40];
+    snprintf(hl, sizeof hl, "F%u m%u B%u", (unsigned)hi.total_free_bytes, (unsigned)hi.minimum_free_bytes, (unsigned)hi.largest_free_block);
+    canvas.fillRect(88, 125, 152, 10, COL_BG);
+    canvas.setTextColor(COL_WARN);
+    canvas.drawRightString(hl, 236, 126);
+  }
+#endif
   showCanvas();
 }
 
