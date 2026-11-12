@@ -218,7 +218,7 @@
 #define KS_DIAG 1  // (MP3 stage 0) 1: heap / task diagnostics on the serial port (KsDiag.h), nothing else changes
 #if KS_DIAG
 #include "KsDiag.h"
-#define BUILD_TAG "S15-2+D1"
+#define BUILD_TAG "S15-2+D2"
 #else
 #define BUILD_TAG "S15-2"
 #endif
@@ -2091,7 +2091,24 @@ void loop() {
       ksdiag::report(now);
     }
     while (Serial.available()) {  // 'P': run the MP3 heap probe (KsDiag.h)
-      if (Serial.read() == 'P') ksdiag::heapProbe(50);
+      int ch = Serial.read();
+      if (ch == 'P') ksdiag::heapProbe(50);
+#if KS_BLE
+      // BLE memory experiment (with USB plugged in, so the serial port stays): E = start the BLE stack as BleHid does,
+      // D = BLEDevice::deinit(false) (the stack's memory back, re-startable), X = deinit(true) (memory released for good
+      // until the next restart). The heap is printed before and after each.
+      if (ch == 'E') {
+        ksdiag::heapLine("before BLE begin");
+        BleHid::begin();
+        delay(500);
+        ksdiag::heapLine("BLE advertising");
+      } else if (ch == 'D' || ch == 'X') {
+        ksdiag::heapLine("before BLE deinit");
+        BLEDevice::deinit(ch == 'X');
+        delay(500);
+        ksdiag::heapLine(ch == 'X' ? "after deinit(true)" : "after deinit(false)");
+      }
+#endif
     }
   }
 #endif
