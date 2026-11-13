@@ -109,15 +109,21 @@ keyboard modeの画面の左下に、緑の `MIC` が出ます。そこの緑の
   <img src="docs/images/aux_pico2/photo_box_aux_screen.jpg" alt="AUXのときのKeySpeakerのデータ画面：AUX IN bad 0 lost 0" width="32%">
 </p>
 
-`Fn+I` を押すたびに、入力が USB、MIC、AUX の順に変わります。AUX はユニットがあるときだけ選べます。押すと戦闘機が画面を横切り、
-今の入力が大きな文字で出ます。音源がないときは、赤で `NO USB` や `NO AUX` と出ます。
+**MP3入力（`Fn+I`）:** microSD カードの `/music` フォルダ（または一番上のフォルダ）に `.mp3` を入れると、4 つ目の入力として
+Cardputer が再生します。画面はそのままで、戦闘機やフライトビューが曲に合わせて動きます。USB がつながっているときだけ使えます
+（メモリを Bluetooth キーボードと分け合うためです）。測定画面とフライト画面で、`Space` が一時停止／再生、`,` が前の曲、`/` が次の曲です。
+曲はぐるぐる繰り返します。MP3 レイヤー3、32 / 44.1 / 48 kHz、ステレオ／モノラル、320 kbps まで。くわしくは [docs/MP3_DESIGN.md](docs/MP3_DESIGN.md)。
+デコーダーは [minimp3](https://github.com/lieff/minimp3)（CC0、パブリックドメイン。[docs/MP3_LICENSE.md](docs/MP3_LICENSE.md) を参照）です。
+
+`Fn+I` を押すたびに、入力が USB、MIC、AUX、MP3 の順に変わります。AUX はユニットがあるときだけ選べます。押すと戦闘機が画面を横切り、
+今の入力が大きな文字で出ます。音源がないときは、赤で `NO USB`、`NO AUX`、`NO SD`、`NO MP3` と出ます。
 
 どのモードでも:
 
 | キー | 動作 |
 | --- | --- |
 | `Fn+M` | 次のモードへ（USBがなくても効く） |
-| `Fn+I` | 入力の切り替え：USBの音、内蔵マイク、AUX（下を参照） |
+| `Fn+I` | 入力の切り替え：USBの音、内蔵マイク、AUX、microSD の MP3（上を参照） |
 | `Fn+O` | Mac ↔ Windows の切り替え（覚えておく） |
 
 スピーカーと再生のキー（measure mode と flight mode）:
