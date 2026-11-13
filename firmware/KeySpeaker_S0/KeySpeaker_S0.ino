@@ -221,9 +221,9 @@
 #define KS_DIAG 1  // (MP3 stage 0) 1: heap / task diagnostics on the serial port (KsDiag.h), nothing else changes
 #if KS_DIAG
 #include "KsDiag.h"
-#define BUILD_TAG "S16-1+D"
+#define BUILD_TAG "S16-2+D"
 #else
-#define BUILD_TAG "S16-1"
+#define BUILD_TAG "S16-2"
 #endif
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
@@ -681,7 +681,7 @@ static void ringUse(size_t bytes) {
 }
 
 static constexpr size_t MP3_RING_BYTES = 16384;  // about 170 ms: START_FILL (100 ms) and room above it
-static constexpr size_t MP3_STACK = 6144;
+static constexpr size_t MP3_STACK = 16384;  // minimp3 keeps about 14 KB of per-frame scratch on the stack
 static StaticTask_t mp3Tcb;
 
 static void mp3Process(int16_t* out, size_t n) {
