@@ -1,4 +1,6 @@
-# MP3 decoder license (Helix, RPSL / RCSL): what it asks, and the options
+# MP3 decoder license (Helix, RPSL / RCSL): what it asked, and the decision
+
+**Decision (2026-11-13): option B.** S16-2 and later use **minimp3** (https://github.com/lieff/minimp3, one header `firmware/KeySpeaker_S0/minimp3.h`, CC0 1.0 / public domain; license text in `docs/minimp3_LICENSE.txt`). The firmware no longer links the SDK's Helix library, so the RPSL notices below are **not needed** for builds from S16-2 on. The text below is kept as the reasoning. The S16-1 test images (Helix) stay with the developer and are not published.
 
 Written on 2026-11-13 from the license texts in `ESP8266Audio/src/libhelix-mp3` (`RPSL.txt`, `RCSL.txt`, `LICENSE.txt`) and the headers of the copy that ships with the m5stack:esp32 3.3.10 SDK (the same notice). This is a reading of the texts for a decision, **not legal advice**.
 
