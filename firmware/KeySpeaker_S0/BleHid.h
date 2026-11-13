@@ -33,6 +33,7 @@
 #if !KS_BLE  // (S5-5) BLE left out of the build, to compare: the same calls, doing nothing
 namespace BleHid {
 static bool on = false;
+static bool started = false;
 static bool ready() { return false; }
 static bool sendKeyboard(const uint8_t*) { return false; }
 static bool sendMouse(uint8_t, int8_t, int8_t, int8_t = 0) { return false; }
@@ -389,8 +390,13 @@ static bool service(uint32_t now) {
   return changed;
 }
 
+static void (*stepHook)(const char*) = nullptr;  // (diagnostics) called after each step of begin() with its name
+#define KS_BLE_STEP(name) do { if (stepHook) stepHook(name); } while (0)
+
 static void begin() {
+  KS_BLE_STEP("ble before init");
   BLEDevice::init(DEVICE_NAME);
+  KS_BLE_STEP("ble after BLEDevice::init");
   ble_gap_event_listener_register(&subscribeListener, onSubscribeEvent, nullptr);
   ble_gap_event_listener_register(&connectListener, onConnectEvent, nullptr);
   BLESecurity* security = new BLESecurity();
@@ -398,12 +404,14 @@ static void begin() {
   security->setAuthenticationMode(true, false, true);  // bonding, no MITM, LE Secure Connections
   BLEDevice::setSecurityCallbacks(new SecurityCallbacks());
   server = BLEDevice::createServer();
+  KS_BLE_STEP("ble after createServer");
   server->setCallbacks(new ServerCallbacks());
   server->advertiseOnDisconnect(true);
   // The table is queued after createServer() (which resets NimBLE's table) and registered by the one start().
   int rc = ble_gatts_count_cfg(SERVICES);
   if (rc == 0) rc = ble_gatts_add_svcs(SERVICES);
   server->start();
+  KS_BLE_STEP("ble after server->start");
   BLEAdvertising* adv = BLEDevice::getAdvertising();
   adv->setAppearance(0x03C1);  // HID keyboard
   adv->addServiceUUID(BLEUUID((uint16_t)0x1812));
@@ -411,6 +419,7 @@ static void begin() {
   adv->setMinPreferred(0x06);
   adv->setMaxPreferred(0x12);
   BLEDevice::startAdvertising();
+  KS_BLE_STEP("ble after startAdvertising");
   Serial.printf("[BLE] advertising as %s; gatt rc %d, handles kb %u mouse %u\n", DEVICE_NAME, rc,
                 (unsigned)kbInput.handle, (unsigned)mouseInput.handle);
 }

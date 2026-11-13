@@ -123,13 +123,16 @@ The same unit in a 3D-printed box, with the Cardputer ADV snapped onto the lid (
 </p>
 
 **MP3 input (`Fn+I`):** put `.mp3` files in a `/music` folder on a microSD card (or in its top folder) and the Cardputer plays them
-as a fourth input, with the same screens: the fighter and the flight view follow the music. Only while USB is connected (the memory
-is shared with the Bluetooth keyboard). On the measure and flight screens, `Space` pauses or plays, `,` goes to the previous track and
+as a fourth input, with the same screens: the fighter and the flight view follow the music. It also plays without a computer (on the battery, a power bank or a plain USB
+charger): choose it with `Fn+I` within 10 seconds of switching on, before the Bluetooth keyboard starts, and the next start without a computer
+begins with MP3 again (with USB it always starts with USB). While MP3 plays the Bluetooth keyboard is off. Once the Bluetooth keyboard has started,
+MP3 needs the power switched off and on (the Bluetooth stack takes most of the memory and cannot be released), and the screen says `RESTART`.
+Playing from the card uses more power than waiting, so expect a shorter battery life (not measured yet). On the measure and flight screens, `Space` pauses or plays, `,` goes to the previous track and
 `/` to the next; the tracks loop. MP3 layer 3, 32 / 44.1 / 48 kHz, stereo or mono, up to 320 kbps. Details: [docs/MP3_DESIGN.md](docs/MP3_DESIGN.md).
 The decoder is [minimp3](https://github.com/lieff/minimp3) (CC0, public domain; see [docs/MP3_LICENSE.md](docs/MP3_LICENSE.md)).
 
 Each press of `Fn+I` moves on to the next input: USB, MIC, then AUX when the unit is there, then MP3. The fighter crosses the screen and
-leaves the input in big letters behind it, or `NO USB`, `NO AUX`, `NO SD` or `NO MP3` in red when that source is missing.
+leaves the input in big letters behind it, or `NO USB`, `NO AUX`, `NO SD`, `NO MP3` or `RESTART` in red when that source is missing.
 
 In every mode:
 

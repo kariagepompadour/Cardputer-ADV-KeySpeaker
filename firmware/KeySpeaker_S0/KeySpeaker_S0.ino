@@ -213,6 +213,7 @@
 #include "Splash.h"
 #include "KeyEarth.h"
 #include <SD.h>
+#include <ff.h>
 #include <SPI.h>
 #include "Mp3Source.h"
 #define KS_BLE 1  // (S5-5) 0: build without BLE, to compare
@@ -221,9 +222,9 @@
 #define KS_DIAG 0  // (MP3 stage 0) 1: heap / task diagnostics on the serial port (KsDiag.h), nothing else changes
 #if KS_DIAG
 #include "KsDiag.h"
-#define BUILD_TAG "S16-7+D"
+#define BUILD_TAG "S16-10+D"
 #else
-#define BUILD_TAG "S16-7"
+#define BUILD_TAG "S16-10"
 #endif
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
@@ -657,7 +658,7 @@ static bool mp3IsFile(File& f) {
 // The k-th .mp3 in /music, else in / (in directory order); the count is returned and the name filled in when k is in range.
 // The names of the tracks are read once when the input is switched on (a track change must not walk the SD folder: that took
 // longer than the ring holds). The list is on the heap only while MP3 is on.
-static constexpr size_t MP3_NAMES_BYTES = 6144;
+static constexpr size_t MP3_NAMES_MAX = 60000;  // the list is sized to the real names (about 40 bytes a track), never more than this
 static constexpr int MP3_MAX_TRACKS = 96;
 static char* mp3Names = nullptr;  // NUL-separated paths
 static uint16_t mp3NameOff[MP3_MAX_TRACKS];
@@ -668,28 +669,46 @@ static void mp3NamesFree() {
 }
 
 // Reads the names of the .mp3 files (in /music, else in /) into the list. Returns how many (0: none, or no memory).
+// Two passes over the folder (first the size, then the names), so the list takes only what it needs. Every File is closed before
+// the next is opened: the card is mounted with ONE open-file slot (each slot is a 4 KB buffer, SD.begin's default of five took 20 KB).
 static int mp3Scan() {
   static const char* const DIRS[] = {"/music", "/"};
   mp3NamesFree();
-  mp3Names = (char*)heap_caps_malloc(MP3_NAMES_BYTES, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-  if (!mp3Names) return 0;
   for (const char* dir : DIRS) {
-    File d = SD.open(dir);
-    if (!d || !d.isDirectory()) continue;
-    int n = 0;
-    size_t used = 0;
-    for (File f = d.openNextFile(); f && n < MP3_MAX_TRACKS; f = d.openNextFile()) {
-      if (!mp3IsFile(f)) continue;
-      char tmp[MP3_NAME_MAX];
-      size_t len = (size_t)snprintf(tmp, sizeof tmp, "%s%s%s", dir, dir[1] ? "/" : "", f.name());
-      if (len >= sizeof tmp || used + len + 1 > MP3_NAMES_BYTES) continue;
-      memcpy(mp3Names + used, tmp, len + 1);
-      mp3NameOff[n++] = (uint16_t)used;
-      used += len + 1;
+    for (int pass = 0; pass < 2; pass++) {
+      File d = SD.open(dir);
+      if (!d || !d.isDirectory()) break;
+      int n = 0;
+      size_t used = 0;
+      File f = d.openNextFile();
+      while (f && n < MP3_MAX_TRACKS) {
+        if (mp3IsFile(f)) {
+          char tmp[MP3_NAME_MAX];
+          size_t len = (size_t)snprintf(tmp, sizeof tmp, "%s%s%s", dir, dir[1] ? "/" : "", f.name());
+          if (len < sizeof tmp && used + len + 1 <= MP3_NAMES_MAX) {
+            if (pass == 1) {
+              memcpy(mp3Names + used, tmp, len + 1);
+              mp3NameOff[n] = (uint16_t)used;
+            }
+            n++;
+            used += len + 1;
+          }
+        }
+        f.close();
+        f = d.openNextFile();
+      }
+      f.close();
+      d.close();
+      if (n == 0) break;
+      if (pass == 0) {
+        mp3Names = (char*)heap_caps_malloc(used, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        if (!mp3Names) return 0;
+      } else {
+        return n;
+      }
     }
-    if (n) return n;
+    mp3NamesFree();
   }
-  mp3NamesFree();
   return 0;
 }
 
@@ -1000,6 +1019,7 @@ static constexpr uint16_t COL_BG = 0x0000, COL_FG = 0xFFFF, COL_DIM = 0x8410, CO
 static constexpr uint32_t FX_FLY_MS = 800, FX_TOTAL_MS = 2000;
 static constexpr int FX_TOP = 32, FX_H = 71, FX_TEXT_Y = 40, FX_SUB_Y = 87, FX_TEXT_SIZE = 5;
 static bool usbUp();
+static uint32_t bleHoldUntil = 0;  // (S16-8) Fn+I pressed without USB: BLE (and its 72 KB) waits, so MP3 can be chosen
 static bool dialFound = false;  // (S12-3) a jog dial answers straight on the Grove port
 static const char* fxText = nullptr;
 static const char* fxSub = nullptr;
@@ -1014,6 +1034,7 @@ static void inputFxShow(bool noAux, int mp3Fail = 0) {  // (S16-1) mp3Fail: what
   else if (mp3Fail == 2) fxText = "NO SD", fxSub = "card not found";
   else if (mp3Fail == 3) fxText = "NO MP3", fxSub = "no files on the card";
   else if (mp3Fail == 4) fxText = "NO MEM", fxSub = "not enough memory";
+  else if (mp3Fail == 5) fxText = "RESTART", fxSub = "BLE is on: power off for MP3";
   else if (noAux) fxText = "NO AUX", fxSub = "unit not found";
   else if (mp3On) fxText = "MP3", fxSub = "files from the SD card", fxColor = COL_OK;
   else if (micOn) fxText = "MIC", fxSub = "no sound out", fxColor = COL_WARN;
@@ -1129,7 +1150,7 @@ static void drawScreen(uint32_t fillNow, uint32_t elapsedS) {
   canvas.drawString(l, 134, 112);
 
   canvas.setTextColor(COL_DIM);
-  canvas.drawString("[ ]\\ vol  spc play  v view  h help", 4, 125);
+  canvas.drawString(mp3On ? "- = vol  spc play  v view  h help" : "[ ]\\ vol  spc play  v view  h help", 4, 125);  // (S16-10) MP3: the volume is the boost
   showCanvas();
 }
 
@@ -1500,12 +1521,16 @@ static void setAux(bool on, bool save = true) {
 static int setMp3(bool on) {
   if (on == mp3On) return 0;
   if (on) {
-    if (!usbUp()) return 1;
+    if (!usbUp() && BleHid::started) return 5;  // (S16-8) no USB is fine while the BLE stack was never started (it takes 72 KB and cannot be released)
 #if KS_DIAG
     ksdiag::heapLine("mp3 before SD");
 #endif
     SPI.begin(MP3_SD_SCK, MP3_SD_MISO, MP3_SD_MOSI, MP3_SD_CS);
-    if (!SD.begin(MP3_SD_CS, SPI, 25000000)) {
+#if KS_DIAG
+    ksdiag::heapLine("mp3 after SPI.begin");
+    Serial.printf("[MP3] FF_MAX_SS=%d sizeof(FATFS)=%u sizeof(FIL)=%u sizeof(DIR)=%u\n", (int)FF_MAX_SS, (unsigned)sizeof(FATFS), (unsigned)sizeof(FIL), (unsigned)sizeof(FF_DIR));
+#endif
+    if (!SD.begin(MP3_SD_CS, SPI, 25000000, "/sd", 1)) {
       SPI.end();
       return 2;
     }
@@ -1513,7 +1538,13 @@ static int setMp3(bool on) {
 #if KS_DIAG
     ksdiag::heapLine("mp3 after SD.begin");
 #endif
+#if KS_DIAG
+    { File t = SD.open("/"); ksdiag::heapLine("mp3 SD.open('/') held"); t.close(); ksdiag::heapLine("mp3 SD.open('/') closed"); }
+#endif
     int cnt = mp3Scan();
+#if KS_DIAG
+    ksdiag::heapLine("mp3 after scan");
+#endif
     if (cnt == 0) {
       SD.end();
       SPI.end();
@@ -1613,6 +1644,7 @@ static void keyService() {
       } else if (c == 'i') {  // (S10-1) input: USB audio, microphone, and (S12-1) AUX when the unit is there
         // (S16-1) USB -> MIC -> AUX (only when the unit is there) -> MP3 (when USB and a card with files are there) -> USB.
         int mp3Fail = 0;
+        if (!usbUp() && !BleHid::started) bleHoldUntil = millis() + 10000;  // choosing an input: do not start BLE under the user's hand
         if (mp3On) {
           setMp3(false);
         } else if (auxOn) {
@@ -1630,6 +1662,7 @@ static void keyService() {
         } else {
           setMic(true);
         }
+        if (prefs.getBool("mp3", false) != mp3On) prefs.putBool("mp3", mp3On);  // (S16-9) remembered: a battery-only start goes on with MP3
         inputFxShow(false, mp3Fail);
         keysRedraw = true;
         acted = true;
@@ -1996,11 +2029,24 @@ static void dialService(uint32_t now) {
 static constexpr uint32_t BLE_AFTER_MS = 3000;
 static constexpr uint32_t BLE_AFTER_START_MS = 10000;  // (S5-4) before USB was ever seen: let the computer set it up
 
+
 static void linkService(uint32_t now) {
   static uint32_t usbGoneSince = 0;
   static bool wasUp = false;
   bool up = usbUp();
-  if (mp3On && !up) {  // (S16-1) no USB: the SD card and the decoder go now, so the heap is free when BLE starts (3 s or more later)
+  // (S16-9) Start with MP3 when it was the last input and there is no computer: a start on the battery (or a charger) plays the
+  // card. Looked at once, 4 s after the start, so the computer has had its time to show up; with USB the input stays USB.
+  static bool bootMp3Done = false;
+  if (!bootMp3Done && now >= 4000) {
+    bootMp3Done = true;
+    if (!up && !mp3On && !micOn && !auxOn && !BleHid::started && prefs.getBool("mp3", false)) {
+      int fail = setMp3(true);
+      Serial.printf("[MP3] start with MP3 (last input), rc %d\n", fail);
+      inputFxShow(false, fail);
+      keysRedraw = true;
+    }
+  }
+  if (mp3On && !up && BleHid::started) {  // (S16-1) BLE is up: the SD card and the decoder go now (they cannot share the heap with it)
     setMp3(false);
     inputFxShow(false);
     keysRedraw = true;
@@ -2018,9 +2064,12 @@ static void linkService(uint32_t now) {
     }
   } else {
     if (!usbGoneSince) usbGoneSince = now ? now : 1;
-    if (!BleHid::on && now - usbGoneSince >= (usbSawHost ? BLE_AFTER_MS : BLE_AFTER_START_MS)) {
+    if (!BleHid::on && !mp3On && (int32_t)(now - bleHoldUntil) >= 0 && now - usbGoneSince >= (usbSawHost ? BLE_AFTER_MS : BLE_AFTER_START_MS)) {
       Serial.printf("[LINK] t=%lu BLE on: mounted %d, sof seen %d, last sof %lu ms ago\n", (unsigned long)now,
                     (int)(bool)USB, (int)usbSawHost, (unsigned long)(now - usbLastSofMs));
+#if KS_DIAG
+      BleHid::stepHook = ksdiag::heapLine;
+#endif
       BleHid::start();
       keysRedraw = true;
     }
@@ -2137,7 +2186,7 @@ static void drawKeys() {
   } else {
     drawHelp("Fn+M", "mode", sx, y, mx);  // (S10-7) works without USB too
     y += 9;
-    drawHelp("Fn+I", "USB/MIC/AUX", sx, y, mx);  // (S10-8) the input switch: it was only on the other screens' help
+    drawHelp("Fn+I", "USB/MIC/AUX/MP3", sx, y, 138);  // (S10-8, S16-10) the input switch; its meaning starts further left to fit MP3
     y += 12;
     for (const KeyHelp& h : SHEET) {
       drawHelp(h.key, h.meaning, sx, y, mx);
@@ -2179,13 +2228,17 @@ static void drawSpeakerHelp() {
   canvas.setTextColor(COL_DIM);
   canvas.drawString(mode == MODE_GAME ? "flight mode" : "measure mode", 60, 10);
   canvas.drawRightString(BUILD_TAG, 236, 4);
-  const KeyHelp LEFT[] = {{"[ ]", "volume"}, {"\\", "mute"}, {"space", "play/pause"},
-                          {", /", "prev/next"}, {"- =", micOn ? "mic sens" : "boost"}, {"b", "bass cut"}};  // (S10-7) - = sets the mic's sensitivity
+  const KeyHelp LEFT_PC[] = {{"[ ]", "volume"}, {"\\", "mute"}, {"space", "play/pause"},
+                             {", /", "prev/next"}, {"- =", micOn ? "mic sens" : "boost"}, {"b", "bass cut"}};  // (S10-7) - = sets the mic's sensitivity
+  // (S16-10) MP3: space, "," and "/" are the player's; the volume is the boost; [ ] and \ only reach the computer
+  const KeyHelp LEFT_MP3[] = {{"space", "pause/play"}, {", /", "prev/next"}, {"- =", "volume"}, {"b", "bass cut"}, {"[ ] \\", "PC only"}};
+  const KeyHelp* LEFT = mp3On ? LEFT_MP3 : LEFT_PC;
+  const int nLeft = mp3On ? 5 : 6;
   const KeyHelp RIGHT[] = {{"v", "measure/flight"}, {"r", "reset counts"}, {"h", "close help"},
                            {"Fn+M", "next mode"}, {"Fn+O", "Mac/Win"}, {"Fn+I", micOn ? "input: MIC" : auxOn ? "input: AUX" : mp3On ? "input: MP3" : "input: USB"}};
   int y = 30;
-  for (const KeyHelp& h : LEFT) {
-    drawHelp(h.key, h.meaning, 6, y, 44);
+  for (int i = 0; i < nLeft; i++) {
+    drawHelp(LEFT[i].key, LEFT[i].meaning, 6, y, mp3On ? 50 : 44);
     y += 15;
   }
   y = 30;
@@ -2194,7 +2247,7 @@ static void drawSpeakerHelp() {
     y += 15;
   }
   char l[32];
-  snprintf(l, sizeof l, "+%ddB %s  %s", boostDb.load(), bassCut ? "cut" : "full", uac.mute(UAC_CHAN_MASTER) ? "MUTE" : "");
+  snprintf(l, sizeof l, "+%ddB %s  %s", boostDb.load(), bassCut ? "cut" : "full", !mp3On && uac.mute(UAC_CHAN_MASTER) ? "MUTE" : "");
   canvas.setTextColor(COL_DIM);
   canvas.drawString(l, 124, 30 + 6 * 15);
   showCanvas();
@@ -2380,6 +2433,7 @@ void loop() {
       // until the next restart). The heap is printed before and after each.
       if (ch == 'E') {
         ksdiag::heapLine("before BLE begin");
+        BleHid::stepHook = ksdiag::heapLine;
         BleHid::begin();
         delay(500);
         ksdiag::heapLine("BLE advertising");
