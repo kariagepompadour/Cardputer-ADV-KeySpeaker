@@ -40,7 +40,7 @@ RateAdjust.h's Hermite is made for +-200 ppm. For the fixed 44.1 -> 48 kHz step,
 
 ## Not done yet
 
-- 48 kHz, 320 kbps, VBR and mono files (only 44.1 kHz stereo 64 / 128 kbps tested).
+- 320 kbps and mono files (tested and fine on the device, 2026-11-13: 44.1 kHz stereo 64 / 128 kbps, 48 kHz stereo 128 kbps, a short VBR file; all 7 tracks in a loop, track changes with no break, the flight screen follows the music).
 - Long run (hours), the flight view's worst case with MP3, USB suspend / resume during MP3, switching input about 1000 times.
 - Battery operation (BLE only) has no MP3: that needs about 50 KB more free heap than exists (candidates: 8-bit canvas, a shorter ring, smaller task stacks).
 - License: the decoder is Helix (RealNetworks RPSL / RCSL), the prebuilt copy shipped with the m5stack:esp32 SDK. A decision is needed before a release.
