@@ -39,7 +39,7 @@ static constexpr size_t INBUF = 2048;   // Helix wants at least MAINBUF_SIZE (19
 static constexpr size_t READ_BLOCK = 4096;
 static constexpr int MAXFILES = 40;
 
-static char files[MAXFILES][64];
+static char files[MAXFILES][200];
 static int nFiles = 0;
 static void* ballast = nullptr;
 
@@ -130,7 +130,7 @@ static void decodeFile(const char* path, Stats& st) {
   Kit k;
   if (!k.get()) { Serial.println("[SPIKE] decode: no memory for the kit"); k.put(); return; }
   File f = SD.open(path);
-  if (!f) { k.put(); return; }
+  if (!f) { Serial.printf("[SPIKE] cannot open %s\n", path); k.put(); return; }
   // ID3v2 header: skip it
   uint8_t h[10];
   if (f.read(h, 10) == 10 && !memcmp(h, "ID3", 3)) f.seek(10 + (((h[6] & 0x7f) << 21) | ((h[7] & 0x7f) << 14) | ((h[8] & 0x7f) << 7) | (h[9] & 0x7f)));
