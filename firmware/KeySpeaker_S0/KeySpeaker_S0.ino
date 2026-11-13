@@ -212,15 +212,18 @@
 #include "UsbAudioDesc.h"
 #include "Splash.h"
 #include "KeyEarth.h"
+#include <SD.h>
+#include <SPI.h>
+#include "Mp3Source.h"
 #define KS_BLE 1  // (S5-5) 0: build without BLE, to compare
 #include "BleHid.h"
 
 #define KS_DIAG 1  // (MP3 stage 0) 1: heap / task diagnostics on the serial port (KsDiag.h), nothing else changes
 #if KS_DIAG
 #include "KsDiag.h"
-#define BUILD_TAG "S15-2+D2"
+#define BUILD_TAG "S16-1+D"
 #else
-#define BUILD_TAG "S15-2"
+#define BUILD_TAG "S16-1"
 #endif
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
@@ -266,6 +269,7 @@ USBHIDMouse mouse;  // (S2.5-1) the air mouse, after the keyboard
 static StreamBufferHandle_t ring = nullptr;   // writer: uacReceiveTask (onSpkData), reader: playTask
 static std::atomic<bool> micOn{false};         // (S10-1) the built-in microphone is the input: it moves the screen only, no sound out
 static std::atomic<bool> auxOn{false};         // (S12-1) the Pico 2 AUX unit on the Grove port is the input: its sound plays
+static std::atomic<bool> mp3On{false};         // (S16-1) MP3 files from the SD card are the input (only with USB: BLE needs the heap)
 
 // ---- Counters, written by the audio tasks and read once a second by loop()
 static std::atomic<uint32_t> rxFrames{0};      // stereo frames received from USB (= mono samples)
@@ -420,7 +424,7 @@ static bool ringWasFull = false;
 
 static void onSpkData(void* data, uint16_t len) {
   diagMark(diagRx, 1);
-  if (micOn || auxOn) {  // (S10-1) another input is on: USB audio is dropped
+  if (micOn || auxOn || mp3On) {  // (S10-1) another input is on: USB audio is dropped
     lastRxMs = millis();
     diagMark(diagRx, 0);
     return;
@@ -622,6 +626,111 @@ static void auxTask(void*) {
       auxProcess(pcm, parser.sampleCount());
     }
   }
+}
+
+// ---- MP3 files from the SD card -> ring (S16-1, docs/MP3_DESIGN.md). Only with USB: the BLE keyboard needs the heap that the
+// decoder and the SD card take, so the input is switched off the moment USB goes. mp3Task decodes to 48 kHz mono and waits for
+// room in the ring (no dropping: a file can wait). Its sound takes the same way as USB audio from the ring on.
+static constexpr float MP3_GAIN = 0.3f;        // the computer's volume does not reach MP3: about -10 dB, so +9 dB boost is not too loud
+static constexpr int MP3_SD_SCK = 40, MP3_SD_MISO = 39, MP3_SD_MOSI = 14, MP3_SD_CS = 12;
+static constexpr size_t MP3_NAME_MAX = 200;
+static std::atomic<bool> mp3Run{false}, mp3Paused{false};
+static std::atomic<int> mp3Index{0}, mp3Count{0}, mp3Jump{0};  // the track now (0-based), how many, and a -1 / +1 asked for
+static std::atomic<uint32_t> mp3Started{0};    // millis() when the current track began
+static TaskHandle_t mp3TaskH = nullptr;
+static bool mp3SdOn = false;
+static mp3src::Source mp3Src;
+
+static bool mp3IsFile(File& f) {
+  if (f.isDirectory()) return false;
+  const char* n = f.name();
+  size_t l = strlen(n);
+  return n[0] != '.' && l > 4 && strcasecmp(n + l - 4, ".mp3") == 0;
+}
+
+// The k-th .mp3 in /music, else in / (in directory order); the count is returned and the name filled in when k is in range.
+static int mp3Find(int k, char* path, size_t pathSize) {
+  static const char* const DIRS[] = {"/music", "/"};
+  for (const char* dir : DIRS) {
+    File d = SD.open(dir);
+    if (!d || !d.isDirectory()) continue;
+    int n = 0;
+    for (File f = d.openNextFile(); f; f = d.openNextFile()) {
+      if (!mp3IsFile(f)) continue;
+      if (n == k && path) snprintf(path, pathSize, "%s%s%s", dir, dir[1] ? "/" : "", f.name());
+      n++;
+    }
+    if (n) return n;
+  }
+  return 0;
+}
+
+static void mp3Process(const int16_t* s, size_t n) {
+  static int16_t out[mp3src::Source::OUT_MAX];
+  static float vizAcc = 0;
+  static size_t vizN = 0;
+  int16_t peak = 0;
+  uint32_t pos = vizPcmPos.load(std::memory_order_relaxed);
+  for (size_t i = 0; i < n; i++) {
+    int16_t a = s[i] < 0 ? (int16_t)(s[i] == INT16_MIN ? INT16_MAX : -s[i]) : s[i];
+    if (a > peak) peak = a;
+    vizAcc += (float)s[i] * s[i];
+    vizPcm[pos++ & (VIZ_PCM_N - 1)] = s[i];
+    out[i] = (int16_t)(s[i] * MP3_GAIN);
+  }
+  vizPcmPos.store(pos, std::memory_order_release);
+  vizN += n;
+  if (vizN >= CHUNK) {
+    vizSum += (uint32_t)sqrtf(vizAcc / vizN);
+    vizCount++;
+    vizAcc = 0;
+    vizN = 0;
+  }
+  while (mp3Run && xStreamBufferSpacesAvailable(ring) < n * 2) vTaskDelay(4);  // wait for room: a file does not drop samples
+  if (!mp3Run) return;
+  rxFrames += n;
+  xStreamBufferSend(ring, out, n * 2, 0);
+  uint32_t now = millis();
+  lastRxMs = now;
+  if (peak > rxPeak) rxPeak = peak;
+  if (peak > SOUND_MIN) lastSoundMs = now;
+  if (peak > beatPeak) beatPeak = peak;
+}
+
+static void mp3Task(void*) {
+  char path[MP3_NAME_MAX];
+  while (mp3Run) {
+    int idx = mp3Index;
+    int cnt = mp3Find(idx, path, sizeof path);
+    mp3Count = cnt;
+    if (cnt == 0) break;
+    if (idx >= cnt || idx < 0) {
+      idx = idx < 0 ? cnt - 1 : 0;
+      mp3Index = idx;
+      continue;
+    }
+    mp3Find(idx, path, sizeof path);
+    Serial.printf("[MP3] track %d/%d %s\n", idx + 1, cnt, path);
+    mp3Jump = 0;
+    mp3Started = millis();
+    if (mp3Src.open(SD.open(path))) {
+      const int16_t* pcm;
+      size_t n;
+      while (mp3Run && !mp3Jump && (n = mp3Src.next(&pcm)) > 0) {
+        while (mp3Run && mp3Paused && !mp3Jump) vTaskDelay(20);
+        if (!mp3Run || mp3Jump) break;
+        mp3Process(pcm, n);
+      }
+      mp3Src.close();
+    }
+    if (!mp3Run) break;
+    int j = mp3Jump.exchange(0);
+    mp3Index = j ? idx + j : idx + 1;  // asked for one (-1 / +1), or the file ended: the next, and round again
+    if (mp3Index >= cnt) mp3Index = 0;
+    if (mp3Index < 0) mp3Index = cnt - 1;
+  }
+  mp3TaskH = nullptr;
+  vTaskDelete(nullptr);
 }
 
 // ---- ring -> M5.Speaker (core 1)
@@ -841,9 +950,14 @@ static uint32_t fxStartMs = 0;
 
 static bool inputFxOn(uint32_t now) { return fxText && now - fxStartMs < FX_TOTAL_MS; }
 
-static void inputFxShow(bool noAux) {
+static void inputFxShow(bool noAux, int mp3Fail = 0) {  // (S16-1) mp3Fail: what setMp3 returned
   fxColor = COL_BAD;
-  if (noAux) fxText = "NO AUX", fxSub = "unit not found";
+  if (mp3Fail == 1) fxText = "NO USB", fxSub = "MP3 needs the computer";
+  else if (mp3Fail == 2) fxText = "NO SD", fxSub = "card not found";
+  else if (mp3Fail == 3) fxText = "NO MP3", fxSub = "no files on the card";
+  else if (mp3Fail == 4) fxText = "NO MEM", fxSub = "not enough memory";
+  else if (noAux) fxText = "NO AUX", fxSub = "unit not found";
+  else if (mp3On) fxText = "MP3", fxSub = "files from the SD card", fxColor = COL_OK;
   else if (micOn) fxText = "MIC", fxSub = "no sound out", fxColor = COL_WARN;
   else if (auxOn) fxText = "AUX", fxSub = "sound from the unit", fxColor = COL_OK;
   else if (usbUp()) fxText = "USB", fxSub = "sound from the computer", fxColor = COL_FG;
@@ -935,6 +1049,10 @@ static void drawScreen(uint32_t fillNow, uint32_t elapsedS) {
 
   if (micOn) {  // (S10-1)
     snprintf(l, sizeof l, "MIC (no sound out)  sens x%.1f  [- =]", MIC_GAIN[micLevel]);
+  } else if (mp3On) {  // (S16-1)
+    uint32_t t = (millis() - mp3Started.load()) / 1000;
+    snprintf(l, sizeof l, "MP3 %d/%d %lu:%02lu%s  [, /] spc", mp3Index.load() + 1, mp3Count.load(), (unsigned long)(t / 60),
+             (unsigned long)(t % 60), mp3Paused ? " PAUSE" : "");
   } else if (auxOn) {  // (S12-1)
     snprintf(l, sizeof l, "AUX IN  bad %lu lost %lu", (unsigned long)auxBad, (unsigned long)auxLost);
   } else {
@@ -980,11 +1098,15 @@ static void drawViz(uint32_t now) {
   // connected, muted, or dropouts counted. The rest (boost, bass cut) is on the data screen, so the terrain stays alone.
   char l[48];
   uint32_t u = underruns, o = overruns;
-  bool mute = !micOn && !auxOn && uac.mute(UAC_CHAN_MASTER);
+  bool mute = !micOn && !auxOn && !mp3On && uac.mute(UAC_CHAN_MASTER);
   canvas.setTextSize(1);
   if (micOn) {  // (S10-1)
     canvas.setTextColor(COL_DIM);
     snprintf(l, sizeof l, "MIC (no sound out)  x%.1f", MIC_GAIN[micLevel]);
+    canvas.drawString(l, 4, 2);
+  } else if (mp3On) {  // (S16-1)
+    canvas.setTextColor(COL_DIM);
+    snprintf(l, sizeof l, "MP3 %d/%d%s", mp3Index.load() + 1, mp3Count.load(), mp3Paused ? " PAUSE" : "");
     canvas.drawString(l, 4, 2);
   } else if (auxOn) {  // (S12-1)
     canvas.setTextColor(COL_DIM);
@@ -1029,7 +1151,7 @@ static bool usbUp() { return (bool)USB && usbSawHost && millis() - usbLastSofMs 
 static bool navFree = false;
 static uint8_t viewMode() {
   if (usbUp()) navFree = false;
-  return usbUp() || micOn || auxOn || navFree ? mode : (uint8_t)MODE_KEYS;
+  return usbUp() || micOn || auxOn || mp3On || navFree ? mode : (uint8_t)MODE_KEYS;
 }
 
 // ---- Emblem screen (S1-7, S2-6, design 8.3): shown at start for SPLASH_MS or until a key, and, in the measurement
@@ -1314,6 +1436,64 @@ static void setAux(bool on, bool save = true) {
   if (save) prefs.putBool("aux", on);
 }
 
+// (S16-1) Input: MP3 files on the SD card. Needs USB and a card with .mp3 files; when either is missing it returns the reason
+// (1 no USB, 2 no card, 3 no MP3 files, 4 no memory) and nothing changes. Everything it takes (SD stack, decoder, task) is given back
+// when it is switched off, which loop() does the moment USB goes, before BLE starts.
+static int setMp3(bool on) {
+  if (on == mp3On) return 0;
+  if (on) {
+    if (!usbUp()) return 1;
+#if KS_DIAG
+    ksdiag::heapLine("mp3 before SD");
+#endif
+    SPI.begin(MP3_SD_SCK, MP3_SD_MISO, MP3_SD_MOSI, MP3_SD_CS);
+    if (!SD.begin(MP3_SD_CS, SPI, 25000000)) {
+      SPI.end();
+      return 2;
+    }
+    mp3SdOn = true;
+#if KS_DIAG
+    ksdiag::heapLine("mp3 after SD.begin");
+#endif
+    int cnt = mp3Find(0, nullptr, 0);
+    bool srcOk = cnt > 0 && mp3Src.begin();
+#if KS_DIAG
+    ksdiag::heapLine(srcOk ? "mp3 after decoder" : "mp3 decoder failed");
+#endif
+    if (!srcOk) {
+      mp3Src.end();
+      SD.end();
+      SPI.end();
+      mp3SdOn = false;
+      return cnt == 0 ? 3 : 4;
+    }
+    mp3Count = cnt;
+    mp3Index = 0;
+    mp3Jump = 0;
+    mp3Paused = false;
+    mp3On = true;  // onSpkData stops feeding the ring
+    delay(30);
+    xStreamBufferReset(ring);
+    mp3Run = true;
+    xTaskCreatePinnedToCore(mp3Task, "mp3", 6144, nullptr, 3, &mp3TaskH, PRO_CPU_NUM);
+  } else {
+    mp3Run = false;
+    while (mp3TaskH) delay(5);
+    mp3On = false;
+    delay(10);
+    xStreamBufferReset(ring);
+    mp3Src.end();
+    SD.end();
+    SPI.end();
+    mp3SdOn = false;
+  }
+  Serial.printf("[MP3] input: %s, heap %u\n", on ? "MP3" : "USB audio", (unsigned)ESP.getFreeHeap());
+#if KS_DIAG
+  ksdiag::heapLine(on ? "mp3 running" : "mp3 left");
+#endif
+  return 0;
+}
+
 // ---- Keys
 static uint8_t heldLabels[16];  // unshifted labels of the keys held at the last change
 static int heldCount = 0;
@@ -1362,22 +1542,26 @@ static void keyService() {
       } else if (keysMode && (c == '[' || c == ']')) {
         inputKana = c == ']';
       } else if (c == 'i') {  // (S10-1) input: USB audio, microphone, and (S12-1) AUX when the unit is there
-        bool noAux = false;
-        if (auxOn) {
+        // (S16-1) USB -> MIC -> AUX (only when the unit is there) -> MP3 (when USB and a card with files are there) -> USB.
+        int mp3Fail = 0;
+        if (mp3On) {
+          setMp3(false);
+        } else if (auxOn) {
           setAux(false);
           auxSend();
+          mp3Fail = setMp3(true);
         } else if (micOn) {
           setMic(false);
           if (auxUp) {
             setAux(true);
             auxSend();
           } else {
-            noAux = !dialFound;
+            mp3Fail = setMp3(true);  // no unit: AUX is skipped (the S12-2 NO AUX word is no longer shown, the user's order of 2026-11-13)
           }
         } else {
           setMic(true);
         }
-        inputFxShow(noAux);
+        inputFxShow(false, mp3Fail);
         keysRedraw = true;
         acted = true;
       } else if (c == 'o') {
@@ -1396,9 +1580,21 @@ static void keyService() {
       case '[': media.press(CONSUMER_CONTROL_VOLUME_DECREMENT); media.release(); acted = true; break;
       case ']': media.press(CONSUMER_CONTROL_VOLUME_INCREMENT); media.release(); acted = true; break;
       case '\\': media.press(CONSUMER_CONTROL_MUTE); media.release(); acted = true; break;
-      case ' ': media.press(CONSUMER_CONTROL_PLAY_PAUSE); media.release(); acted = true; break;
-      case ',': media.press(CONSUMER_CONTROL_SCAN_PREVIOUS); media.release(); acted = true; break;
-      case '/': media.press(CONSUMER_CONTROL_SCAN_NEXT); media.release(); acted = true; break;
+      case ' ':
+        if (mp3On) { mp3Paused = !mp3Paused; Serial.printf("[MP3] %s\n", mp3Paused ? "pause" : "play"); }  // (S16-1) the player is here, not on the computer
+        else { media.press(CONSUMER_CONTROL_PLAY_PAUSE); media.release(); }
+        acted = true;
+        break;
+      case ',':
+        if (mp3On) mp3Jump = -1;
+        else { media.press(CONSUMER_CONTROL_SCAN_PREVIOUS); media.release(); }
+        acted = true;
+        break;
+      case '/':
+        if (mp3On) mp3Jump = 1;
+        else { media.press(CONSUMER_CONTROL_SCAN_NEXT); media.release(); }
+        acted = true;
+        break;
       case '-':
       case '=': {
         if (micOn) {  // (S10-1) with the microphone as the input, - and = set its sensitivity
@@ -1732,6 +1928,11 @@ static void linkService(uint32_t now) {
   static uint32_t usbGoneSince = 0;
   static bool wasUp = false;
   bool up = usbUp();
+  if (mp3On && !up) {  // (S16-1) no USB: the SD card and the decoder go now, so the heap is free when BLE starts (3 s or more later)
+    setMp3(false);
+    inputFxShow(false);
+    keysRedraw = true;
+  }
   if (up != wasUp) {  // (S5-3) why it changed
     wasUp = up;
     Serial.printf("[LINK] t=%lu usb %s: mounted %d, sof seen %d, last sof %lu ms ago\n", (unsigned long)now,
@@ -1812,6 +2013,9 @@ static void drawKeys() {
   if (micOn) {  // (S10-9) the microphone is the input (it moves the other screens): just above the connection, in the
     canvas.setTextColor(COL_OK);  // bottom left corner, which the round Earth leaves empty. Three letters only: "MIC ON" would touch the disc.
     canvas.drawString("MIC", x, 90);
+  } else if (mp3On) {  // (S16-1)
+    canvas.setTextColor(COL_OK);
+    canvas.drawString("MP3", x, 90);
   } else if (auxOn) {  // (S12-1)
     canvas.setTextColor(COL_OK);
     canvas.drawString("AUX", x, 90);
@@ -1906,7 +2110,7 @@ static void drawSpeakerHelp() {
   const KeyHelp LEFT[] = {{"[ ]", "volume"}, {"\\", "mute"}, {"space", "play/pause"},
                           {", /", "prev/next"}, {"- =", micOn ? "mic sens" : "boost"}, {"b", "bass cut"}};  // (S10-7) - = sets the mic's sensitivity
   const KeyHelp RIGHT[] = {{"v", "measure/flight"}, {"r", "reset counts"}, {"h", "close help"},
-                           {"Fn+M", "next mode"}, {"Fn+O", "Mac/Win"}, {"Fn+I", micOn ? "input: MIC" : auxOn ? "input: AUX" : "input: USB"}};
+                           {"Fn+M", "next mode"}, {"Fn+O", "Mac/Win"}, {"Fn+I", micOn ? "input: MIC" : auxOn ? "input: AUX" : mp3On ? "input: MP3" : "input: USB"}};
   int y = 30;
   for (const KeyHelp& h : LEFT) {
     drawHelp(h.key, h.meaning, 6, y, 44);
