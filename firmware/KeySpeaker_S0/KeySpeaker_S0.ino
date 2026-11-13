@@ -221,9 +221,9 @@
 #define KS_DIAG 1  // (MP3 stage 0) 1: heap / task diagnostics on the serial port (KsDiag.h), nothing else changes
 #if KS_DIAG
 #include "KsDiag.h"
-#define BUILD_TAG "S16-4+D"
+#define BUILD_TAG "S16-5+D"
 #else
-#define BUILD_TAG "S16-4"
+#define BUILD_TAG "S16-5"
 #endif
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
@@ -655,7 +655,7 @@ static bool mp3IsFile(File& f) {
 }
 
 // The k-th .mp3 in /music, else in / (in directory order); the count is returned and the name filled in when k is in range.
-static int mp3Find(int k, char* path, size_t pathSize) {
+static int mp3Find(int k, char* path, size_t pathSize, bool count = true) {  // count=false: stop at the k-th file (a track change must not wait for the whole folder)
   static const char* const DIRS[] = {"/music", "/"};
   for (const char* dir : DIRS) {
     File d = SD.open(dir);
@@ -663,7 +663,10 @@ static int mp3Find(int k, char* path, size_t pathSize) {
     int n = 0;
     for (File f = d.openNextFile(); f; f = d.openNextFile()) {
       if (!mp3IsFile(f)) continue;
-      if (n == k && path) snprintf(path, pathSize, "%s%s%s", dir, dir[1] ? "/" : "", f.name());
+      if (n == k && path) {
+        snprintf(path, pathSize, "%s%s%s", dir, dir[1] ? "/" : "", f.name());
+        if (!count) return n + 1;
+      }
       n++;
     }
     if (n) return n;
@@ -721,7 +724,15 @@ static void mp3Task(void*) {
   char path[MP3_NAME_MAX];
   while (mp3Run) {
     int idx = mp3Index;
-    int cnt = mp3Find(idx, path, sizeof path);
+    int known = mp3Count;  // counted on entry; the folder is read to the k-th file only
+    int cnt = known;
+    if (known > 0 && idx >= 0 && idx < known) {
+      path[0] = 0;
+      if (mp3Find(idx, path, sizeof path, false) == 0) cnt = 0;  // nothing there any more (card taken out)
+      else if (!path[0]) cnt = mp3Find(idx, path, sizeof path);  // the folder has changed: count again
+    } else {
+      cnt = mp3Find(idx, path, sizeof path);
+    }
     mp3Count = cnt;
     if (cnt == 0) break;
     if (idx >= cnt || idx < 0) {
@@ -729,7 +740,6 @@ static void mp3Task(void*) {
       mp3Index = idx;
       continue;
     }
-    mp3Find(idx, path, sizeof path);
     Serial.printf("[MP3] track %d/%d %s\n", idx + 1, cnt, path);
     mp3Jump = 0;
     mp3Started = millis();
