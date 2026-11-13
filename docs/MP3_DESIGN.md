@@ -1,4 +1,4 @@
-# MP3 input (S16-4): design and measurements
+# MP3 input (S16-7): design and measurements
 
 MP3 files on the microSD card as a fourth audio input. Work in progress on branch `worktree-mp3-stage0-1`, tested on a Cardputer ADV on 2026-11-13. The decoder is **minimp3** (CC0) since S16-2; the first S16-1 builds used Helix (RPSL), see `MP3_LICENSE.md`.
 
@@ -22,12 +22,18 @@ With the BLE stack up, the internal heap has about 9 KB free (measured: free 8.5
 | Firmware running, before MP3 | about 83.8 KB (81.4 KB after the first MP3 round trip: a one-time 2.4 KB) |
 | `SD.begin` | -30 KB |
 | minimp3 decoder state (`mp3dec_t`) | about -6 KB |
-| MP3 running (S16-4) | **about 40.4 KB free** (Helix build: 21.7 KB) |
+| MP3 running (S16-7) | **about 33.7 KB free** (Helix build: 21.7 KB); 6 KB of it is the list of track names |
 | After 20 track changes in a row | 40.4 KB (about 100 B less than at the start), no restart |
 
 The ring's storage (48 KB, allocated once, the stream buffer made over it with `xStreamBufferCreateStatic`) is split on entry: the first 12 KB are a shorter ring (about 130 ms), the rest holds the decoder's input / PCM buffers, the resampler and the task's stack (`xTaskCreateStaticPinnedToCore`, **20 KB**). On exit the ring goes back to 48 KB. `playTask` is held (`playHold` / `playHeld`) while the ring is swapped.
 
 minimp3 keeps its per-frame scratch on the stack (about 17 KB). S16-2 gave the task 16 KB and the task crashed on the first frame (stack overflow); with 20 KB the least free stack seen is 2.6 KB, so the margin is small and should be watched in longer runs.
+
+## Track changes (S16-5 to S16-7)
+
+- A track change used to walk the whole SD folder twice (count, then name): later tracks took longer than the 130 ms ring holds and the speaker path ran dry (`under` grew by one per change, worst for tracks 8-10 of 10). The names are now read **once on entry** (6 KB on the heap, up to 96 tracks, freed on exit); a change copies the name and opens the file.
+- A track change used to step the waveform (an audible click). The last block of the old track is played faded out and the first block of the new one faded in (about 25 ms each, `mp3Process(..., fade)`).
+- Measured on the device (10 tracks, one round of `/`): `under` stays at its entry value 2, no restart; the click is gone by ear. The 2 at entry is not explained yet (SD start or the first track's preparation).
 
 ## CPU, SD, stack (device, MP3 task on core 0)
 
@@ -43,7 +49,7 @@ RateAdjust.h's Hermite is made for +-200 ppm. For the fixed 44.1 -> 48 kHz step,
 ## Not done yet
 
 - 320 kbps and mono files (tested and fine on the device with Helix, 2026-11-13: 44.1 kHz stereo 64 / 128 kbps, 48 kHz stereo 128 kbps, a short VBR file; all 7 tracks in a loop, track changes with no break, the flight screen follows the music).
-- Tested with minimp3 on the device (2026-11-13): 7 tracks in a loop, 20 `/` presses in a row, pause / play, return to USB audio (the Mac must be playing again). Not yet: CPU measurement, 320 kbps / mono files.
+- Tested with minimp3 on the device (2026-11-13): 7 tracks in a loop, 20 `/` presses in a row, pause / play, return to USB audio (the Mac must be playing again). Also tried: a 256 kbps 48 kHz stereo file (7.5 MB) and a 320 kbps stereo and a mono file played through, no breaks heard. Not yet: CPU measurement.
 - Long run (hours), the flight view's worst case with MP3, USB suspend / resume during MP3, switching input about 1000 times.
 - Battery operation (BLE only) has no MP3: that needs about 50 KB more free heap than exists (candidates: 8-bit canvas, a shorter ring, smaller task stacks).
 - License: settled by replacing Helix with minimp3 (CC0), see `MP3_LICENSE.md`. The sound and the speed of minimp3 against Helix are checked by ear only.
