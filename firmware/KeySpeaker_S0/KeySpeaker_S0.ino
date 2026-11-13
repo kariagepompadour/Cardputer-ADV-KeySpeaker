@@ -221,9 +221,9 @@
 #define KS_DIAG 1  // (MP3 stage 0) 1: heap / task diagnostics on the serial port (KsDiag.h), nothing else changes
 #if KS_DIAG
 #include "KsDiag.h"
-#define BUILD_TAG "S16-5+D"
+#define BUILD_TAG "S16-6+D"
 #else
-#define BUILD_TAG "S16-5"
+#define BUILD_TAG "S16-6"
 #endif
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
@@ -655,22 +655,41 @@ static bool mp3IsFile(File& f) {
 }
 
 // The k-th .mp3 in /music, else in / (in directory order); the count is returned and the name filled in when k is in range.
-static int mp3Find(int k, char* path, size_t pathSize, bool count = true) {  // count=false: stop at the k-th file (a track change must not wait for the whole folder)
+// The names of the tracks are read once when the input is switched on (a track change must not walk the SD folder: that took
+// longer than the ring holds). The list is on the heap only while MP3 is on.
+static constexpr size_t MP3_NAMES_BYTES = 6144;
+static constexpr int MP3_MAX_TRACKS = 96;
+static char* mp3Names = nullptr;  // NUL-separated paths
+static uint16_t mp3NameOff[MP3_MAX_TRACKS];
+
+static void mp3NamesFree() {
+  if (mp3Names) heap_caps_free(mp3Names);
+  mp3Names = nullptr;
+}
+
+// Reads the names of the .mp3 files (in /music, else in /) into the list. Returns how many (0: none, or no memory).
+static int mp3Scan() {
   static const char* const DIRS[] = {"/music", "/"};
+  mp3NamesFree();
+  mp3Names = (char*)heap_caps_malloc(MP3_NAMES_BYTES, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+  if (!mp3Names) return 0;
   for (const char* dir : DIRS) {
     File d = SD.open(dir);
     if (!d || !d.isDirectory()) continue;
     int n = 0;
-    for (File f = d.openNextFile(); f; f = d.openNextFile()) {
+    size_t used = 0;
+    for (File f = d.openNextFile(); f && n < MP3_MAX_TRACKS; f = d.openNextFile()) {
       if (!mp3IsFile(f)) continue;
-      if (n == k && path) {
-        snprintf(path, pathSize, "%s%s%s", dir, dir[1] ? "/" : "", f.name());
-        if (!count) return n + 1;
-      }
-      n++;
+      char tmp[MP3_NAME_MAX];
+      size_t len = (size_t)snprintf(tmp, sizeof tmp, "%s%s%s", dir, dir[1] ? "/" : "", f.name());
+      if (len >= sizeof tmp || used + len + 1 > MP3_NAMES_BYTES) continue;
+      memcpy(mp3Names + used, tmp, len + 1);
+      mp3NameOff[n++] = (uint16_t)used;
+      used += len + 1;
     }
     if (n) return n;
   }
+  mp3NamesFree();
   return 0;
 }
 
@@ -724,22 +743,14 @@ static void mp3Task(void*) {
   char path[MP3_NAME_MAX];
   while (mp3Run) {
     int idx = mp3Index;
-    int known = mp3Count;  // counted on entry; the folder is read to the k-th file only
-    int cnt = known;
-    if (known > 0 && idx >= 0 && idx < known) {
-      path[0] = 0;
-      if (mp3Find(idx, path, sizeof path, false) == 0) cnt = 0;  // nothing there any more (card taken out)
-      else if (!path[0]) cnt = mp3Find(idx, path, sizeof path);  // the folder has changed: count again
-    } else {
-      cnt = mp3Find(idx, path, sizeof path);
-    }
-    mp3Count = cnt;
-    if (cnt == 0) break;
+    int cnt = mp3Count;
+    if (cnt == 0 || !mp3Names) break;
     if (idx >= cnt || idx < 0) {
       idx = idx < 0 ? cnt - 1 : 0;
       mp3Index = idx;
       continue;
     }
+    strlcpy(path, mp3Names + mp3NameOff[idx], sizeof path);
     Serial.printf("[MP3] track %d/%d %s\n", idx + 1, cnt, path);
     mp3Jump = 0;
     mp3Started = millis();
@@ -1493,7 +1504,7 @@ static int setMp3(bool on) {
 #if KS_DIAG
     ksdiag::heapLine("mp3 after SD.begin");
 #endif
-    int cnt = mp3Find(0, nullptr, 0);
+    int cnt = mp3Scan();
     if (cnt == 0) {
       SD.end();
       SPI.end();
@@ -1514,6 +1525,7 @@ static int setMp3(bool on) {
     ksdiag::heapLine(srcOk ? "mp3 after decoder" : "mp3 decoder failed");
 #endif
     if (!srcOk) {
+      mp3NamesFree();
       ringUse(RING_SAMPLES * 2);
       mp3On = false;
       SD.end();
@@ -1528,6 +1540,7 @@ static int setMp3(bool on) {
     while (mp3TaskH) delay(5);
     delay(20);  // the task has deleted itself; its stack is in the arena that goes back to the ring now
     mp3Src.end();
+    mp3NamesFree();
     ringUse(RING_SAMPLES * 2);
     mp3On = false;
     SD.end();
