@@ -221,9 +221,9 @@
 #define KS_DIAG 1  // (MP3 stage 0) 1: heap / task diagnostics on the serial port (KsDiag.h), nothing else changes
 #if KS_DIAG
 #include "KsDiag.h"
-#define BUILD_TAG "S16-2+D"
+#define BUILD_TAG "S16-4+D"
 #else
-#define BUILD_TAG "S16-2"
+#define BUILD_TAG "S16-4"
 #endif
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
@@ -641,6 +641,7 @@ static constexpr int MP3_SD_SCK = 40, MP3_SD_MISO = 39, MP3_SD_MOSI = 14, MP3_SD
 static constexpr size_t MP3_NAME_MAX = 200;
 static std::atomic<bool> mp3Run{false}, mp3Paused{false};
 static std::atomic<int> mp3Index{0}, mp3Count{0}, mp3Jump{0};  // the track now (0-based), how many, and a -1 / +1 asked for
+static std::atomic<uint32_t> mp3PauseAt{0};    // millis() when the pause began (the time display stands still meanwhile)
 static std::atomic<uint32_t> mp3Started{0};    // millis() when the current track began
 static TaskHandle_t mp3TaskH = nullptr;
 static bool mp3SdOn = false;
@@ -680,8 +681,8 @@ static void ringUse(size_t bytes) {
   playHold = false;
 }
 
-static constexpr size_t MP3_RING_BYTES = 16384;  // about 170 ms: START_FILL (100 ms) and room above it
-static constexpr size_t MP3_STACK = 16384;  // minimp3 keeps about 14 KB of per-frame scratch on the stack
+static constexpr size_t MP3_RING_BYTES = 12288;  // about 170 ms: START_FILL (100 ms) and room above it
+static constexpr size_t MP3_STACK = 20480;  // minimp3 keeps about 17 KB of per-frame scratch on the stack
 static StaticTask_t mp3Tcb;
 
 static void mp3Process(int16_t* out, size_t n) {
@@ -732,6 +733,7 @@ static void mp3Task(void*) {
     Serial.printf("[MP3] track %d/%d %s\n", idx + 1, cnt, path);
     mp3Jump = 0;
     mp3Started = millis();
+    mp3PauseAt = mp3Started.load();  // a track change while paused: the display shows 0:00 until play
     if (mp3Src.open(SD.open(path))) {
       int16_t* pcm;
       size_t n;
@@ -1076,7 +1078,7 @@ static void drawScreen(uint32_t fillNow, uint32_t elapsedS) {
   if (micOn) {  // (S10-1)
     snprintf(l, sizeof l, "MIC (no sound out)  sens x%.1f  [- =]", MIC_GAIN[micLevel]);
   } else if (mp3On) {  // (S16-1)
-    uint32_t t = (millis() - mp3Started.load()) / 1000;
+    uint32_t t = ((mp3Paused ? mp3PauseAt.load() : millis()) - mp3Started.load()) / 1000;
     snprintf(l, sizeof l, "MP3 %d/%d %lu:%02lu%s  [, /] spc", mp3Index.load() + 1, mp3Count.load(), (unsigned long)(t / 60),
              (unsigned long)(t % 60), mp3Paused ? " PAUSE" : "");
   } else if (auxOn) {  // (S12-1)
@@ -1616,7 +1618,10 @@ static void keyService() {
       case ']': media.press(CONSUMER_CONTROL_VOLUME_INCREMENT); media.release(); acted = true; break;
       case '\\': media.press(CONSUMER_CONTROL_MUTE); media.release(); acted = true; break;
       case ' ':
-        if (mp3On) { mp3Paused = !mp3Paused; Serial.printf("[MP3] %s\n", mp3Paused ? "pause" : "play"); }  // (S16-1) the player is here, not on the computer
+        if (mp3On) {
+          if (!mp3Paused) { mp3PauseAt = millis(); mp3Paused = true; }
+          else { mp3Started = mp3Started.load() + (millis() - mp3PauseAt.load()); mp3Paused = false; }
+          Serial.printf("[MP3] %s\n", mp3Paused ? "pause" : "play"); }  // (S16-1) the player is here, not on the computer
         else { media.press(CONSUMER_CONTROL_PLAY_PAUSE); media.release(); }
         acted = true;
         break;
