@@ -125,15 +125,21 @@ The same unit in a 3D-printed box, with the Cardputer ADV snapped onto the lid (
   <img src="docs/images/aux_pico2/photo_box_aux_screen.jpg" alt="The KeySpeaker data screen in AUX mode: AUX IN bad 0 lost 0" width="32%">
 </p>
 
-Each press of `Fn+I` moves on to the next input: USB, MIC, then AUX when the unit is there. The fighter crosses the screen and
-leaves the input in big letters behind it, or `NO USB` or `NO AUX` in red when that source is missing.
+**MP3 input (`Fn+I`):** put `.mp3` files in a `/music` folder on a microSD card (or in its top folder) and the Cardputer plays them
+as a fourth input, with the same screens: the fighter and the flight view follow the music. Only while USB is connected (the memory
+is shared with the Bluetooth keyboard). On the measure and flight screens, `Space` pauses or plays, `,` goes to the previous track and
+`/` to the next; the tracks loop. MP3 layer 3, 32 / 44.1 / 48 kHz, stereo or mono, up to 320 kbps. Details: [docs/MP3_DESIGN.md](docs/MP3_DESIGN.md).
+The decoder is [minimp3](https://github.com/lieff/minimp3) (CC0, public domain; see [docs/MP3_LICENSE.md](docs/MP3_LICENSE.md)).
+
+Each press of `Fn+I` moves on to the next input: USB, MIC, then AUX when the unit is there, then MP3. The fighter crosses the screen and
+leaves the input in big letters behind it, or `NO USB`, `NO AUX`, `NO SD` or `NO MP3` in red when that source is missing.
 
 In every mode:
 
 | Key | Does |
 | --- | --- |
 | `Fn+M` | Next mode (works without USB too) |
-| `Fn+I` | Input: USB sound, the built-in microphone, AUX (see below) |
+| `Fn+I` | Input: USB sound, the built-in microphone, AUX, MP3 from the microSD card (see above) |
 | `Fn+O` | Mac ↔ Windows profile (remembered) |
 
 Speaker and playback keys (measure mode and flight mode):
