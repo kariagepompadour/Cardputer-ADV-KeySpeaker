@@ -5,7 +5,8 @@
   already ships prebuilt. Its license is still to be decided before a release (docs/MP3_DESIGN.md).
 
   Memory is taken when the MP3 input is switched on (begin) and given back when it is switched off (end); nothing stays
-  allocated otherwise, because the BLE keyboard needs that heap when there is no USB. A file is opened and closed
+  allocated otherwise, because the BLE keyboard needs that heap when there is no USB. The buffers live in an arena the caller
+  lends (the ring buffer's storage, which an MP3 input does not need in full). A file is opened and closed
   inside the input (open / close) while the buffers and the resampler's table stay.
   No threads in here: the caller's task asks for the next block and decides how fast.
 */
@@ -13,24 +14,33 @@
 #include <Arduino.h>
 #include <FS.h>
 #include <esp_heap_caps.h>
+#include <new>
 #include <mp3dec.h>
 #include "Sinc48.h"
 
 namespace mp3src {
+
+constexpr size_t align16(size_t n) { return (n + 15) & ~(size_t)15; }
 
 class Source {
  public:
   static constexpr size_t INBUF = 2048;  // Helix needs MAINBUF_SIZE (1940) plus the next frame's header
   static constexpr size_t OUT_MAX = 1728;  // 1152 samples at 32 kHz become 1728 at 48 kHz (the worst case)
 
-  // Allocates everything; false when the heap cannot give it (then nothing stays allocated).
-  bool begin() {
-    constexpr uint32_t caps = MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT;
+  // Bytes the buffers take from the arena (16-byte aligned pieces).
+  static constexpr size_t ARENA_NEED = align16(INBUF) + align16(1152 * 2 * sizeof(int16_t)) + align16(sizeof(sinc48::Resampler));
+
+  // The buffers come from a block the caller gives (the ring buffer's spare storage, so the heap is not asked for them);
+  // only Helix's own state (about 24 KB) comes from the heap. False when the arena is too small or the heap cannot give the state.
+  bool begin(uint8_t* arena, size_t size) {
+    if (!arena || size < ARENA_NEED) return false;
+    in_ = arena;
+    arena += align16(INBUF);
+    pcm_ = (int16_t*)arena;  // stereo out, then reused for the 48 kHz mono
+    arena += align16(1152 * 2 * sizeof(int16_t));
+    rs_ = new (arena) sinc48::Resampler();
     dec_ = MP3InitDecoder();
-    in_ = (uint8_t*)heap_caps_malloc(INBUF, caps);
-    pcm_ = (int16_t*)heap_caps_malloc(1152 * 2 * sizeof(int16_t), caps);  // stereo out, then reused for the 48 kHz mono
-    rs_ = (sinc48::Resampler*)heap_caps_calloc(1, sizeof(sinc48::Resampler), caps);
-    if (!dec_ || !in_ || !pcm_ || !rs_) {
+    if (!dec_) {
       end();
       return false;
     }
@@ -40,9 +50,6 @@ class Source {
   void end() {
     close();
     if (dec_) MP3FreeDecoder(dec_);
-    heap_caps_free(in_);
-    heap_caps_free(pcm_);
-    heap_caps_free(rs_);
     dec_ = nullptr;
     in_ = nullptr;
     pcm_ = nullptr;
@@ -72,7 +79,7 @@ class Source {
   }
 
   // Decodes the next frame. Returns the number of 48 kHz mono samples (in *out), 0 at the end of the file. Bad frames are skipped.
-  size_t next(const int16_t** out) {
+  size_t next(int16_t** out) {
     while (!eof_ || have_ > 0) {
       if (have_ < (int)INBUF - 512 && !eof_) {
         int n = f_.read(in_ + have_, INBUF - have_);

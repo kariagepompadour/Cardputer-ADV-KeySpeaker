@@ -267,6 +267,11 @@ USBHIDConsumerControl media;
 USBHIDMouse mouse;  // (S2.5-1) the air mouse, after the keyboard
 
 static StreamBufferHandle_t ring = nullptr;   // writer: uacReceiveTask (onSpkData), reader: playTask
+// (S16-1) The ring's storage is allocated once and the stream buffer is made over it with the static call, so the MP3 input can make
+// a shorter ring over the first part of it and use the rest for its own buffers and its task's stack (ringUse below).
+static uint8_t* ringStore = nullptr;
+static StaticStreamBuffer_t ringStruct;
+static std::atomic<bool> playHold{false}, playHeld{false};  // setMp3 asks playTask to let go of the ring, and it says when it has
 static std::atomic<bool> micOn{false};         // (S10-1) the built-in microphone is the input: it moves the screen only, no sound out
 static std::atomic<bool> auxOn{false};         // (S12-1) the Pico 2 AUX unit on the Grove port is the input: its sound plays
 static std::atomic<bool> mp3On{false};         // (S16-1) MP3 files from the SD card are the input (only with USB: BLE needs the heap)
@@ -665,8 +670,22 @@ static int mp3Find(int k, char* path, size_t pathSize) {
   return 0;
 }
 
-static void mp3Process(const int16_t* s, size_t n) {
-  static int16_t out[mp3src::Source::OUT_MAX];
+// The ring over the first `bytes` of its storage (the rest is free for the MP3 input, see setMp3). Nothing may write to it: the
+// caller has switched the input (mp3On) so onSpkData does not, and playTask is held here.
+static void ringUse(size_t bytes) {
+  playHold = true;
+  for (int i = 0; i < 100 && !playHeld; i++) delay(2);
+  vStreamBufferDelete(ring);
+  ring = xStreamBufferCreateStatic(bytes, 1, ringStore, &ringStruct);
+  playHold = false;
+}
+
+static constexpr size_t MP3_RING_BYTES = 16384;  // about 170 ms: START_FILL (100 ms) and room above it
+static constexpr size_t MP3_STACK = 6144;
+static StaticTask_t mp3Tcb;
+
+static void mp3Process(int16_t* out, size_t n) {
+  const int16_t* s = out;
   static float vizAcc = 0;
   static size_t vizN = 0;
   int16_t peak = 0;
@@ -676,8 +695,8 @@ static void mp3Process(const int16_t* s, size_t n) {
     if (a > peak) peak = a;
     vizAcc += (float)s[i] * s[i];
     vizPcm[pos++ & (VIZ_PCM_N - 1)] = s[i];
-    out[i] = (int16_t)(s[i] * MP3_GAIN);
   }
+  for (size_t i = 0; i < n; i++) out[i] = (int16_t)(out[i] * MP3_GAIN);  // in place, after the visualizer has the full level
   vizPcmPos.store(pos, std::memory_order_release);
   vizN += n;
   if (vizN >= CHUNK) {
@@ -714,7 +733,7 @@ static void mp3Task(void*) {
     mp3Jump = 0;
     mp3Started = millis();
     if (mp3Src.open(SD.open(path))) {
-      const int16_t* pcm;
+      int16_t* pcm;
       size_t n;
       while (mp3Run && !mp3Jump && (n = mp3Src.next(&pcm)) > 0) {
         while (mp3Run && mp3Paused && !mp3Jump) vTaskDelay(20);
@@ -744,6 +763,13 @@ static void playTask(void*) {
   int idx = 0;
   bool playing = false;
   for (;;) {
+    if (playHold) {  // (S16-1) setMp3 is replacing the ring: do not touch it until it says so
+      playHeld = true;
+      playing = false;
+      vTaskDelay(2 / portTICK_PERIOD_MS);
+      continue;
+    }
+    playHeld = false;
     uint32_t fill = (uint32_t)(xStreamBufferBytesAvailable(ring) / 2);
     if (playing) {
       if (fill < fillMin) fillMin = fill;
@@ -1456,16 +1482,11 @@ static int setMp3(bool on) {
     ksdiag::heapLine("mp3 after SD.begin");
 #endif
     int cnt = mp3Find(0, nullptr, 0);
-    bool srcOk = cnt > 0 && mp3Src.begin();
-#if KS_DIAG
-    ksdiag::heapLine(srcOk ? "mp3 after decoder" : "mp3 decoder failed");
-#endif
-    if (!srcOk) {
-      mp3Src.end();
+    if (cnt == 0) {
       SD.end();
       SPI.end();
       mp3SdOn = false;
-      return cnt == 0 ? 3 : 4;
+      return 3;
     }
     mp3Count = cnt;
     mp3Index = 0;
@@ -1473,16 +1494,30 @@ static int setMp3(bool on) {
     mp3Paused = false;
     mp3On = true;  // onSpkData stops feeding the ring
     delay(30);
-    xStreamBufferReset(ring);
+    ringUse(MP3_RING_BYTES);  // a shorter ring; the rest of its storage holds the decoder's buffers and the task's stack
+    uint8_t* arena = ringStore + ((MP3_RING_BYTES + 1 + 15) & ~(size_t)15);
+    size_t room = RING_SAMPLES * 2 + 1 - (size_t)(arena - ringStore);
+    bool srcOk = room >= MP3_STACK + mp3src::Source::ARENA_NEED && mp3Src.begin(arena + MP3_STACK, room - MP3_STACK);
+#if KS_DIAG
+    ksdiag::heapLine(srcOk ? "mp3 after decoder" : "mp3 decoder failed");
+#endif
+    if (!srcOk) {
+      ringUse(RING_SAMPLES * 2);
+      mp3On = false;
+      SD.end();
+      SPI.end();
+      mp3SdOn = false;
+      return 4;
+    }
     mp3Run = true;
-    xTaskCreatePinnedToCore(mp3Task, "mp3", 6144, nullptr, 3, &mp3TaskH, PRO_CPU_NUM);
+    mp3TaskH = xTaskCreateStaticPinnedToCore(mp3Task, "mp3", MP3_STACK, nullptr, 3, arena, &mp3Tcb, PRO_CPU_NUM);
   } else {
     mp3Run = false;
     while (mp3TaskH) delay(5);
-    mp3On = false;
-    delay(10);
-    xStreamBufferReset(ring);
+    delay(20);  // the task has deleted itself; its stack is in the arena that goes back to the ring now
     mp3Src.end();
+    ringUse(RING_SAMPLES * 2);
+    mp3On = false;
     SD.end();
     SPI.end();
     mp3SdOn = false;
@@ -2155,7 +2190,8 @@ void setup() {
   if (mode >= MODE_COUNT) mode = MODE_DATA;
   osWin = prefs.getBool("osWin", false);
 
-  ring = xStreamBufferCreate(RING_SAMPLES * 2, 1);
+  ringStore = (uint8_t*)heap_caps_aligned_alloc(16, RING_SAMPLES * 2 + 1, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+  if (ringStore) ring = xStreamBufferCreateStatic(RING_SAMPLES * 2, 1, ringStore, &ringStruct);
   if (!ring) {
     Serial.println("[BOOT] no memory for the ring buffer");
     M5Cardputer.Display.drawString("no memory", 4, 4);
@@ -2293,6 +2329,10 @@ void loop() {
     if (now - lastDiag >= 10000) {
       lastDiag = now;
       ksdiag::report(now);
+      if (mp3On)
+        Serial.printf("[MP3] task %s track %d/%d %s fill=%u B of %u, stack never used %u B\n", mp3TaskH ? "alive" : "GONE", mp3Index.load() + 1,
+                      mp3Count.load(), mp3Paused ? "paused" : "playing", (unsigned)xStreamBufferBytesAvailable(ring), (unsigned)MP3_RING_BYTES,
+                      mp3TaskH ? (unsigned)uxTaskGetStackHighWaterMark(mp3TaskH) : 0u);
     }
     while (Serial.available()) {  // 'P': run the MP3 heap probe (KsDiag.h)
       int ch = Serial.read();
