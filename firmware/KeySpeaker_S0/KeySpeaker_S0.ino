@@ -221,9 +221,9 @@
 #define KS_DIAG 1  // (MP3 stage 0) 1: heap / task diagnostics on the serial port (KsDiag.h), nothing else changes
 #if KS_DIAG
 #include "KsDiag.h"
-#define BUILD_TAG "S16-6+D"
+#define BUILD_TAG "S16-7+D"
 #else
-#define BUILD_TAG "S16-6"
+#define BUILD_TAG "S16-7"
 #endif
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
@@ -707,7 +707,7 @@ static constexpr size_t MP3_RING_BYTES = 12288;  // about 170 ms: START_FILL (10
 static constexpr size_t MP3_STACK = 20480;  // minimp3 keeps about 17 KB of per-frame scratch on the stack
 static StaticTask_t mp3Tcb;
 
-static void mp3Process(int16_t* out, size_t n) {
+static void mp3Process(int16_t* out, size_t n, int fade = 0) {  // fade: 1 = ramp up over this block (a track begins), 2 = ramp down (a track is left)
   const int16_t* s = out;
   static float vizAcc = 0;
   static size_t vizN = 0;
@@ -719,7 +719,12 @@ static void mp3Process(int16_t* out, size_t n) {
     vizAcc += (float)s[i] * s[i];
     vizPcm[pos++ & (VIZ_PCM_N - 1)] = s[i];
   }
-  for (size_t i = 0; i < n; i++) out[i] = (int16_t)(out[i] * MP3_GAIN);  // in place, after the visualizer has the full level
+  if (fade) {  // a track change must not step the waveform (that is the click)
+    float inv = 1.0f / (float)n;
+    for (size_t i = 0; i < n; i++) out[i] = (int16_t)(out[i] * MP3_GAIN * (fade == 1 ? (float)i * inv : (float)(n - i) * inv));
+  } else {
+    for (size_t i = 0; i < n; i++) out[i] = (int16_t)(out[i] * MP3_GAIN);  // in place, after the visualizer has the full level
+  }
   vizPcmPos.store(pos, std::memory_order_release);
   vizN += n;
   if (vizN >= CHUNK) {
@@ -758,10 +763,14 @@ static void mp3Task(void*) {
     if (mp3Src.open(SD.open(path))) {
       int16_t* pcm;
       size_t n;
-      while (mp3Run && !mp3Jump && (n = mp3Src.next(&pcm)) > 0) {
+      bool first = true;
+      while (mp3Run && (n = mp3Src.next(&pcm)) > 0) {  // (a jump asked for while a block waits for room still plays that block, faded)
         while (mp3Run && mp3Paused && !mp3Jump) vTaskDelay(20);
-        if (!mp3Run || mp3Jump) break;
-        mp3Process(pcm, n);
+        if (!mp3Run) break;
+        bool leaving = mp3Jump != 0;  // a track change was asked for: this is the last block, faded out
+        mp3Process(pcm, n, leaving ? 2 : (first ? 1 : 0));
+        first = false;
+        if (leaving) break;
       }
       mp3Src.close();
     }
