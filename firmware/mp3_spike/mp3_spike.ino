@@ -182,6 +182,7 @@ static void decodeFile(const char* path, Stats& st) {
     if (total > st.maxUs) st.maxUs = total;
     st.bins[total / 500 < 39 ? total / 500 : 39]++;
     if ((millis() - t0) > 120000) break;  // two minutes of a file is enough
+    vTaskDelay(1);  // let the idle task run (a real player paces itself on the ring; without this the watchdog bites)
   }
   f.close();
   k.put();
