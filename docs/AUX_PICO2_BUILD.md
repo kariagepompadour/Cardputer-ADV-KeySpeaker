@@ -29,6 +29,8 @@ The author's build. The extra wires on the Grove cable are from an earlier proje
 
 ## 2. Safety rules
 
+> ⚠️ **Never connect the Pico's USB cable and the Grove cable at the same time.** Both send 5 V into the unit, so two power sources would meet. Unplug the Grove cable before you plug USB into the Pico, and unplug the Pico's USB cable before you plug in the Grove cable. The Pico has a part that keeps power from flowing back into the computer, but what happens to the Cardputer has not been checked.
+
 - Always turn the power off before changing any wire. Check the Cardputer's USB cable, its power switch and the Pico's USB cable.
 - Unplug the Grove cable before you plug USB into the Pico.
 - Connect the red wire (5 V) only to the Pico's VSYS and the PCM1808 board's VDD.
@@ -197,7 +199,7 @@ First, count the wires on the rails.
 
 If the count is wrong, go back to steps 3 and 4 and look through the wiring.
 
-1. Do not connect the Grove cable yet.
+1. **Do not connect the Grove cable.** The Pico's USB cable and the Grove cable must never be connected at the same time.
 2. For this check, the Pico's USB also powers the board. The wiring stays as it is.
 3. Hold down the BOOTSEL button on the Pico (the small white button) and plug it into your computer with USB. Let go of the button once it is plugged in.
 4. A drive called `RP2350` appears on your computer. Drag the check program `aux_pico2_check.uf2` onto that drive. It is in `firmware/aux_pico2_check/` in this repository.
@@ -243,7 +245,9 @@ This is a good place to stop for a break.
 
 ### Step 8: Write the programs and plug in the Grove wires
 
-**Write the Pico program and check that it replaced the old one.** Keep the Grove cable unplugged.
+**Write the Pico program and check that it replaced the old one.**
+
+⚠️ **Check that the Grove cable is unplugged before you plug USB into the Pico.**
 
 1. Hold down the Pico's BOOTSEL button and plug it into your computer with USB. Let go of the button once it is plugged in.
 2. Drag `firmware/AuxPico2/AuxPico2.uf2` onto the `RP2350` drive. The drive disappears by itself and the Pico restarts.

@@ -100,6 +100,8 @@ R3 and R4 match the pull-ups on the Cardputer's board. ✅ Today's dial works wi
 
 Unplug Grove before connecting USB to the Pico, as with Karipom Ear. On USB, VSYS (VBUS through a diode) also powers the PCM1808 board. ✅ Reception was confirmed with this wiring (section 10).
 
+🟡 Future work: with both the Pico's USB and Grove connected, two 5 V sources meet. The Pico's own diode keeps power from flowing back into the computer, but the Cardputer's side is not checked, so the build guide warns against it. A Schottky diode (such as 1N5817) between Grove red and VSYS would make that mistake safe, at the cost of about 0.3 V. Whether the PCM1808 board works at the lower voltage is not tried. The author's box (CASE5, 2026-11-09, [AUX_PICO2_BOX.md](AUX_PICO2_BOX.md)) has no diode; it could go into a later revision.
+
 ## 5.1 LINE OUT
 
 ✅ Karipom's LINE OUT takes the sound from CN3 on the PCM1808 board through 470 Ω. It runs in parallel with the sound input, so it does not affect the wiring to the Pico or the Cardputer, and it can stay in use. Even when the source's headphone jack is used, an active speaker can still play the sound.
