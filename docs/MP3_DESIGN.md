@@ -59,7 +59,7 @@ RateAdjust.h's Hermite is made for +-200 ppm. For the fixed 44.1 -> 48 kHz step,
 - 320 kbps and mono files (tested and fine on the device with Helix, 2026-11-13: 44.1 kHz stereo 64 / 128 kbps, 48 kHz stereo 128 kbps, a short VBR file; all 7 tracks in a loop, track changes with no break, the flight screen follows the music).
 - Tested with minimp3 on the device (2026-11-13): 7 tracks in a loop, 20 `/` presses in a row, pause / play, return to USB audio (the Mac must be playing again). Also tried: a 256 kbps 48 kHz stereo file (7.5 MB) and a 320 kbps stereo and a mono file played through, no breaks heard. Not yet: CPU measurement.
 - Long run (hours), the flight view's worst case with MP3, USB suspend / resume during MP3, switching input about 1000 times.
-- Battery life with MP3 is not measured (decoding, the card and the screen use more than waiting does).
+- Battery life with MP3: on battery alone it played 10 tracks on repeat for 10 h (07:26 to 17:26, 2026-11-14, S16-10, screen on) with underrun 0, overrun 0, buffer 94-126 ms, `boot 1`, and was still playing when stopped. The full run time until the battery is empty is not measured.
 - MP3 after the BLE keyboard has started needs a power cycle (see "BLE and memory").
 - License: settled by replacing Helix with minimp3 (CC0), see `MP3_LICENSE.md`. The sound and the speed of minimp3 against Helix are checked by ear only.
 - Reading the serial port resets nothing on KeySpeaker, but it does on `mp3_spike`.
