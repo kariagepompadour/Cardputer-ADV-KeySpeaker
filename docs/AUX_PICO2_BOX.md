@@ -112,3 +112,23 @@ The author printed `CASE5.stl` and `TOP5.stl` (the author's working names; saved
 ## 10. How to check that the two GNDs are joined (for beginners)
 
 On the PCM1808 board, the POWER header's GND and the I²S OUT header's left-most GND sit side by side on the lower edge of the board (IMG_6777); only the small printed words CN1 and CN2 are between them. To check, pull every wire off the board, set the multimeter to the beep (continuity) mode, and touch one probe to each of the two GND points. A beep means they are joined inside the board. On the back of the board the same two points are the solder pads next to the printed word GND: the right one of the two round pads at the top left (beside VDD), and the left-most of the five square pads at the top right. This is a safe test: beep mode only passes a tiny current. Result on the author's board: it beeps (2026-11-09).
+
+## 11. Second version: holes underneath, and a stand (2026-11-14)
+
+The author revised the case and added a stand. Sizes are left out here on purpose: the STL files are the reference.
+
+- **Case (`pico-aux-case.stl`, replaced):** two holes underneath, in the same places as the two back holes of the Cardputer ADV (and the two lid pegs). So the box can sit on the pegs of a Media-Jog base, just as a Cardputer does. The box is a little taller, because the floor is thicker to take the holes.
+- **Stand (`pico-aux-stand.stl`, new):** a wedge. Two holes underneath take the lid pegs, and two pegs on its sloped top take the Cardputer's back holes, so the Cardputer leans back on the box at **37 degrees** (the author's design). The sloped face carries the engraved image character of Kariagepompadour.
+- **Lid (`pico-aux-lid.stl`):** unchanged.
+
+![The Cardputer ADV on the stand, the stand on the box, showing the flight screen](images/aux_pico2/photo_stand_with_cardputer.jpg)
+
+*The Cardputer ADV on the stand at 37 degrees, the stand on the lid of the box (orange).*
+
+![The box with its two lid pegs, and the stand beside it](images/aux_pico2/photo_box_and_stand.jpg)
+
+*The box with the two lid pegs (left) and the stand with its two pegs for the Cardputer (right).*
+
+![The stand alone, with the engraved image character on its sloped face](images/aux_pico2/photo_stand.jpg)
+
+*The stand: the image character of Kariagepompadour on the sloped face, and the two pegs for the Cardputer.*
