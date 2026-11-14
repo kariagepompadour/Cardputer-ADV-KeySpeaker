@@ -93,6 +93,8 @@ Pictures of every screen: [`docs/SCREENS.md`](docs/SCREENS.md).
 
 **Meteor zone:** every few minutes while music plays, the terrain sinks low and meteors stream from right to left. The fighter stops firing and weaves through them. The louder the music, the more meteors.
 
+**Desert zone:** rarely (first after about 5 minutes of music, then every 8 to 15 minutes) the terrain becomes low sand dunes under a full moon, and pyramids and a sphinx flow by. The dunes and the equalizer still move with the music, and a beat lights the pyramids' golden tops and the sphinx's eyes. A small caravan of camels walks past the sphinx, and somebody waves to the fighter.
+
 </td>
 <td valign="top" width="360">
 
