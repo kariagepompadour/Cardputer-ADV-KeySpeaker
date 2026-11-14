@@ -120,3 +120,15 @@ PCM1808 基板では、POWER の端子の GND と、I²S OUT の端子の左端�
 - **本体(`pico-aux-case.stl`、差し替え):** 底に穴が 2 つあり、Cardputer ADV の背面の穴 2 つ(蓋の突起 2 本)と同じ位置です。これで、Cardputer と同じように、Media-Jog の台座の突起に、箱を差し込めます。穴のために床が厚くなり、箱は少し高くなりました。
 - **スタンド(`pico-aux-stand.stl`、新規):** くさび形です。底の穴 2 つが蓋の突起にはまり、斜めの上面の突起 2 本に Cardputer の背面の穴がはまります。これで、Cardputer が箱の上で **37 度** 傾きます(作者の設計)。斜めの面には、Kariagepompadour のイメージキャラクターが彫ってあります。
 - **蓋(`pico-aux-lid.stl`):** 変わっていません。
+
+![スタンドに Cardputer ADV をのせ、スタンドを箱にのせて、フライト画面を出したところ](images/aux_pico2/photo_stand_with_cardputer.jpg)
+
+*スタンドで 37 度に傾けた Cardputer ADV。スタンドは箱(オレンジ)の蓋にのっています。*
+
+![蓋の突起 2 本がある箱と、その横のスタンド](images/aux_pico2/photo_box_and_stand.jpg)
+
+*蓋の突起 2 本がある箱(左)と、Cardputer 用の突起 2 本があるスタンド(右)。*
+
+![スタンドだけ。斜めの面にイメージキャラクターが彫ってある](images/aux_pico2/photo_stand.jpg)
+
+*スタンド。斜めの面に Kariagepompadour のイメージキャラクター、Cardputer 用の突起 2 本。*
