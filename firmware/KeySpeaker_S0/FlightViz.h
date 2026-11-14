@@ -300,7 +300,7 @@ struct MeteorZone {
 // The desert zone (S17-1). See the top of this file.
 constexpr float DZ_IN_S = 2.0f, DZ_OUT_S = 2.0f, DZ_EASE_S = 0.18f;
 constexpr uint32_t DZ_FIRST_MS = 300000, DZ_MS_MIN = 480000, DZ_MS_MAX = 900000;
-constexpr int DZ_SEG = 4;               // the dunes' tallest, in segments
+constexpr int DZ_SEG = 7;               // the dunes' tallest, in segments (the equalizer's too)
 // The sphinx, lying with its paws to the left and its face turned toward us: L moonlit stone, S shade, D dark lines, E the two eyes,
 // N the striped headdress falling on both sides of the face (gold and blue rows).
 constexpr int SPHINX_W = 31, SPHINX_H = 13;
@@ -677,18 +677,17 @@ static inline int colAt(int x, int offset) {
   return d < 0 ? -1 : (d + PITCH - 1) / PITCH;
 }
 // A bar's height in the meteor zone: lower, in whole segments, still moving with the music.
-// In the desert zone: the dunes, lower still.
-static inline int mzHeight(const State& s, int h) {
-  float u = s.mz.u;
-  int seg = MZ_SEG;
-  if (s.dz.u > u) u = s.dz.u, seg = DZ_SEG;
+// In the desert zone: the dunes (eq: the equalizer, as tall as the dunes at most).
+static inline int mzHeight(const State& s, int h, bool eq = false) {
+  float u = s.mz.u, seg = MZ_SEG;
+  if (s.dz.u > u) u = s.dz.u, seg = eq ? (float)DZ_SEG * NSEG / EQ_NSEG : DZ_SEG;
   if (u <= 0) return h;
-  int n = (int)lrintf(h * (1.0f - u * (1.0f - (float)seg / NSEG)) / SEG_PITCH) * SEG_PITCH;
+  int n = (int)lrintf(h * (1.0f - u * (1.0f - seg / NSEG)) / SEG_PITCH) * SEG_PITCH;
   return n < GROUND ? GROUND : n;
 }
 // Graphic-equalizer bar j in px (0 while it is not showing), scaled while it rises or sinks.
 static inline int eqHeight(const State& s, int j) {
-  return s.eq ? mzHeight(s, (int)lrintf(s.eqH[j] * s.scale) * SEG_PITCH) : 0;
+  return s.eq ? mzHeight(s, (int)lrintf(s.eqH[j] * s.scale) * SEG_PITCH, true) : 0;
 }
 // Height of the ground under screen column x: the terrain, or the equalizer where it stands taller.
 static inline int heightAt(const State& s, int x, int offset) {
@@ -2619,8 +2618,9 @@ static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
       if (peak < h) peak = -1;
       for (int dx = 0; dx < BAR_W; dx++) {
         int x = x0 + dx;
-        uint16_t col = du > 0 ? mix565(s.eqCol[s.pattern - 1][j], s.sand[0], du) : s.eqCol[s.pattern - 1][j];
-        for (int k = 0; k < h; k++) fb[(H - 1 - k) * W + x] = k % SEG_PITCH < SEG_H ? (du > 0 ? mix565(s.eqCol[s.pattern - 1][j], s.sand[k], du) : col) : 0;
+        static const uint16_t WHITE = swap(rgb(255, 255, 255));
+        for (int k = 0; k < h; k++)  // in the desert the equalizer turns to sand too, paler than the dunes
+          fb[(H - 1 - k) * W + x] = k % SEG_PITCH < SEG_H ? (du > 0 ? mix565(s.eqCol[s.pattern - 1][j], mix565(s.sand[k], WHITE, 0.45f), du) : s.eqCol[s.pattern - 1][j]) : 0;
         if (peak >= 0)
           for (int k = peak; k < peak + SEG_H; k++) fb[(H - 1 - k) * W + x] = PEAK;
       }
