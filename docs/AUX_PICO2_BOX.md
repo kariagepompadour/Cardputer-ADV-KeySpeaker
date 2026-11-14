@@ -118,12 +118,12 @@ On the PCM1808 board, the POWER header's GND and the I²S OUT header's left-most
 The author revised the case and added a stand. Sizes are left out here on purpose: the STL files are the reference.
 
 - **Case (`pico-aux-case.stl`, replaced):** two holes underneath, in the same places as the two back holes of the Cardputer ADV (and the two lid pegs). So the box can sit on the pegs of a Media-Jog base, just as a Cardputer does. The box is a little taller, because the floor is thicker to take the holes.
-- **Stand (`pico-aux-stand.stl`, new):** a wedge. Two holes underneath take the lid pegs, and two pegs on its sloped top take the Cardputer's back holes, so the Cardputer leans back on the box at **37 degrees** (the author's design). The sloped face carries the engraved image character of Kariagepompadour.
+- **Stand (`pico-aux-stand.stl`, new, optional):** an extra, not needed. Without it the Cardputer sits flat on the lid pegs and everything works the same; the stand only tilts the Cardputer so the screen is easier to see. A wedge. Two holes underneath take the lid pegs, and two pegs on its sloped top take the Cardputer's back holes, so the Cardputer leans back on the box at **37 degrees** (the author's design). The sloped face carries the engraved image character of Kariagepompadour.
 - **Lid (`pico-aux-lid.stl`):** unchanged.
 
 ![The Cardputer ADV on the stand, the stand on the box, showing the flight screen](images/aux_pico2/photo_stand_with_cardputer.jpg)
 
-*The Cardputer ADV on the stand at 37 degrees, the stand on the lid of the box (orange).*
+*With the optional stand: the Cardputer ADV at 37 degrees, the stand on the lid of the box (orange). Without the stand the Cardputer sits flat on the lid.*
 
 ![The box with its two lid pegs, and the stand beside it](images/aux_pico2/photo_box_and_stand.jpg)
 
