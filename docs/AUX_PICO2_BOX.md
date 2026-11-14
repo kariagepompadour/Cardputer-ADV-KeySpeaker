@@ -115,9 +115,8 @@ On the PCM1808 board, the POWER header's GND and the I²S OUT header's left-most
 
 ## 11. Second version: holes underneath, and a stand (2026-11-14)
 
-The author revised the case and added a stand. The figures were read from the STL files by Claude.
+The author revised the case and added a stand. Sizes are left out here on purpose: the STL files are the reference.
 
-- **Case (`pico-aux-case.stl`, replaced):** now 57 × 86 × 48 mm (6 mm taller). The floor is thicker, and two round holes 5 mm across and 6 mm deep open on the underside, 40 mm apart. They match the two back holes of the Cardputer ADV and the two lid pegs (also 40 mm apart). So the box can sit on the pegs of a Media-Jog base, just as a Cardputer does (the author's design intent). The two holes for the mini breadboard's bumps are still there. The inside (board pins and bosses) was not compared in detail with CASE5.
-- **Stand (`pico-aux-stand.stl`, new):** a wedge, 56.6 × 84 × 39 mm. Two holes underneath, near the back edge (5 mm across, 6 mm deep, 40 mm apart), take the lid pegs; two pegs on its sloped top take the Cardputer's back holes, so the Cardputer sits at an angle on the box: **37 degrees** (the author's design; the main sloped face measures 37 degrees from the horizontal in the model). The sloped face carries the engraved image character of Kariagepompadour.
-- **Lid (`pico-aux-lid.stl`):** unchanged. The file the author sent with this version has the same size and volume.
-- Not yet reported: the fit of the stand on the lid pegs and of the case on a Media-Jog base.
+- **Case (`pico-aux-case.stl`, replaced):** two holes underneath, in the same places as the two back holes of the Cardputer ADV (and the two lid pegs). So the box can sit on the pegs of a Media-Jog base, just as a Cardputer does. The box is a little taller, because the floor is thicker to take the holes.
+- **Stand (`pico-aux-stand.stl`, new):** a wedge. Two holes underneath take the lid pegs, and two pegs on its sloped top take the Cardputer's back holes, so the Cardputer leans back on the box at **37 degrees** (the author's design). The sloped face carries the engraved image character of Kariagepompadour.
+- **Lid (`pico-aux-lid.stl`):** unchanged.
