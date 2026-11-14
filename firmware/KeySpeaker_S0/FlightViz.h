@@ -54,8 +54,8 @@
 
   A desert zone comes rarely while music plays (S17-1): the terrain sinks to low dunes the colour of sand (the equalizer turns to sand
   too), a full moon rises (shaded as a ball, lit from the upper right like the pyramids), and pyramids and a sphinx flow by with the
-  ground under the searchlights, which come more often. The pyramids breathe with the music, each a little after the one before; a beat
-  lights their golden capstones and the sphinx's eyes. Somebody by the pyramids waves to the fighter, and a small caravan (a guide on
+  ground under the searchlights, which come more often. The dunes and the equalizer move with the music; the pyramids stand still,
+  and a beat lights their golden capstones and the sphinx's eyes. Somebody by the pyramids waves to the fighter, and a small caravan (a guide on
   foot, three camels with riders, drawn like the people) walks past the sphinx. No monsters, no city, no bombs. Designed in the web
   demo first, the camel and its rider with the author at 12x on a sheet.
 
@@ -298,7 +298,7 @@ struct MeteorZone {
 };
 
 // The desert zone (S17-1). See the top of this file.
-constexpr float DZ_IN_S = 2.0f, DZ_OUT_S = 2.0f, DZ_EASE_S = 0.18f;
+constexpr float DZ_IN_S = 2.0f, DZ_OUT_S = 2.0f;
 constexpr uint32_t DZ_FIRST_MS = 300000, DZ_MS_MIN = 480000, DZ_MS_MAX = 900000;
 constexpr int DZ_SEG = 7;               // the dunes' tallest, in segments (the equalizer's too)
 // The sphinx, lying with its paws to the left and its face turned toward us: L moonlit stone, S shade, D dark lines, E the two eyes,
@@ -318,12 +318,12 @@ static const char* const SPHINX[SPHINX_H] = {
   "....SLLLLLLLLLLLLLLLLLLLLLLLLS.",
   "LLLLLLLLLLLLSLLLLLLLLLLLLLLLLS.",
   "LDLDLLLLLLLLSLLLLLLLLLLLLLLLLLS"};
-// The monuments, left to right: ox px from where the first one enters; kind 0 a pyramid (max: its tallest, in dots), 1 the sphinx,
+// The monuments, left to right: ox px from where the first one enters; kind 0 a pyramid (max: its height, in dots), 1 the sphinx,
 // 2 somebody waving to the fighter.
 struct DzItem { int16_t ox; uint8_t kind, max; };
 constexpr int DZ_N = 7;
-static const DzItem DZ_LAYOUT[DZ_N] = {{0, 0, 13}, {64, 0, 19}, {120, 2, 0}, {156, 0, 10}, {250, 1, 0}, {440, 0, 12}, {494, 0, 8}};
-constexpr int DZ_LEN = 494 + 8 * DOT + 4;   // px from the first monument's middle to past the last one's right edge
+static const DzItem DZ_LAYOUT[DZ_N] = {{0, 0, 14}, {64, 0, 20}, {120, 2, 0}, {156, 0, 11}, {250, 1, 0}, {440, 0, 13}, {494, 0, 10}};
+constexpr int DZ_LEN = 494 + 10 * DOT + 4;   // px from the first monument's middle to past the last one's right edge
 // A small camel, drawn like the people (1 px, black outline), walking to the left: c camel, b the blue saddle cloth between its two humps.
 // The body, then the legs in two steps.
 constexpr int CAMEL_W = 18, CAMEL_BODY = 7, CAMEL_LEGS = 4;
@@ -348,7 +348,7 @@ struct DesertZone {
   uint8_t ph = 0;                       // 0 none, 1 coming in, 2 running, 3 going out
   float t = 0, u = 0, x = 0, glow = 0;  // u: 0 normal world ... 1 full zone; x: where the layout starts (px); glow: a beat, fading
   float walked = 0;                     // how far the caravan has walked (px)
-  float hd[DZ_N] = {};                  // each pyramid's height now (dots)
+  float hd[DZ_N] = {};                  // each pyramid's height (dots)
   uint32_t nextMs = 0;
 };
 
@@ -1241,7 +1241,7 @@ static void updateMeteorZone(State& s, uint32_t nowMs, float dt, int sx) {
   for (auto& l : s.lt) if (l.on) l.x -= w;
 }
 
-// The desert zone: comes in, flows by with the ground, goes. The pyramids breathe with the music.
+// The desert zone: comes in, flows by with the ground, goes.
 static void updateDesert(State& s, uint32_t nowMs, float dt) {
   DesertZone& z = s.dz;
   Kong& k = s.k;
@@ -1249,7 +1249,7 @@ static void updateDesert(State& s, uint32_t nowMs, float dt) {
     if ((int32_t)(nowMs - z.nextMs) < 0 || s.mz.ph || k.ph != K_IDLE || s.city.on || s.cr.on) return;
     if (!s.desertForce && (!k.musicOn || nowMs - k.musicSince < KONG_MUSIC_MS)) return;
     z.ph = 1, z.t = 0, z.x = (float)(W + 40), z.glow = 0, z.walked = 0;
-    for (int i = 0; i < DZ_N; i++) z.hd[i] = DZ_LAYOUT[i].max * 0.6f;
+    for (int i = 0; i < DZ_N; i++) z.hd[i] = DZ_LAYOUT[i].max;  // the pyramids stand still (a pyramid that grows and shrinks looked wrong)
     uint32_t dur = (uint32_t)((DZ_IN_S + DZ_OUT_S) * 1000 + (W + 40 + DZ_LEN) / SCROLL_PX_S * 1000);
     uint32_t a = nowMs + dur + 8000, b = nowMs + dur + 30000;
     if ((int32_t)(a - k.nextMs) > 0) k.nextMs = a;              // no monster while it lasts
@@ -1279,15 +1279,6 @@ static void updateDesert(State& s, uint32_t nowMs, float dt) {
   if (s.beat) z.glow = 1;  // read, not cleared: the targets use it after this
   z.glow -= dt * 2.5f;
   if (z.glow < 0) z.glow = 0;
-  int n = 0;
-  for (int i = 0; i < DZ_N; i++) {
-    if (DZ_LAYOUT[i].kind != 0) continue;
-    int h = s.h[2 * n < COLS ? 2 * n : COLS - 1];  // each pyramid hears the music a little later than the one before
-    n++;
-    float t = (float)(h - GROUND) / (MAX_BAR - GROUND);
-    t = t < 0 ? 0 : t > 1 ? 1 : t;
-    z.hd[i] += (DZ_LAYOUT[i].max * (0.45f + 0.55f * t) - z.hd[i]) * (1.0f - expf(-dt / DZ_EASE_S));
-  }
 }
 
 // The fighter slips up or down away from a bolt or a missile that is about to reach it.

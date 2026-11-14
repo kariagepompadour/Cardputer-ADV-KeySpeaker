@@ -137,8 +137,8 @@
     - (S17-1) A desert zone on the game screen (FlightViz.h), from the web demo: rarer than the meteor zone (first after 5 minutes of music,
       then every 8 to 15 minutes, about 30 s each). The terrain sinks to low dunes the colour of sand (the equalizer turns to sand too, no
       peak dots), a full moon rises (shaded as a ball, lit from the upper right like the pyramids), and five pyramids and a sphinx flow by
-      with the ground; the searchlights come more often. The pyramids breathe with the music (each a little after the one before), a beat
-      lights their golden capstones and the sphinx's two eyes, somebody by the pyramids waves to the fighter, and a small caravan (a guide
+      with the ground; the searchlights come more often. The dunes (up to 7 segments) and the equalizer move with the music, the pyramids
+      stand still, a beat lights their golden capstones and the sphinx's two eyes, somebody by the pyramids waves to the fighter, and a small caravan (a guide
       on foot, three camels with riders, drawn like the people) walks past the sphinx. No monsters, no city, no bombs (the author's ideas;
       the camel and its rider designed with the author at 12x). About 0.3 KB of RAM more.
     - (S11-2) Searchlights on the game screen (FlightViz.h): a city on alert. Up to three stand on the ground, each with a small base (a
