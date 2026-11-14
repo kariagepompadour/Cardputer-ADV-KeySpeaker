@@ -130,7 +130,7 @@ as a fourth input, with the same screens: the fighter and the flight view follow
 charger): choose it with `Fn+I` within 10 seconds of switching on, before the Bluetooth keyboard starts, and the next start without a computer
 begins with MP3 again (with USB it always starts with USB). While MP3 plays the Bluetooth keyboard is off. Once the Bluetooth keyboard has started,
 MP3 needs the power switched off and on (the Bluetooth stack takes most of the memory and cannot be released), and the screen says `RESTART`.
-Playing from the card uses more power than waiting, so expect a shorter battery life (not measured yet). On the measure and flight screens, `Space` pauses or plays, `,` goes to the previous track and
+On battery alone, MP3 played for 10 hours without a break and was still playing when the test was stopped (2026-11-14, S16-10, 10 tracks on repeat, screen on: underrun 0, overrun 0, no restart). On the measure and flight screens, `Space` pauses or plays, `,` goes to the previous track and
 `/` to the next; the tracks loop. MP3 layer 3, 32 / 44.1 / 48 kHz, stereo or mono, up to 320 kbps. Details: [docs/MP3_DESIGN.md](docs/MP3_DESIGN.md).
 The decoder is [minimp3](https://github.com/lieff/minimp3) (CC0, public domain; see [docs/MP3_LICENSE.md](docs/MP3_LICENSE.md)).
 
