@@ -52,6 +52,13 @@
   it, it smokes and finally burns, but flies on. Not while a monster is there. S15-2: about halfway across, its underside glows red, then a barrage of twelve
   missiles leaves it in a fan; they curve toward the fighter trailing smoke (once in a pass; the ordinary volleys pause meanwhile).
 
+  A desert zone comes rarely while music plays (S17-1): the terrain sinks to low dunes the colour of sand (the equalizer turns to sand
+  too), a full moon rises (shaded as a ball, lit from the upper right like the pyramids), and pyramids and a sphinx flow by with the
+  ground under the searchlights, which come more often. The dunes and the equalizer move with the music; the pyramids stand still,
+  and a beat lights their golden capstones and the sphinx's eyes. Somebody by the pyramids waves to the fighter, and a small caravan (a guide on
+  foot, three camels with riders, drawn like the people) walks past the sphinx. No monsters, no city, no bombs. Designed in the web
+  demo first, the camel and its rider with the author at 12x on a sheet.
+
   Plain C++ on a 240 x 135 RGB565 frame buffer laid out like M5Canvas's (16-bit pixels, high byte first), so the same
   code also runs on a computer for previews.
 */
@@ -290,6 +297,61 @@ struct MeteorZone {
   uint32_t nextMs = 0, startMs = 0;
 };
 
+// The desert zone (S17-1). See the top of this file.
+constexpr float DZ_IN_S = 2.0f, DZ_OUT_S = 2.0f;
+constexpr uint32_t DZ_FIRST_MS = 300000, DZ_MS_MIN = 480000, DZ_MS_MAX = 900000;
+constexpr int DZ_SEG = 7;               // the dunes' tallest, in segments (the equalizer's too)
+// The sphinx, lying with its paws to the left and its face turned toward us: L moonlit stone, S shade, D dark lines, E the two eyes,
+// N the striped headdress falling on both sides of the face (gold and blue rows).
+constexpr int SPHINX_W = 31, SPHINX_H = 13;
+static const char* const SPHINX[SPHINX_H] = {
+  ".....NNNNN.....................",
+  "....NNNNNNN....................",
+  "...NNNLLLNNN...................",
+  "...NNLLLLLNN...................",
+  "..NNLELLLELNN..................",
+  "..NNLLLDLLLNN..................",
+  "..NNLLDDDLLNN..................",
+  "..NNNLLLLLNNNSSSSSSSSSSS.......",
+  "..NNNLLLLLNNNLLLLLLLLLLLLSS....",
+  "...NNLLLLLNNLLLLLLLLLLLLLLLS...",
+  "....SLLLLLLLLLLLLLLLLLLLLLLLLS.",
+  "LLLLLLLLLLLLSLLLLLLLLLLLLLLLLS.",
+  "LDLDLLLLLLLLSLLLLLLLLLLLLLLLLLS"};
+// The monuments, left to right: ox px from where the first one enters; kind 0 a pyramid (max: its height, in dots), 1 the sphinx,
+// 2 somebody waving to the fighter.
+struct DzItem { int16_t ox; uint8_t kind, max; };
+constexpr int DZ_N = 7;
+static const DzItem DZ_LAYOUT[DZ_N] = {{0, 0, 14}, {64, 0, 20}, {120, 2, 0}, {156, 0, 11}, {250, 1, 0}, {440, 0, 13}, {494, 0, 10}};
+constexpr int DZ_LEN = 494 + 10 * DOT + 4;   // px from the first monument's middle to past the last one's right edge
+// A small camel, drawn like the people (1 px, black outline), walking to the left: c camel, b the blue saddle cloth between its two humps.
+// The body, then the legs in two steps.
+constexpr int CAMEL_W = 18, CAMEL_BODY = 7, CAMEL_LEGS = 4;
+static const char* const CAMEL[CAMEL_BODY + CAMEL_LEGS * 2] = {
+  ".......cc.....cc..",
+  ".cc...cccbbbbbbcc.",
+  "cccc..cccbbbbbbcc.",
+  "..cc..ccccccccccc.",
+  "...cccccccccccccc.",
+  "....cccccccccccccc",
+  ".....cccccccccccc.",
+  ".....c.c....c.c...", ".....c.c....c.c...", ".....c.c....c.c...", "....cc.cc..cc.cc..",    // legs, step 0
+  "......cc.....cc...", ".....c..c...c..c..", "....c...c..c...c..", "...cc..cc.cc..cc.."};   // legs, step 1
+// The rider, sitting between the humps (the people's figure): a round head, one arm forward holding the reins, the bottom a little out
+// behind, the thigh flat forward on the saddle, the shin down and the foot forward.
+constexpr int RIDER_H = 9, RIDER_X = 7, RIDER_Y = 4;   // its top-left from the camel's: 7 px back, 4 px up
+static const char* const RIDER[RIDER_H] = {"....ww....", "....ww....", "...wwww...", "...www....", "..w.ww....", "....www...", "..wwww....", "..w.......", ".ww......."};
+constexpr int CAMEL_H = CAMEL_BODY + CAMEL_LEGS + RIDER_Y;   // px above the ground, with the rider
+constexpr int CARAVAN_N = 3, CARAVAN_GAP = 24, CARAVAN_OX = 380;   // three camels 24 px apart, starting after the sphinx in the layout
+constexpr float CARAVAN_WALK = 7.0f;   // px/s against the ground
+struct DesertZone {
+  uint8_t ph = 0;                       // 0 none, 1 coming in, 2 running, 3 going out
+  float t = 0, u = 0, x = 0, glow = 0;  // u: 0 normal world ... 1 full zone; x: where the layout starts (px); glow: a beat, fading
+  float walked = 0;                     // how far the caravan has walked (px)
+  float hd[DZ_N] = {};                  // each pyramid's height (dots)
+  uint32_t nextMs = 0;
+};
+
 // The cruiser (S15-1): a wedge-shaped capital ship as long as the screen is wide, a rare boss of the meteor zone. See the top of this file.
 constexpr int CR_W = 80, CR_H = 25, CR_Y = 8, CR_TRAIL = 34;           // dots, dots, px from the top, px of engine trail behind it
 constexpr float CR_SPEED = (W + 2 + CR_W * 3 + CR_TRAIL) / (MZ_IN_S + MZ_RUN_S + MZ_OUT_S);   // px/s: it takes the whole zone to cross
@@ -462,6 +524,9 @@ struct State {
   float citAcc = 0;
   bool cityForce = false, pinkForce = false;  // for previews on a computer: a city at once, every monster pink
   MeteorZone mz;
+  DesertZone dz;
+  bool desertForce = false;  // for previews on a computer: one soon after the start, then every 30 s
+  uint16_t sand[MAX_BAR];    // the dunes' colours by height (swapped), like lit
   Meteor met[MZ_MAX];
   Dust dust[MZ_DUST_MAX];
   Cruiser cr;
@@ -558,6 +623,13 @@ static void init(State& s, uint32_t nowMs) {
   s.citAcc = 0;
   s.mz = MeteorZone();
   s.mz.nextMs = nowMs + MZ_FIRST_MS;
+  s.dz = DesertZone();
+  s.dz.nextMs = nowMs + (s.desertForce ? 1500 : DZ_FIRST_MS);
+  for (int y = 0; y < MAX_BAR; y++) {  // dark sand at the bottom, pale moonlit sand on top
+    float t = (float)(y / SEG_PITCH) * SEG_PITCH / ((DZ_SEG - 1) * SEG_PITCH);
+    if (t > 1) t = 1;
+    s.sand[y] = y % SEG_PITCH >= SEG_H ? 0 : swap(rgb((int)lrintf(150 + 96 * t), (int)lrintf(100 + 110 * t), (int)lrintf(52 + 96 * t)));
+  }
   s.cr = Cruiser();
   for (auto& q : s.crb) q = CrBolt();
   for (auto& m : s.ms) m = CrMissile();
@@ -605,14 +677,17 @@ static inline int colAt(int x, int offset) {
   return d < 0 ? -1 : (d + PITCH - 1) / PITCH;
 }
 // A bar's height in the meteor zone: lower, in whole segments, still moving with the music.
-static inline int mzHeight(const State& s, int h) {
-  if (s.mz.u <= 0) return h;
-  int n = (int)lrintf(h * (1.0f - s.mz.u * (1.0f - (float)MZ_SEG / NSEG)) / SEG_PITCH) * SEG_PITCH;
+// In the desert zone: the dunes (eq: the equalizer, as tall as the dunes at most).
+static inline int mzHeight(const State& s, int h, bool eq = false) {
+  float u = s.mz.u, seg = MZ_SEG;
+  if (s.dz.u > u) u = s.dz.u, seg = eq ? (float)DZ_SEG * NSEG / EQ_NSEG : DZ_SEG;
+  if (u <= 0) return h;
+  int n = (int)lrintf(h * (1.0f - u * (1.0f - seg / NSEG)) / SEG_PITCH) * SEG_PITCH;
   return n < GROUND ? GROUND : n;
 }
 // Graphic-equalizer bar j in px (0 while it is not showing), scaled while it rises or sinks.
 static inline int eqHeight(const State& s, int j) {
-  return s.eq ? mzHeight(s, (int)lrintf(s.eqH[j] * s.scale) * SEG_PITCH) : 0;
+  return s.eq ? mzHeight(s, (int)lrintf(s.eqH[j] * s.scale) * SEG_PITCH, true) : 0;
 }
 // Height of the ground under screen column x: the terrain, or the equalizer where it stands taller.
 static inline int heightAt(const State& s, int x, int offset) {
@@ -621,6 +696,20 @@ static inline int heightAt(const State& s, int x, int offset) {
   if (s.eq && x >= 0 && x < EQ_BANDS * PITCH) {
     int e = eqHeight(s, x / PITCH);
     if (e > h) h = e;
+  }
+  if (s.dz.ph) {  // the pyramids and the sphinx, so the fighter flies over them
+    for (int i = 0; i < DZ_N; i++) {
+      const DzItem& d = DZ_LAYOUT[i];
+      int cx = DOT * (int)lrintf((s.dz.x + d.ox) / DOT), m = 0;
+      if (d.kind == 1) m = x >= cx && x < cx + SPHINX_W * DOT ? GROUND + SPHINX_H * DOT : 0;
+      else if (d.kind == 0) {
+        int rows = (int)lrintf(s.dz.hd[i]) - abs(x - cx - 1) / DOT;
+        if (rows > 0) m = GROUND + rows * DOT;
+      }
+      if (m > h) h = m;
+    }
+    float cx = s.dz.x + CARAVAN_OX - s.dz.walked;  // the caravan
+    if (x >= cx - 16 && x < cx + CARAVAN_N * CARAVAN_GAP && GROUND + CAMEL_H > h) h = GROUND + CAMEL_H;
   }
   return h;
 }
@@ -1034,7 +1123,7 @@ static void updateLights(State& s, uint32_t nowMs, float dt) {
       l.a = l.base;
       break;
     }
-    s.nextLightMs = nowMs + LIGHT_MS_MIN + nextRandom(s) % (LIGHT_MS_MAX - LIGHT_MS_MIN);
+    s.nextLightMs = nowMs + (s.dz.ph ? 2500 + nextRandom(s) % 4000 : LIGHT_MS_MIN + nextRandom(s) % (LIGHT_MS_MAX - LIGHT_MS_MIN));  // more often in the desert
   }
 }
 
@@ -1082,7 +1171,7 @@ static void updateMeteorZone(State& s, uint32_t nowMs, float dt, int sx) {
   MeteorZone& z = s.mz;
   Kong& k = s.k;
   if (z.ph == 0) {
-    if ((int32_t)(nowMs - z.nextMs) < 0 || k.ph != K_IDLE || !k.musicOn || nowMs - k.musicSince < KONG_MUSIC_MS) return;
+    if ((int32_t)(nowMs - z.nextMs) < 0 || s.dz.ph || k.ph != K_IDLE || !k.musicOn || nowMs - k.musicSince < KONG_MUSIC_MS) return;
     z.ph = 1, z.t = 0, z.acc = z.dustAcc = 0, z.ph0 = (nextRandom(s) % 628) / 100.0f, z.startMs = nowMs;
     if (s.cruiserForce || nextRandom(s) % 100 < CR_ZONE_PERCENT) {  // the cruiser comes in with the zone
       s.cr = Cruiser();
@@ -1150,6 +1239,46 @@ static void updateMeteorZone(State& s, uint32_t nowMs, float dt, int sx) {
   for (auto& b : s.eb) if (b.on) b.x -= w;
   for (auto& m : s.mine) if (m.on) m.x -= w;
   for (auto& l : s.lt) if (l.on) l.x -= w;
+}
+
+// The desert zone: comes in, flows by with the ground, goes.
+static void updateDesert(State& s, uint32_t nowMs, float dt) {
+  DesertZone& z = s.dz;
+  Kong& k = s.k;
+  if (z.ph == 0) {
+    if ((int32_t)(nowMs - z.nextMs) < 0 || s.mz.ph || k.ph != K_IDLE || s.city.on || s.cr.on) return;
+    if (!s.desertForce && (!k.musicOn || nowMs - k.musicSince < KONG_MUSIC_MS)) return;
+    z.ph = 1, z.t = 0, z.x = (float)(W + 40), z.glow = 0, z.walked = 0;
+    for (int i = 0; i < DZ_N; i++) z.hd[i] = DZ_LAYOUT[i].max;  // the pyramids stand still (a pyramid that grows and shrinks looked wrong)
+    uint32_t dur = (uint32_t)((DZ_IN_S + DZ_OUT_S) * 1000 + (W + 40 + DZ_LEN) / SCROLL_PX_S * 1000);
+    uint32_t a = nowMs + dur + 8000, b = nowMs + dur + 30000;
+    if ((int32_t)(a - k.nextMs) > 0) k.nextMs = a;              // no monster while it lasts
+    if ((int32_t)(b - s.mz.nextMs) > 0) s.mz.nextMs = b;         // nor a meteor zone right after it
+    if ((int32_t)(a - s.nextCityMs) > 0) s.nextCityMs = a;
+    uint32_t l = nowMs + 2000;
+    if ((int32_t)(s.nextLightMs - l) > 0) s.nextLightMs = l;     // the searchlights come sooner
+    return;
+  }
+  z.t += dt;
+  z.x -= SCROLL_PX_S * dt;
+  z.walked += CARAVAN_WALK * dt;
+  if (z.ph == 1) {
+    z.u = z.t / DZ_IN_S;
+    if (z.u >= 1) z.u = 1, z.ph = 2, z.t = 0;
+  } else if (z.ph == 2) {
+    if (z.x + DZ_LEN < 0) z.ph = 3, z.t = 0;
+  } else {
+    z.u = 1.0f - z.t / DZ_OUT_S;
+    if (z.u < 0) z.u = 0;
+    if (z.t >= DZ_OUT_S) {
+      z.ph = 0, z.u = 0;
+      z.nextMs = nowMs + (s.desertForce ? 30000 : DZ_MS_MIN + nextRandom(s) % (DZ_MS_MAX - DZ_MS_MIN));
+      return;
+    }
+  }
+  if (s.beat) z.glow = 1;  // read, not cleared: the targets use it after this
+  z.glow -= dt * 2.5f;
+  if (z.glow < 0) z.glow = 0;
 }
 
 // The fighter slips up or down away from a bolt or a missile that is about to reach it.
@@ -1373,7 +1502,7 @@ static void updateCity(State& s, uint32_t nowMs, float dt, int sx, int sy) {
       g.on = false;
       s.nextCityMs = nowMs + CITY_MS_MIN + nextRandom(s) % (CITY_MS_MAX - CITY_MS_MIN);
     }
-  } else if (!s.mz.ph && (s.prevDb > DB_SILENT || s.cityForce) && (int32_t)(nowMs - s.nextCityMs) >= 0) {
+  } else if (!s.mz.ph && !s.dz.ph && (s.prevDb > DB_SILENT || s.cityForce) && (int32_t)(nowMs - s.nextCityMs) >= 0) {
     newCity(s);
   }
   // now and then a few people come out of a doorway all at once and run after the fighter; after a while each stops and waves
@@ -1446,6 +1575,7 @@ static void update(State& s, uint32_t nowMs) {
   updateTurns(s, nowMs, dt);
   if (s.eq) updateEq(s, dt);
   updateMeteorZone(s, nowMs, dt, sx);
+  updateDesert(s, nowMs, dt);
 
   // Look at the terrain from the fighter to 60 px ahead, so it rises before a loud passage reaches it.
   int tallest = GROUND;
@@ -1666,7 +1796,7 @@ static void update(State& s, uint32_t nowMs) {
     s.nextFireMs = nowMs + interval(s, FIRE_MS_MIN, FIRE_MS_MAX);
     fireLaser(s, sx, sy);
   }
-  if (!s.mz.ph && (int32_t)(nowMs - s.nextBombMs) >= 0) {
+  if (!s.mz.ph && !s.dz.ph && (int32_t)(nowMs - s.nextBombMs) >= 0) {  // no bombs on the pyramids
     s.nextBombMs = nowMs + interval(s, BOMB_MS_MIN, BOMB_MS_MAX);
     for (auto& b : s.b) {
       if (b.on) continue;
@@ -2270,6 +2400,131 @@ static void drawCruiserBolts(const State& s, uint16_t* fb) {
   }
 }
 
+// ---- The desert zone (S17-1) ----
+// The moon: a full moon shaded as a ball in four flat tones like the pyramids' faces, lit from up on the right as they are, brightest
+// there and darkening toward the lower left; a crater is a hollow, its upper-right wall in shadow and its lower-left rim catching the
+// light. It rises a little and brightens as the zone comes in.
+constexpr int MOON_R = 11;
+static const float MOON_CRATERS[4][3] = {{-4, -3, 3}, {4, 3, 2.5f}, {3, -5, 1.5f}, {-5, 5, 1.5f}};  // x, y, radius (px from the middle)
+static void drawMoon(const State& s, uint16_t* fb) {
+  float u = s.dz.u;
+  if (u <= 0) return;
+  static const uint8_t TONE[4][3] = {{252, 246, 218}, {234, 222, 180}, {200, 184, 140}, {150, 134, 100}};
+  uint16_t tone[4];
+  for (int i = 0; i < 4; i++) tone[i] = mix565(0, swap(rgb(TONE[i][0], TONE[i][1], TONE[i][2])), u);
+  const int cx = 192, cy = 30 - (int)lrintf(8 * (1 - u)), R = MOON_R;
+  const float L0 = 0.55f, L1 = -0.55f, L2 = 0.63f;  // toward the light: right, up, toward us
+  for (int dy = -R; dy < R; dy++)
+    for (int dx = -R; dx < R; dx++) {
+      float x = dx + 0.5f, y = dy + 0.5f;  // the pixel's middle: the disc is symmetric
+      if (x * x + y * y > R * R) continue;
+      float z = sqrtf(R * R - x * x - y * y), lum = (x * L0 + y * L1 + z * L2) / R;
+      int t = lum > 0.78f ? 0 : lum > 0.45f ? 1 : lum > 0.1f ? 2 : 3;
+      for (const auto& c : MOON_CRATERS) {
+        float ox = x - c[0], oy = y - c[1], d = sqrtf(ox * ox + oy * oy), side = (ox - oy) / (float)M_SQRT2;
+        if (d <= c[2]) t += side > c[2] * 0.25f ? 2 : 1;                  // inside: darker, the upper-right wall darkest
+        else if (d <= c[2] + 1 && side < -c[2] * 0.4f && t > 0) t -= 1;  // the lower-left rim, lit
+        if (t > 3) t = 3;
+      }
+      px(fb, cx + dx, cy + dy, tone[t]);
+    }
+}
+// The pyramids, behind the dunes: lit on the moon's side (the right), in courses of stone, with a golden capstone that a beat lights up.
+static void drawPyramids(const State& s, uint16_t* fb) {
+  const DesertZone& z = s.dz;
+  if (!z.ph) return;
+  static const uint16_t LIT = swap(rgb(232, 194, 124)), LIT2 = swap(rgb(214, 174, 106)), SHADE = swap(rgb(132, 94, 54)),
+                        SHADE2 = swap(rgb(116, 82, 46)), EDGE = swap(rgb(252, 226, 168));
+  uint16_t cap = mix565(swap(rgb(220, 170, 40)), swap(rgb(255, 250, 190)), z.glow);
+  const int gy = H - GROUND;
+  for (int i = 0; i < DZ_N; i++) {
+    const DzItem& d = DZ_LAYOUT[i];
+    if (d.kind != 0) continue;
+    int cx = DOT * (int)lrintf((z.x + d.ox) / DOT), hd = (int)lrintf(z.hd[i]);
+    if (cx - hd * DOT > W || cx + hd * DOT < 0) continue;
+    for (int r = 0; r < hd; r++) {
+      int y = gy - (hd - r) * DOT;
+      bool course = r & 1;
+      for (int c = -r; c <= r; c++) {
+        uint16_t col = r == 0 ? cap : c == r ? EDGE : c > 0 ? (course ? LIT2 : LIT) : c == 0 ? LIT2 : (course ? SHADE2 : SHADE);  // lit on the moon's side
+        dot(fb, cx + c * DOT, y, col);
+      }
+    }
+    if (z.glow > 0.05f) {  // a beat: a glint above the tip
+      int a = (int)lrintf(120 * z.glow);
+      addDot(fb, cx, gy - (hd + 1) * DOT, a, a, (int)lrintf(a * 0.4f));
+    }
+  }
+}
+// A sprite drawn like the people: a black outline, then its colours (c camel, b blue cloth, w white).
+static void drawSprite(uint16_t* fb, const char* const* rows, int hh, int ww, int x, int y) {
+  static const uint16_t C = swap(rgb(168, 116, 66)), B = swap(rgb(60, 84, 176)), Wt = swap(rgb(255, 255, 255));
+  auto at = [&](int yy, int xx) -> char { return (yy < 0 || yy >= hh || xx < 0 || xx >= ww) ? '.' : rows[yy][xx]; };
+  for (int yy = -1; yy <= hh; yy++)
+    for (int xx = -1; xx <= ww; xx++) {
+      if (at(yy, xx) != '.') continue;
+      bool near = false;
+      for (int oy = -1; oy <= 1 && !near; oy++)
+        for (int ox = -1; ox <= 1; ox++)
+          if (at(yy + oy, xx + ox) != '.') { near = true; break; }
+      if (near) px(fb, x + xx, y + yy, 0);
+    }
+  for (int yy = 0; yy < hh; yy++)
+    for (int xx = 0; xx < ww; xx++) {
+      char ch = at(yy, xx);
+      if (ch != '.') px(fb, x + xx, y + yy, ch == 'c' ? C : ch == 'b' ? B : Wt);
+    }
+}
+// The caravan: a guide on foot in front, then the camels with their riders, swaying a little as they walk.
+static void drawCaravan(const State& s, uint16_t* fb, uint32_t nowMs) {
+  static const uint16_t B = swap(rgb(60, 84, 176)), REIN = swap(rgb(236, 196, 120));
+  const DesertZone& z = s.dz;
+  const int gy = H - GROUND, cx = (int)lrintf(z.x + CARAVAN_OX - z.walked);
+  if (cx - 14 > -PERSON_W && cx - 14 < W) drawFigure(fb, RUNNER[(nowMs / 260) % 3], 11, cx - 14, gy - PERSON_H, true);  // walking left
+  for (int n = 0; n < CARAVAN_N; n++) {
+    int x0 = cx + n * CARAVAN_GAP;
+    if (x0 > W || x0 < -CAMEL_W - 4) continue;
+    int step = (int)((nowMs / 320 + n) & 1);
+    int y0 = gy - (CAMEL_BODY + CAMEL_LEGS) + 1 - step;
+    const char* rows[CAMEL_BODY + CAMEL_LEGS];
+    for (int r = 0; r < CAMEL_BODY; r++) rows[r] = CAMEL[r];
+    for (int r = 0; r < CAMEL_LEGS; r++) rows[CAMEL_BODY + r] = CAMEL[CAMEL_BODY + step * CAMEL_LEGS + r];
+    drawSprite(fb, rows, CAMEL_BODY + CAMEL_LEGS, CAMEL_W, x0, y0);
+    int rx = x0 + RIDER_X, ry = y0 - RIDER_Y;
+    drawFigure(fb, RIDER, RIDER_H, rx, ry, false);                      // the rider
+    for (int k = 3; k <= 6; k++) px(fb, rx + k, ry + 7, B);             // the saddle cloth showing under the thigh and the bottom
+    int hx = rx + 2, hy = ry + 4, tx = x0 + 3, ty = y0 + 3;             // the reins: from the hand to the camel's neck
+    int nn = abs(tx - hx) > abs(ty - hy) ? abs(tx - hx) : abs(ty - hy);
+    for (int i = 1; i <= nn; i++) px(fb, (int)lrintf(hx + (tx - hx) * (float)i / nn), (int)lrintf(hy + (ty - hy) * (float)i / nn), REIN);
+  }
+}
+// In front of the dunes: the sphinx (its eyes glow on a beat), somebody waving to the fighter, and the caravan.
+static void drawSphinx(const State& s, uint16_t* fb, uint32_t nowMs) {
+  const DesertZone& z = s.dz;
+  if (!z.ph) return;
+  static const uint16_t L = swap(rgb(232, 194, 124)), S = swap(rgb(132, 94, 54)), D = swap(rgb(70, 48, 30)),
+                        GOLD = swap(rgb(226, 182, 60)), BLUE = swap(rgb(52, 84, 170));
+  uint16_t eye = mix565(swap(rgb(40, 28, 20)), swap(rgb(120, 255, 255)), z.glow);
+  const int gy = H - GROUND;
+  for (int i = 0; i < DZ_N; i++) {
+    const DzItem& d = DZ_LAYOUT[i];
+    int cx = DOT * (int)lrintf((z.x + d.ox) / DOT);
+    if (d.kind == 2) {
+      if (cx > -PERSON_W && cx < W) drawFigure(fb, WAVER[WAVE_SEQ[(nowMs / 230) % 4]], 11, cx, gy - PERSON_H, false);
+      continue;
+    }
+    if (d.kind != 1 || cx > W || cx < -SPHINX_W * DOT) continue;
+    for (int r = 0; r < SPHINX_H; r++)
+      for (int c = 0; c < SPHINX_W; c++) {
+        char ch = SPHINX[r][c];
+        if (ch == '.') continue;
+        uint16_t col = ch == 'N' ? ((r & 1) ? BLUE : GOLD) : ch == 'L' ? L : ch == 'S' ? S : ch == 'D' ? D : eye;
+        dot(fb, cx + c * DOT, gy - (SPHINX_H - r) * DOT, col);
+      }
+  }
+  drawCaravan(s, fb, nowMs);  // the caravan walks in front of the sphinx
+}
+
 static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
   for (int i = 0; i < W * H; i++) fb[i] = 0;
   int off = scrollOffset(s, nowMs);
@@ -2290,17 +2545,28 @@ static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
     for (int t = (int)lrintf(s.mz.u * (st.near ? 10 : 4)); t > 0; t--) px(fb, x + 1 + t, y, STAR_C[st.kind]);  // streaks in the zone
   }
 
+  drawMoon(s, fb);             // the desert's moon
   drawCruiser(s, fb, nowMs);   // the cruiser: in the sky, behind everything but the stars
   drawKongBody(s, fb, nowMs);  // behind the terrain
+  drawPyramids(s, fb);         // behind the dunes
 
+  // In the desert the terrain (and the equalizer) turns to sand.
+  float du = s.dz.u;
+  uint16_t litNow[MAX_BAR];
+  const uint16_t* lit = s.lit;
+  if (du > 0) {
+    for (int k = 0; k < MAX_BAR; k++) litNow[k] = s.lit[k] ? mix565(s.lit[k], s.sand[k], du) : 0;
+    lit = litNow;
+  }
   for (int i = 0; i < COLS; i++) {
     int x0 = colX(i, off), h = mzHeight(s, s.h[i]);
     for (int dx = 0; dx < BAR_W; dx++) {
       int x = x0 + dx;
       if ((unsigned)x >= (unsigned)W) continue;
-      for (int k = 0; k < h; k++) fb[(H - 1 - k) * W + x] = s.lit[k];  // the sky above stays black
+      for (int k = 0; k < h; k++) fb[(H - 1 - k) * W + x] = lit[k];  // the sky above stays black
     }
   }
+  drawSphinx(s, fb, nowMs);        // in front of the dunes
   drawSearchlights(s, fb, nowMs);  // in front of the terrain and the monster's body, behind the equalizer
   drawKongArms(s, fb, nowMs);      // both arms: in front of the terrain and the beams, behind the city
   drawCity(s, fb, nowMs);          // the city and its people: in front of the arms, behind the equalizer
@@ -2339,11 +2605,13 @@ static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
     static const uint16_t PEAK = swap(rgb(255, 255, 255));
     for (int j = 0; j < EQ_BANDS; j++) {
       int x0 = j * PITCH + (PITCH - BAR_W) / 2, h = eqHeight(s, j);
-      int peak = s.scale >= 1 && s.mz.u <= 0 ? ((int)lrintf(s.eqPeak[j]) - 1) * SEG_PITCH : -1;  // peak dot: its top segment
+      int peak = s.scale >= 1 && s.mz.u <= 0 && s.dz.u <= 0 ? ((int)lrintf(s.eqPeak[j]) - 1) * SEG_PITCH : -1;  // peak dot: its top segment
       if (peak < h) peak = -1;
       for (int dx = 0; dx < BAR_W; dx++) {
         int x = x0 + dx;
-        for (int k = 0; k < h; k++) fb[(H - 1 - k) * W + x] = k % SEG_PITCH < SEG_H ? s.eqCol[s.pattern - 1][j] : 0;
+        static const uint16_t WHITE = swap(rgb(255, 255, 255));
+        for (int k = 0; k < h; k++)  // in the desert the equalizer turns to sand too, paler than the dunes
+          fb[(H - 1 - k) * W + x] = k % SEG_PITCH < SEG_H ? (du > 0 ? mix565(s.eqCol[s.pattern - 1][j], mix565(s.sand[k], WHITE, 0.45f), du) : s.eqCol[s.pattern - 1][j]) : 0;
         if (peak >= 0)
           for (int k = peak; k < peak + SEG_H; k++) fb[(H - 1 - k) * W + x] = PEAK;
       }

@@ -134,6 +134,13 @@
       then twelve missiles leave it a moment apart in a fan from down-left to up-left; they speed up, curve toward the fighter and wobble a
       little, trailing smoke and a flame, and burst on the ground, on the fighter (its shield flashes) or when they burn out. The fighter slips
       away from them as from the bolts; the ordinary volleys pause meanwhile (the author's idea). About 1.2 KB of RAM more.
+    - (S17-1) A desert zone on the game screen (FlightViz.h), from the web demo: rarer than the meteor zone (first after 5 minutes of music,
+      then every 8 to 15 minutes, about 30 s each). The terrain sinks to low dunes the colour of sand (the equalizer turns to sand too, no
+      peak dots), a full moon rises (shaded as a ball, lit from the upper right like the pyramids), and five pyramids and a sphinx flow by
+      with the ground; the searchlights come more often. The dunes (up to 7 segments) and the equalizer move with the music, the pyramids
+      stand still, a beat lights their golden capstones and the sphinx's two eyes, somebody by the pyramids waves to the fighter, and a small caravan (a guide
+      on foot, three camels with riders, drawn like the people) walks past the sphinx. No monsters, no city, no bombs (the author's ideas;
+      the camel and its rider designed with the author at 12x). About 0.3 KB of RAM more.
     - (S11-2) Searchlights on the game screen (FlightViz.h): a city on alert. Up to three stand on the ground, each with a small base (a
       3 x 3 dot light grey square with a blue window), flow from right to left with the terrain and sweep the sky with a slim beam that
       widens and fades toward the top, in a cool blue-white added to the stars' light. A new one comes every 10 to 35 s, only while
@@ -222,9 +229,9 @@
 #define KS_DIAG 0  // (MP3 stage 0) 1: heap / task diagnostics on the serial port (KsDiag.h), nothing else changes
 #if KS_DIAG
 #include "KsDiag.h"
-#define BUILD_TAG "S16-10+D"
+#define BUILD_TAG "S17-1+D"
 #else
-#define BUILD_TAG "S16-10"
+#define BUILD_TAG "S17-1"
 #endif
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
