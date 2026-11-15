@@ -332,6 +332,10 @@ Listen for noise, dropouts, delay and distortion.
 
 ![Jog dial wiring](images/aux_pico2/fig04_dial_en.svg)
 
+**If the breadboard has no free holes (for example, once the unit is built into its box), wire the dial straight to the Pico's pins as in figure 9.** The hole names of figure 4 are not used.
+
+![Jog dial wired straight to the Pico](images/aux_pico2/fig09_dial_direct_en.svg)
+
 ### Step 10: Measure the dial's voltage
 
 Before you connect the dial to the Pico, check its signal voltage.

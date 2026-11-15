@@ -495,4 +495,6 @@
 <text x="960" y="91" font-size="13" fill="#222222" text-anchor="middle" font-weight="700">ダイヤル黒</text>
 <text x="40" y="722" font-size="14.5" fill="#222" text-anchor="start">ダイヤルのGroveケーブル：黄＝SDA、白＝SCL、赤＝5V、黒＝GND。線の色と役割は、テスターで確かめます。</text>
 <text x="40" y="746" font-size="14.5" fill="#222" text-anchor="start">ダイヤルの黄・白は b28、b29 に挿します。</text>
+<rect x="1056" y="16" width="190" height="28" rx="4" fill="#fdecea" stroke="#d62728" stroke-width="2"/>
+<text x="1151" y="36" font-size="16" fill="#d62728" text-anchor="middle" font-weight="700">実機では未検証</text>
 </svg>

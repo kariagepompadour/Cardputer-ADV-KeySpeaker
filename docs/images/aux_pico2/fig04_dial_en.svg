@@ -495,4 +495,6 @@
 <text x="960" y="91" font-size="13" fill="#222222" text-anchor="middle" font-weight="700">dial black</text>
 <text x="40" y="722" font-size="14.5" fill="#222" text-anchor="start">Dial Grove cable: yellow = SDA, white = SCL, red = 5 V, black = GND. Check the colours with a tester.</text>
 <text x="40" y="746" font-size="14.5" fill="#222" text-anchor="start">Plug the dial's yellow and white into b28 and b29.</text>
+<rect x="956" y="16" width="290" height="28" rx="4" fill="#fdecea" stroke="#d62728" stroke-width="2"/>
+<text x="1101" y="36" font-size="16" fill="#d62728" text-anchor="middle" font-weight="700">Not yet verified on hardware</text>
 </svg>
