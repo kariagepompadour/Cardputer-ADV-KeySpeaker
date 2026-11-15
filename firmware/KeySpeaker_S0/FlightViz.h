@@ -59,6 +59,13 @@
   foot, three camels with riders, drawn like the people) walks past the sphinx. No monsters, no city, no bombs. Designed in the web
   demo first, the camel and its rider with the author at 12x on a sheet.
 
+  S17-2: the same rare slot now brings the desert or a moai island, by lot. On the island the ground and the equalizer turn to green
+  grass, the sky warms to a sunset with the sun half in the sea on the right, and eight moai stand on two ahu (stone platforms), their
+  faces toward us. On a beat a moai's two eyes light up in cyan; now and then one drops its jaw and shoots two thin beams from its mouth
+  at the fighter (a hit only lights the shield). Three or four islanders at a time come out from behind a moai, run after the fighter
+  and wave, as in the city. No big monster, no city, no bombs. The moai is the first simple design made with the author in the web demo
+  (three-quarter and more carved versions were tried and dropped).
+
   Plain C++ on a 240 x 135 RGB565 frame buffer laid out like M5Canvas's (16-bit pixels, high byte first), so the same
   code also runs on a computer for previews.
 */
@@ -344,8 +351,29 @@ static const char* const RIDER[RIDER_H] = {"....ww....", "....ww....", "...wwww.
 constexpr int CAMEL_H = CAMEL_BODY + CAMEL_LEGS + RIDER_Y;   // px above the ground, with the rider
 constexpr int CARAVAN_N = 3, CARAVAN_GAP = 24, CARAVAN_OX = 380;   // three camels 24 px apart, starting after the sphinx in the layout
 constexpr float CARAVAN_WALK = 7.0f;   // px/s against the ground
+// The moai island (S17-2), the desert zone's other face. A moai, front on (L stone, H the lit ridge of the nose, S shade: the light is
+// up on the right as in the desert, D dark lines, E the eyes); while it shoots, rows 11-13 become the open mouth (K: light inside).
+constexpr int MOAI_W = 10, MOAI_H = 20, AHU_H = 2, IZ_N = 8;
+static const char* const MOAI[MOAI_H] = {
+  ".SSLLLLLL.", "SSLLLLLLLL", "SSLLLLLLLL", "SDDDLLDDDL", "SDEDSLDEDL", "SSLLSHLLLL", "SSLLSHLLLL", "SSLLSHLLLL", "SSLSHHHLLL",
+  "SSLLDSDLLL", "SSLLLLLLLL", "SSLDDDDDLL", "SSLLSSLLLL", ".SLLLLLLL.", "..SLLLLL..", ".SSLLLLLLL", "SDLLLLLLDL", "SDLLLLLLDL",
+  "SSDDDLDDDL", "SSLLLLLLLL"};
+constexpr int MOAI_OPEN_R = 11;
+static const char* const MOAI_OPEN[3] = {"SSLDKKKDLL", "SSLDDDDDLL", ".SLLSSLLL."};
+static const int16_t IZ_OX[IZ_N] = {0, 42, 84, 126, 168, 300, 342, 384};   // two ahu: five moai, then three (px from where the first enters)
+static const int16_t IZ_AHU[2][2] = {{-6, 168 + MOAI_W * DOT + 6}, {294, 384 + MOAI_W * DOT + 6}};
+constexpr int IZ_LEN = 384 + MOAI_W * DOT + 10;
+constexpr int MOAI_GUN_C = 5, MOAI_GUN_R = 11;                       // where the beams leave: the open mouth (dots)
+constexpr float MOAI_OPEN_S = 0.7f, IZ_BEAM_V = 150.0f;              // how long the mouth stays open; the beams' speed (px/s)
+constexpr uint32_t MOAI_FIRE_MS = 220, IZ_BEAM_GAP_MS = 700;          // from the eyes lighting to the shot; the least time between two moai shooting
+constexpr int HORIZON = H - 38;                                       // the sea's horizon (px from the top)
 struct DesertZone {
   uint8_t ph = 0;                       // 0 none, 1 coming in, 2 running, 3 going out
+  uint8_t kind = 0;                     // 0 the desert, 1 the moai island
+  bool beatNow = false;                 // a beat in this frame (the moai read it after the targets have taken s.beat)
+  uint32_t nextBeam = 0;
+  float mglow[IZ_N] = {}, mopen[IZ_N] = {};   // each moai's eyes after it was chosen to shoot; how long its mouth stays open
+  uint32_t fireAt[IZ_N] = {};           // when its shot leaves (0: none due)
   float t = 0, u = 0, x = 0, glow = 0;  // u: 0 normal world ... 1 full zone; x: where the layout starts (px); glow: a beat, fading
   float walked = 0;                     // how far the caravan has walked (px)
   float hd[DZ_N] = {};                  // each pyramid's height (dots)
@@ -408,6 +436,7 @@ struct Cruiser {
 };
 struct CrBolt {                         // a bolt, flying straight at where the fighter was
   bool on = false;
+  bool eye = false;                     // a moai's beam (S17-2): drawn cyan, and it never hits the ground (it starts inside the moai)
   float x = 0, y = 0, ox = 0, oy = 0, vx = 0, vy = 0, age = 0;
 };
 struct CrMissile {                      // a missile of the barrage: it turns toward the fighter and leaves a smoke trail
@@ -526,7 +555,9 @@ struct State {
   MeteorZone mz;
   DesertZone dz;
   bool desertForce = false;  // for previews on a computer: one soon after the start, then every 30 s
+  bool islandForce = false;  // the same for the moai island
   uint16_t sand[MAX_BAR];    // the dunes' colours by height (swapped), like lit
+  uint16_t grass[MAX_BAR];   // the island's grass, the same way
   Meteor met[MZ_MAX];
   Dust dust[MZ_DUST_MAX];
   Cruiser cr;
@@ -624,11 +655,12 @@ static void init(State& s, uint32_t nowMs) {
   s.mz = MeteorZone();
   s.mz.nextMs = nowMs + MZ_FIRST_MS;
   s.dz = DesertZone();
-  s.dz.nextMs = nowMs + (s.desertForce ? 1500 : DZ_FIRST_MS);
+  s.dz.nextMs = nowMs + (s.desertForce || s.islandForce ? 1500 : DZ_FIRST_MS);
   for (int y = 0; y < MAX_BAR; y++) {  // dark sand at the bottom, pale moonlit sand on top
     float t = (float)(y / SEG_PITCH) * SEG_PITCH / ((DZ_SEG - 1) * SEG_PITCH);
     if (t > 1) t = 1;
     s.sand[y] = y % SEG_PITCH >= SEG_H ? 0 : swap(rgb((int)lrintf(150 + 96 * t), (int)lrintf(100 + 110 * t), (int)lrintf(52 + 96 * t)));
+    s.grass[y] = y % SEG_PITCH >= SEG_H ? 0 : swap(rgb((int)lrintf(36 + 104 * t), (int)lrintf(86 + 110 * t), (int)lrintf(40 + 40 * t)));  // dark at the bottom, sunlit on top
   }
   s.cr = Cruiser();
   for (auto& q : s.crb) q = CrBolt();
@@ -697,7 +729,14 @@ static inline int heightAt(const State& s, int x, int offset) {
     int e = eqHeight(s, x / PITCH);
     if (e > h) h = e;
   }
-  if (s.dz.ph) {  // the pyramids and the sphinx, so the fighter flies over them
+  if (s.dz.ph && s.dz.kind == 1) {  // the moai on their ahu
+    for (int i = 0; i < IZ_N; i++) {
+      int cx = DOT * (int)lrintf((s.dz.x + IZ_OX[i]) / DOT);
+      if (x >= cx && x < cx + MOAI_W * DOT && GROUND + (AHU_H + MOAI_H) * DOT > h) h = GROUND + (AHU_H + MOAI_H) * DOT;
+    }
+    for (const auto& a : IZ_AHU)
+      if (x >= s.dz.x + a[0] && x < s.dz.x + a[1] && GROUND + AHU_H * DOT > h) h = GROUND + AHU_H * DOT;
+  } else if (s.dz.ph) {  // the pyramids and the sphinx, so the fighter flies over them
     for (int i = 0; i < DZ_N; i++) {
       const DzItem& d = DZ_LAYOUT[i];
       int cx = DOT * (int)lrintf((s.dz.x + d.ox) / DOT), m = 0;
@@ -1029,7 +1068,7 @@ static float updateKong(State& s, uint32_t nowMs, float dt, float shipCx, float 
   }
   bool musicOk = k.musicOn && nowMs - k.musicSince >= KONG_MUSIC_MS;
   if (k.ph == K_IDLE) {
-    if (musicOk && !s.cr.on && (int32_t)(nowMs - k.nextMs) >= 0) {
+    if (musicOk && !s.cr.on && !s.dz.ph && (int32_t)(nowMs - k.nextMs) >= 0) {  // never in the desert or on the island
       k.ph = K_WALK, k.t = 0, k.x = (float)(W + 4);
       k.chase = nextRandom(s) % 100 < K_CHASE_PERCENT;
       k.pal = pickKongPal(s);
@@ -1247,10 +1286,12 @@ static void updateDesert(State& s, uint32_t nowMs, float dt) {
   Kong& k = s.k;
   if (z.ph == 0) {
     if ((int32_t)(nowMs - z.nextMs) < 0 || s.mz.ph || k.ph != K_IDLE || s.city.on || s.cr.on) return;
-    if (!s.desertForce && (!k.musicOn || nowMs - k.musicSince < KONG_MUSIC_MS)) return;
-    z.ph = 1, z.t = 0, z.x = (float)(W + 40), z.glow = 0, z.walked = 0;
+    if (!s.desertForce && !s.islandForce && (!k.musicOn || nowMs - k.musicSince < KONG_MUSIC_MS)) return;
+    z.ph = 1, z.t = 0, z.x = (float)(W + 40), z.glow = 0, z.walked = 0, z.nextBeam = 0;
+    z.kind = s.desertForce ? 0 : s.islandForce ? 1 : (uint8_t)(nextRandom(s) & 1);   // the desert or the moai island, by lot
+    for (int i = 0; i < IZ_N; i++) z.mglow[i] = 0, z.mopen[i] = 0, z.fireAt[i] = 0;
     for (int i = 0; i < DZ_N; i++) z.hd[i] = DZ_LAYOUT[i].max;  // the pyramids stand still (a pyramid that grows and shrinks looked wrong)
-    uint32_t dur = (uint32_t)((DZ_IN_S + DZ_OUT_S) * 1000 + (W + 40 + DZ_LEN) / SCROLL_PX_S * 1000);
+    uint32_t dur = (uint32_t)((DZ_IN_S + DZ_OUT_S) * 1000 + (W + 40 + (z.kind ? IZ_LEN : DZ_LEN)) / SCROLL_PX_S * 1000);
     uint32_t a = nowMs + dur + 8000, b = nowMs + dur + 30000;
     if ((int32_t)(a - k.nextMs) > 0) k.nextMs = a;              // no monster while it lasts
     if ((int32_t)(b - s.mz.nextMs) > 0) s.mz.nextMs = b;         // nor a meteor zone right after it
@@ -1266,19 +1307,57 @@ static void updateDesert(State& s, uint32_t nowMs, float dt) {
     z.u = z.t / DZ_IN_S;
     if (z.u >= 1) z.u = 1, z.ph = 2, z.t = 0;
   } else if (z.ph == 2) {
-    if (z.x + DZ_LEN < 0) z.ph = 3, z.t = 0;
+    if (z.x + (z.kind ? IZ_LEN : DZ_LEN) < 0) z.ph = 3, z.t = 0;
   } else {
     z.u = 1.0f - z.t / DZ_OUT_S;
     if (z.u < 0) z.u = 0;
     if (z.t >= DZ_OUT_S) {
       z.ph = 0, z.u = 0;
-      z.nextMs = nowMs + (s.desertForce ? 30000 : DZ_MS_MIN + nextRandom(s) % (DZ_MS_MAX - DZ_MS_MIN));
+      z.nextMs = nowMs + (s.desertForce || s.islandForce ? 30000 : DZ_MS_MIN + nextRandom(s) % (DZ_MS_MAX - DZ_MS_MIN));
       return;
     }
   }
   if (s.beat) z.glow = 1;  // read, not cleared: the targets use it after this
+  z.beatNow = s.beat;
   z.glow -= dt * 2.5f;
   if (z.glow < 0) z.glow = 0;
+  for (int i = 0; i < IZ_N; i++) {
+    z.mglow[i] -= dt * 1.5f, z.mopen[i] -= dt;
+    if (z.mglow[i] < 0) z.mglow[i] = 0;
+    if (z.mopen[i] < 0) z.mopen[i] = 0;
+  }
+}
+// The moai's beams: on a beat, now and then, a moai in front of the fighter (to its right on the screen) lights its eyes, then drops its
+// jaw and shoots two thin beams from its mouth at the fighter. They fly as the cruiser's bolts do (s.crb).
+static void updateMoaiBeams(State& s, uint32_t nowMs, int sx, int sy) {
+  DesertZone& z = s.dz;
+  if (!z.ph || z.kind != 1) return;
+  const int top = H - GROUND - (AHU_H + MOAI_H) * DOT;
+  for (int i = 0; i < IZ_N; i++) {  // a shot that is due: from the open mouth
+    if (!z.fireAt[i] || (int32_t)(nowMs - z.fireAt[i]) < 0) continue;
+    z.fireAt[i] = 0;
+    float gx = DOT * lrintf((z.x + IZ_OX[i]) / DOT) + MOAI_GUN_C * DOT + 1, gy = top + MOAI_GUN_R * DOT + 1;
+    for (int k = -1; k <= 1; k += 2) {
+      float tx = sx + SHIP_W / 2.0f + k * 6 + (int)(nextRandom(s) % 9) - 4, ty = sy + SHIP_H / 2.0f + k * 4 + (int)(nextRandom(s) % 9) - 4;
+      float dx = tx - gx, dy = ty - gy, d = sqrtf(dx * dx + dy * dy);
+      if (d < 1) d = 1;
+      for (auto& q : s.crb)
+        if (!q.on) { q = CrBolt(); q.on = true, q.eye = true, q.x = q.ox = gx, q.y = q.oy = gy, q.vx = dx / d * IZ_BEAM_V, q.vy = dy / d * IZ_BEAM_V; break; }
+    }
+  }
+  if (z.ph != 2 || !z.beatNow || (int32_t)(nowMs - z.nextBeam) < 0) return;
+  int used = 0, ready[IZ_N], nr = 0;
+  for (const auto& q : s.crb) used += q.on;
+  if (used > 6) return;
+  for (int i = 0; i < IZ_N; i++) {
+    int x = DOT * (int)lrintf((z.x + IZ_OX[i]) / DOT);
+    if (x > sx + SHIP_W + 30 && x < W - MOAI_W * DOT) ready[nr++] = i;
+  }
+  if (!nr) return;
+  int i = ready[nextRandom(s) % nr];
+  z.mglow[i] = 1, z.mopen[i] = MOAI_OPEN_S, z.fireAt[i] = nowMs + MOAI_FIRE_MS;
+  if (!z.fireAt[i]) z.fireAt[i] = 1;
+  z.nextBeam = nowMs + IZ_BEAM_GAP_MS + nextRandom(s) % 900;
 }
 
 // The fighter slips up or down away from a bolt or a missile that is about to reach it.
@@ -1292,7 +1371,7 @@ static inline float dodgeFrom(float qx, float qy, float qvx, float qvy, int sx, 
 }
 static float cruiserEvade(const State& s, int sx, float sy) {
   for (const auto& q : s.crb)
-    if (q.on) { float e = dodgeFrom(q.x, q.y, q.vx, q.vy, sx, sy); if (e != 0) return e; }
+    if (q.on) { float e = dodgeFrom(q.x, q.y, q.vx, q.vy, sx, sy); if (e != 0) return q.eye ? -fabsf(e) : e; }   // from a moai's beam always up, away from the moai
   for (const auto& m : s.ms)
     if (m.on) { float e = dodgeFrom(m.x, m.y, m.vx, m.vy, sx, sy); if (e != 0) return e; }
   return 0;
@@ -1365,7 +1444,7 @@ static void updateCruiser(State& s, uint32_t nowMs, float dt, int sx, int sy) {
       s.shieldUntil = nowMs + SHIELD_MS;
       freeBurst(s, (float)bx, q.y);
       freeBurst(s, (float)(bx - 6), q.y + 3);
-    } else if (q.y + DOT >= ground) {
+    } else if (q.y + DOT >= ground && !q.eye) {
       q.on = false;
       carve(s, colAt(bx + 1, off), 2);
       freeBurst(s, (float)bx, (float)(ground - 1));
@@ -1530,6 +1609,29 @@ static void updateCity(State& s, uint32_t nowMs, float dt, int sx, int sy) {
       }
       s.citAcc = 5.0f + (nextRandom(s) % 50) / 10.0f;
     }
+  } else if (s.dz.ph == 2 && s.dz.kind == 1) {  // on the moai island, three or four islanders at a time come out from behind a moai the same way
+    s.citAcc -= dt;
+    if (s.citAcc <= 0) {
+      int ok[IZ_N], nok = 0, used = 0;
+      for (int i = 0; i < IZ_N; i++) {
+        int dx = DOT * (int)lrintf((s.dz.x + IZ_OX[i]) / DOT) + MOAI_W * DOT / 2;
+        if (dx > 110 && dx < W - 20) ok[nok++] = i;
+      }
+      for (const auto& c : s.cit) used += c.on;
+      if (nok && used < 3) {
+        int i = ok[nextRandom(s) % nok], n = 3 + (int)(nextRandom(s) % 2);
+        float x0 = (float)(DOT * (int)lrintf((s.dz.x + IZ_OX[i]) / DOT) + MOAI_W * DOT / 2 - PERSON_W / 2);
+        for (int k = 0; k < n; k++) {
+          Citizen* c = nullptr;
+          for (auto& q : s.cit) if (!q.on) { c = &q; break; }
+          if (!c) break;
+          *c = Citizen();
+          c->on = true, c->x = x0, c->mode = 0, c->t = -k * 0.13f, c->ph = (uint8_t)(nextRandom(s) % 7);
+          c->stop = 22 + (int)(nextRandom(s) % 70), c->back = nextRandom(s) % 100 < 35, c->backTo = 100 + (int)(nextRandom(s) % 60);
+        }
+      }
+      s.citAcc = 4.0f + (nextRandom(s) % 40) / 10.0f;
+    }
   }
   float fc = sx + SHIP_W / 2.0f;
   for (auto& c : s.cit) {
@@ -1628,6 +1730,7 @@ static void update(State& s, uint32_t nowMs) {
   s.evadeCur += (evadeTgt - s.evadeCur) * (1.0f - expf(-dt / (evadeTgt != 0 ? 0.07f : 0.5f)));
   int sy = (int)lrintf(s.shipY + bobY(nowMs) + s.evadeCur);
   updateCity(s, nowMs, dt, sx, sy);
+  updateMoaiBeams(s, nowMs, sx, sy);
   updateCruiser(s, nowMs, dt, sx, sy);
 
   for (auto& m : s.m) {
@@ -2382,11 +2485,22 @@ static void drawCruiserMissiles(const State& s, uint16_t* fb, uint32_t nowMs) {
 }
 // The cruiser's bolts: a long tail fading into green, a white-green head, and a muzzle flash at the gun for a moment.
 static void drawCruiserBolts(const State& s, uint16_t* fb) {
+  static const uint16_t BEAM_HEAD = swap(rgb(255, 255, 255)), BEAM = swap(rgb(120, 255, 255)), BEAM_TAIL = swap(rgb(60, 200, 255));
   for (const auto& q : s.crb) {
     if (!q.on) continue;
     float l = sqrtf(q.vx * q.vx + q.vy * q.vy);
     if (l < 1) l = 1;
     float ux = q.vx / l, uy = q.vy / l;
+    if (q.eye) {  // a moai's beam: a cyan line 2 px thick with a white head, short at first, growing to its length
+      int n = (int)lrintf(q.age * IZ_BEAM_V);
+      if (n > 14) n = 14;
+      for (int i = n; i >= 0; i--) {
+        uint16_t c = i < 2 ? BEAM_HEAD : mix565(BEAM_TAIL, BEAM, 1.0f - i / 15.0f);
+        int bx = (int)lrintf(q.x - ux * i), by = (int)lrintf(q.y - uy * i);
+        px(fb, bx, by, c), px(fb, bx, by + 1, c);
+      }
+      continue;
+    }
     for (int i = 7; i >= 1; i--) {
       float f = 1.0f - i / 8.0f;
       int w = i < 3 ? 3 : 2;
@@ -2406,9 +2520,37 @@ static void drawCruiserBolts(const State& s, uint16_t* fb) {
 // light. It rises a little and brightens as the zone comes in.
 constexpr int MOON_R = 11;
 static const float MOON_CRATERS[4][3] = {{-4, -3, 3}, {4, 3, 2.5f}, {3, -5, 1.5f}, {-5, 5, 1.5f}};  // x, y, radius (px from the middle)
+// The island's evening: the sky warms toward the horizon in flat bands (the stars show in the higher, darker ones), the sun sits half
+// in the sea on the right, and the sea is dark blue with small waves and the sun's path glittering on it.
+static void drawSunset(const State& s, uint16_t* fb, uint32_t nowMs) {
+  float u = s.dz.u;
+  static const uint8_t BAND[6][3] = {{255, 150, 60}, {236, 104, 66}, {184, 70, 92}, {118, 46, 100}, {64, 28, 84}, {30, 16, 52}};  // from the horizon up, 6 px each
+  for (int i = 0; i < 6; i++) {
+    uint16_t c = mix565(0, swap(rgb(BAND[i][0], BAND[i][1], BAND[i][2])), u * (1 - i / 7.0f));
+    for (int y = HORIZON - (i + 1) * 6; y < HORIZON - i * 6; y++)
+      for (int x = 0; x < W; x++) { uint16_t& p = fb[y * W + x]; if (i < 3 || p == 0) p = c; }
+  }
+  const int sx = 188, R = 13;
+  uint16_t core = mix565(0, swap(rgb(255, 236, 150)), u), mid = mix565(0, swap(rgb(255, 196, 90)), u), rim = mix565(0, swap(rgb(250, 150, 64)), u);
+  for (int dy = -R; dy < 0; dy++)  // the upper half of the sun, in flat rings
+    for (int dx = -R; dx < R; dx++) {
+      float x = dx + 0.5f, y = dy + 0.5f, d = sqrtf(x * x + y * y);
+      if (d > R) continue;
+      px(fb, sx + dx, HORIZON + dy, d < R - 4 ? core : d < R - 1.5f ? mid : rim);
+    }
+  uint16_t sea = mix565(0, swap(rgb(22, 44, 92)), u), sea2 = mix565(0, swap(rgb(34, 66, 124)), u), glit = mix565(0, swap(rgb(255, 196, 100)), u);
+  int t = (int)(nowMs / 250);
+  for (int y = HORIZON; y < H; y++) {
+    for (int x = 0; x < W; x++) fb[y * W + x] = (y - HORIZON) % 4 == 2 && ((x >> 3) + (y >> 1)) % 3 == 0 ? sea2 : sea;   // small waves
+    int dy = y - HORIZON;
+    if (dy % 3 != 1) continue;
+    for (int x = sx - 4 - dy; x <= sx + 4 + dy; x += 2)   // the sun's path: short glints here and there
+      if ((((uint32_t)((x >> 1) * 73 + dy * 151 + t * 37) * 2654435761u) >> 24 & 7) == 0) px(fb, x, y, glit), px(fb, x + 1, y, glit);
+  }
+}
 static void drawMoon(const State& s, uint16_t* fb) {
   float u = s.dz.u;
-  if (u <= 0) return;
+  if (u <= 0 || s.dz.kind == 1) return;
   static const uint8_t TONE[4][3] = {{252, 246, 218}, {234, 222, 180}, {200, 184, 140}, {150, 134, 100}};
   uint16_t tone[4];
   for (int i = 0; i < 4; i++) tone[i] = mix565(0, swap(rgb(TONE[i][0], TONE[i][1], TONE[i][2])), u);
@@ -2432,7 +2574,7 @@ static void drawMoon(const State& s, uint16_t* fb) {
 // The pyramids, behind the dunes: lit on the moon's side (the right), in courses of stone, with a golden capstone that a beat lights up.
 static void drawPyramids(const State& s, uint16_t* fb) {
   const DesertZone& z = s.dz;
-  if (!z.ph) return;
+  if (!z.ph || z.kind == 1) return;
   static const uint16_t LIT = swap(rgb(232, 194, 124)), LIT2 = swap(rgb(214, 174, 106)), SHADE = swap(rgb(132, 94, 54)),
                         SHADE2 = swap(rgb(116, 82, 46)), EDGE = swap(rgb(252, 226, 168));
   uint16_t cap = mix565(swap(rgb(220, 170, 40)), swap(rgb(255, 250, 190)), z.glow);
@@ -2498,10 +2640,38 @@ static void drawCaravan(const State& s, uint16_t* fb, uint32_t nowMs) {
     for (int i = 1; i <= nn; i++) px(fb, (int)lrintf(hx + (tx - hx) * (float)i / nn), (int)lrintf(hy + (ty - hy) * (float)i / nn), REIN);
   }
 }
+// The moai island, in front of the grass: the two ahu of laid stones, then the moai on them; a moai's eyes glow a little on every
+// beat and fully while its mouth is open to shoot.
+static void drawMoai(const State& s, uint16_t* fb, uint32_t nowMs) {
+  const DesertZone& z = s.dz;
+  static const uint16_t L = swap(rgb(150, 140, 128)), HL = swap(rgb(196, 186, 170)), S = swap(rgb(92, 84, 78)), D = swap(rgb(38, 34, 32)),
+                        STONE = swap(rgb(70, 64, 60)), STONE2 = swap(rgb(96, 88, 82)), GLOW = swap(rgb(120, 255, 255)), WHITE = swap(rgb(255, 255, 255));
+  const int gy = H - GROUND, top = gy - (AHU_H + MOAI_H) * DOT;
+  for (const auto& a : IZ_AHU)
+    for (int x = (int)lrintf(z.x + a[0]); x < z.x + a[1]; x += DOT)
+      for (int r = 0; r < AHU_H; r++) dot(fb, x, gy - (r + 1) * DOT, (((int)floorf((x - z.x) / DOT) + r) % 3) ? STONE : STONE2);
+  uint16_t inside = ((nowMs / 60) & 1) ? WHITE : GLOW;
+  for (int i = 0; i < IZ_N; i++) {
+    int cx = DOT * (int)lrintf((z.x + IZ_OX[i]) / DOT);
+    if (cx > W || cx < -MOAI_W * DOT) continue;
+    bool open = z.mopen[i] > 0;
+    float g = open ? 1.0f : (z.glow * 0.6f > z.mglow[i] ? z.glow * 0.6f : z.mglow[i]);
+    uint16_t eye = mix565(D, GLOW, g);
+    for (int r = 0; r < MOAI_H; r++) {
+      const char* row = open && r >= MOAI_OPEN_R && r < MOAI_OPEN_R + 3 ? MOAI_OPEN[r - MOAI_OPEN_R] : MOAI[r];
+      for (int c = 0; c < MOAI_W; c++) {
+        char ch = row[c];
+        if (ch == '.') continue;
+        dot(fb, cx + c * DOT, top + r * DOT, ch == 'L' ? L : ch == 'H' ? HL : ch == 'S' ? S : ch == 'D' ? D : ch == 'E' ? eye : inside);
+      }
+    }
+  }
+}
 // In front of the dunes: the sphinx (its eyes glow on a beat), somebody waving to the fighter, and the caravan.
 static void drawSphinx(const State& s, uint16_t* fb, uint32_t nowMs) {
   const DesertZone& z = s.dz;
   if (!z.ph) return;
+  if (z.kind == 1) { drawMoai(s, fb, nowMs); return; }
   static const uint16_t L = swap(rgb(232, 194, 124)), S = swap(rgb(132, 94, 54)), D = swap(rgb(70, 48, 30)),
                         GOLD = swap(rgb(226, 182, 60)), BLUE = swap(rgb(52, 84, 170));
   uint16_t eye = mix565(swap(rgb(40, 28, 20)), swap(rgb(120, 255, 255)), z.glow);
@@ -2546,16 +2716,18 @@ static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
   }
 
   drawMoon(s, fb);             // the desert's moon
+  if (s.dz.kind == 1 && s.dz.u > 0) drawSunset(s, fb, nowMs);   // or the island's evening
   drawCruiser(s, fb, nowMs);   // the cruiser: in the sky, behind everything but the stars
   drawKongBody(s, fb, nowMs);  // behind the terrain
   drawPyramids(s, fb);         // behind the dunes
 
-  // In the desert the terrain (and the equalizer) turns to sand.
+  // In the desert the terrain (and the equalizer) turns to sand; on the island, to grass.
   float du = s.dz.u;
+  const uint16_t* gnd = s.dz.kind == 1 ? s.grass : s.sand;
   uint16_t litNow[MAX_BAR];
   const uint16_t* lit = s.lit;
   if (du > 0) {
-    for (int k = 0; k < MAX_BAR; k++) litNow[k] = s.lit[k] ? mix565(s.lit[k], s.sand[k], du) : 0;
+    for (int k = 0; k < MAX_BAR; k++) litNow[k] = s.lit[k] ? mix565(s.lit[k], gnd[k], du) : 0;
     lit = litNow;
   }
   for (int i = 0; i < COLS; i++) {
@@ -2611,7 +2783,7 @@ static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
         int x = x0 + dx;
         static const uint16_t WHITE = swap(rgb(255, 255, 255));
         for (int k = 0; k < h; k++)  // in the desert the equalizer turns to sand too, paler than the dunes
-          fb[(H - 1 - k) * W + x] = k % SEG_PITCH < SEG_H ? (du > 0 ? mix565(s.eqCol[s.pattern - 1][j], mix565(s.sand[k], WHITE, 0.45f), du) : s.eqCol[s.pattern - 1][j]) : 0;
+          fb[(H - 1 - k) * W + x] = k % SEG_PITCH < SEG_H ? (du > 0 ? mix565(s.eqCol[s.pattern - 1][j], mix565(gnd[k], WHITE, 0.45f), du) : s.eqCol[s.pattern - 1][j]) : 0;
         if (peak >= 0)
           for (int k = peak; k < peak + SEG_H; k++) fb[(H - 1 - k) * W + x] = PEAK;
       }
