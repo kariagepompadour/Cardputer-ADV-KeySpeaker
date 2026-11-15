@@ -141,6 +141,11 @@
       stand still, a beat lights their golden capstones and the sphinx's two eyes, somebody by the pyramids waves to the fighter, and a small caravan (a guide
       on foot, three camels with riders, drawn like the people) walks past the sphinx. No monsters, no city, no bombs (the author's ideas;
       the camel and its rider designed with the author at 12x). About 0.3 KB of RAM more.
+    - (S17-2) A moai island, from the web demo: the desert zone's slot now brings the desert or the island, by lot. Green grass and
+      a green equalizer, a sunset with the sun half in the sea, and eight moai on two ahu (the first simple front-facing design made with
+      the author). On a beat a moai's eyes light up in cyan; now and then one drops its jaw and shoots two thin beams from its mouth at the
+      fighter (a hit only lights the shield; the fighter slips up away from them). Three or four islanders at a time come out from behind
+      a moai, run after the fighter and wave, as in the city. No big monster during either zone. About 0.2 KB of RAM more.
     - (S11-2) Searchlights on the game screen (FlightViz.h): a city on alert. Up to three stand on the ground, each with a small base (a
       3 x 3 dot light grey square with a blue window), flow from right to left with the terrain and sweep the sky with a slim beam that
       widens and fades toward the top, in a cool blue-white added to the stars' light. A new one comes every 10 to 35 s, only while
@@ -229,9 +234,9 @@
 #define KS_DIAG 0  // (MP3 stage 0) 1: heap / task diagnostics on the serial port (KsDiag.h), nothing else changes
 #if KS_DIAG
 #include "KsDiag.h"
-#define BUILD_TAG "S17-1+D"
+#define BUILD_TAG "S17-2+D"
 #else
-#define BUILD_TAG "S17-1"
+#define BUILD_TAG "S17-2"
 #endif
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
