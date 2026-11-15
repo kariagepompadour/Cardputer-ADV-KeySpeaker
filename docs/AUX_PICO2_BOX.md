@@ -139,3 +139,7 @@ All three files were replaced. The author's changes:
 
 - **Pegs:** the lid pegs and the stand's pegs for the Cardputer are a little thinner (they were a tight fit).
 - **The part that holds the lid:** made stronger.
+
+### Peg size adjusted again (2026-11-15)
+
+The lid pegs and the stand's pegs are now **4.8 mm** in diameter. The second version's 4.9 mm was tight, and the third version's 4.7 mm turned out slightly loose, so the author settled on 4.8 mm. The case, lid and stand files were replaced again.
