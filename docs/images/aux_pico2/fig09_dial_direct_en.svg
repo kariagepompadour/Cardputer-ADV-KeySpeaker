@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 630" width="1100" height="630" font-family="'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans CJK JP','Noto Sans JP','Yu Gothic',Meiryo,sans-serif" role="img" aria-label="Figure 9  Jog dial wired straight to the Pico (no breadboard)">
+<title>Figure 9  Jog dial wired straight to the Pico (no breadboard)</title><rect width="1100" height="630" fill="#ffffff"/>
+<text x="24" y="36" font-size="22" fill="#222" font-weight="700">Figure 9  Jog dial wired straight to the Pico (no breadboard)</text>
+<rect x="786" y="16" width="290" height="28" rx="4" fill="#fdecea" stroke="#d62728" stroke-width="2"/>
+<text x="931" y="36" font-size="16" fill="#d62728" text-anchor="middle" font-weight="700">Not yet verified on hardware</text>
+<text x="24" y="60" font-size="14" fill="#666">Wire the dial's Grove cable and two 10 kΩ resistors to the Pico's pins. No breadboard hole names are used</text>
+<rect x="40" y="90" width="300" height="370" rx="6" fill="#e9f6ec" stroke="#222" stroke-width="1.5"/>
+<text x="190" y="118" font-size="17" fill="#222" text-anchor="middle" font-weight="700">Pico 2 H</text>
+<rect x="760" y="90" width="300" height="370" rx="6" fill="#fff" stroke="#00897b" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="910" y="118" font-size="16" fill="#00897b" text-anchor="middle" font-weight="700">Jog dial Grove cable</text>
+<text x="910" y="138" font-size="13" fill="#00897b" text-anchor="middle">(Unit Encoder U135)</text>
+<text x="326" y="195" font-size="14" fill="#222" text-anchor="end" font-weight="700">pin 9  GP6 (SDA)</text>
+<circle cx="340" cy="190" r="6" fill="#c9a400" stroke="#222" stroke-width="1.5"/>
+<text x="326" y="260" font-size="14" fill="#222" text-anchor="end" font-weight="700">pin 36  3V3(OUT)</text>
+<circle cx="340" cy="255" r="6" fill="#e67e22" stroke="#222" stroke-width="1.5"/>
+<text x="326" y="325" font-size="14" fill="#222" text-anchor="end" font-weight="700">pin 10  GP7 (SCL)</text>
+<circle cx="340" cy="320" r="6" fill="#7f7f7f" stroke="#222" stroke-width="1.5"/>
+<text x="326" y="395" font-size="14" fill="#222" text-anchor="end" font-weight="700">pin 38  GND</text>
+<circle cx="340" cy="390" r="6" fill="#222" stroke="#222" stroke-width="1.5"/>
+<text x="326" y="445" font-size="14" fill="#222" text-anchor="end" font-weight="700">pin 39  VSYS</text>
+<circle cx="340" cy="440" r="6" fill="#d62728" stroke="#222" stroke-width="1.5"/>
+<text x="774" y="195" font-size="14" fill="#222" font-weight="700">yellow  SDA</text>
+<circle cx="760" cy="190" r="6" fill="#c9a400" stroke="#222" stroke-width="1.5"/>
+<text x="774" y="325" font-size="14" fill="#222" font-weight="700">white  SCL</text>
+<circle cx="760" cy="320" r="6" fill="#9e9e9e" stroke="#222" stroke-width="1.5"/>
+<text x="774" y="395" font-size="14" fill="#222" font-weight="700">black  GND</text>
+<circle cx="760" cy="390" r="6" fill="#222" stroke="#222" stroke-width="1.5"/>
+<text x="774" y="445" font-size="14" fill="#222" font-weight="700">red  5 V</text>
+<circle cx="760" cy="440" r="6" fill="#d62728" stroke="#222" stroke-width="1.5"/>
+<line x1="346" y1="190" x2="754" y2="190" stroke="#c9a400" stroke-width="3" stroke-linecap="round"/>
+<line x1="346" y1="320" x2="754" y2="320" stroke="#9e9e9e" stroke-width="3" stroke-linecap="round"/>
+<line x1="346" y1="390" x2="754" y2="390" stroke="#222" stroke-width="3" stroke-linecap="round"/>
+<line x1="346" y1="440" x2="754" y2="440" stroke="#d62728" stroke-width="3" stroke-linecap="round"/>
+<line x1="346" y1="255" x2="540" y2="255" stroke="#e67e22" stroke-width="3" stroke-linecap="round"/>
+<line x1="540" y1="255" x2="540" y2="190" stroke="#e67e22" stroke-width="3" stroke-linecap="round"/>
+<rect x="526" y="212" width="28" height="21" fill="#fff" stroke="#e67e22" stroke-width="2.5"/>
+<text x="562" y="227" font-size="13" fill="#e67e22" font-weight="700">R3 10 kΩ</text>
+<line x1="540" y1="255" x2="540" y2="320" stroke="#e67e22" stroke-width="3" stroke-linecap="round"/>
+<rect x="526" y="277" width="28" height="21" fill="#fff" stroke="#e67e22" stroke-width="2.5"/>
+<text x="562" y="292" font-size="13" fill="#e67e22" font-weight="700">R4 10 kΩ</text>
+<circle cx="540" cy="190" r="4.5" fill="#c9a400"/>
+<circle cx="540" cy="320" r="4.5" fill="#9e9e9e"/>
+<circle cx="540" cy="255" r="4.5" fill="#e67e22"/>
+<line x1="24" y1="486" x2="1076" y2="486" stroke="#ddd"/>
+<text x="24" y="510" font-size="13" fill="#333">・Join one leg of each 10 kΩ resistor at 3V3 (pin 36). Connect the other legs to yellow (SDA) and white (SCL).</text>
+<text x="24" y="534" font-size="13" fill="#333">・Wire colours can differ between cables. Swapping yellow and white does no harm; if it does not work, swap them.</text>
+<text x="24" y="558" font-size="13" fill="#333">・Red and black may instead be added to the Grove red split (VSYS) and black split (GND) inside the box.</text>
+<text x="24" y="582" font-size="13" fill="#333">・To test: unplug the Grove cable between the Pico and the Cardputer at the Cardputer end, and plug only the Pico into the computer by USB.</text>
+<text x="24" y="606" font-size="13" fill="#333">・When the `ST>` line in the serial monitor says `dial=1`, the Pico has found the dial.</text>
+</svg>
