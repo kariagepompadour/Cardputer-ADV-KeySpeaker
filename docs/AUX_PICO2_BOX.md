@@ -132,3 +132,10 @@ The author revised the case and added a stand. Sizes are left out here on purpos
 ![The stand alone, with the engraved image character on its sloped face](images/aux_pico2/photo_stand.jpg)
 
 *The stand: the image character of Kariagepompadour on the sloped face, and the two pegs for the Cardputer.*
+
+## 12. Third version: thinner pegs, a stronger lid hold (2026-11-15)
+
+All three files were replaced. The author's changes:
+
+- **Pegs:** the lid pegs and the stand's pegs for the Cardputer are a little thinner (they were a tight fit).
+- **The part that holds the lid:** made stronger.
