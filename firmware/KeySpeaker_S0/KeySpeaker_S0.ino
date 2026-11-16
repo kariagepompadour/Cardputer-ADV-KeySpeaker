@@ -152,6 +152,11 @@
       four stepped Maya pyramids (two to six tiers, sizes fixed in the layout like the Egyptian ones, drawn from rules, no big tables)
       with a temple on top whose roof and doorway glow on a beat; torches with a flickering flame, a few fireflies. People come out from
       behind a pyramid, run after the fighter and wave, as on the island. No monster, no city, no bombs. About 0.3 KB of RAM more.
+    - (S17-4) The jungle looks more Mesoamerican, from the web demo: the biggest pyramid becomes a great temple after the Templo Mayor (a wide
+      stepped pyramid with a stair of five dots and two shrines side by side on top, a brazier between them whose flame leaps on a beat, all in
+      grey stone); the people in the jungle look dressed (a red headgear, a yellow tunic, white face, hands and legs); a volcano stands among the
+      far peaks (dark rock, a glowing crater, flickering lava, drifting ash; after Popocatepetl); and about one far peak in three is bare earth.
+      Statues, a quetzal and a blue/red colour coding were tried in the web demo and dropped.
     - (S11-2) Searchlights on the game screen (FlightViz.h): a city on alert. Up to three stand on the ground, each with a small base (a
       3 x 3 dot light grey square with a blue window), flow from right to left with the terrain and sweep the sky with a slim beam that
       widens and fades toward the top, in a cool blue-white added to the stars' light. A new one comes every 10 to 35 s, only while
@@ -240,9 +245,9 @@
 #define KS_DIAG 0  // (MP3 stage 0) 1: heap / task diagnostics on the serial port (KsDiag.h), nothing else changes
 #if KS_DIAG
 #include "KsDiag.h"
-#define BUILD_TAG "S17-3+D"
+#define BUILD_TAG "S17-4+D"
 #else
-#define BUILD_TAG "S17-3"
+#define BUILD_TAG "S17-4"
 #endif
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0

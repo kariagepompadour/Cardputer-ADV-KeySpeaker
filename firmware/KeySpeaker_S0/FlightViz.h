@@ -72,6 +72,9 @@
   and fireflies. People come out from behind a pyramid and wave, as on the island. Designed in the web demo (the statues tried there were
   dropped: nobody would have named them).
 
+  S17-4: the jungle gets more Mesoamerican: the biggest pyramid becomes a great temple after the Templo Mayor (two shrines side by side, a brazier
+  between them), the people look dressed (red headgear, yellow tunic), a volcano smokes among the far peaks, and some far peaks are bare earth.
+
   Plain C++ on a 240 x 135 RGB565 frame buffer laid out like M5Canvas's (16-bit pixels, high byte first), so the same
   code also runs on a computer for previews.
 */
@@ -377,8 +380,8 @@ constexpr int HORIZON = H - 38;                                       // the sea
 // middle) and has n tiers of two rows (n = 2 to 6, fixed in the layout like the Egyptian ones), a temple of three rows on top and a roof row: made by
 // pyrCell() instead of a table. R roof, D the doorway, L/l lit stone, S/s shade (l and s the odd rows), T/t the stair in the middle, E the lit edge.
 constexpr int PYR_W = 29, PYR_MIN = 2, PYR_MAX = 6, JG_N = 7;
-struct JgItem { int16_t ox; uint8_t kind, tier; };   // kind 0 a pyramid (tier: its size), 1 a torch
-static const JgItem JG_LAYOUT[JG_N] = {{0, 0, 5}, {124, 1, 0}, {160, 0, 3}, {284, 1, 0}, {320, 0, 6}, {444, 1, 0}, {480, 0, 2}};   // ox px from where the first enters
+struct JgItem { int16_t ox; uint8_t kind, tier; };   // kind 0 a pyramid (tier: its size), 1 a torch, 2 the great temple
+static const JgItem JG_LAYOUT[JG_N] = {{0, 0, 5}, {124, 1, 0}, {160, 0, 3}, {284, 1, 0}, {320, 2, 0}, {444, 1, 0}, {480, 0, 2}};   // ox px from where the first enters
 constexpr int JG_LEN = 480 + PYR_W * DOT + 10;
 static inline int pyrRows(int n) { return 4 + 2 * n; }
 static inline char pyrCell(int n, int r, int c) {
@@ -393,6 +396,26 @@ static inline int pyrColH(int n, int c) {   // how tall the pyramid stands in do
   if (c < 0 || c >= PYR_W) return 0;
   const int rows = pyrRows(n);
   for (int r = 0; r < rows; r++) if (pyrCell(n, r, c) != '.') return (rows - r) * DOT;
+  return 0;
+}
+// The great temple (S17-4), after the Templo Mayor: 37 dots wide, a stair of five dots down the middle and six tiers, and on top TWO shrines side by side (5 rows
+// high) with a brazier between them. Same character rules as the pyramids, all in grey stone; B is the brazier's bowl.
+constexpr int GT_W = 37, GT_TIERS = 6, GT_TOP = 8, GT_SH = 5, GT_ROWS = 1 + GT_SH + 2 * GT_TIERS;
+static inline char gtCell(int r, int c) {
+  const int dx = c - (GT_W - 1) / 2, a = dx < 0 ? -dx : dx;
+  if (r == 0) return (a <= 7 && dx != 0) ? 'R' : '.';   // one stone roof over each shrine
+  if (r <= GT_SH) {
+    const int rr = r - 1;
+    for (int c0 = -4; c0 <= 4; c0 += 8)
+      if (dx >= c0 - 2 && dx <= c0 + 2) return (rr >= GT_SH - 3 && dx == c0) ? 'D' : dx < c0 ? 'S' : 'L';   // walls with a doorway
+    return (rr == GT_SH - 1 && a <= 1) ? 'B' : '.';
+  }
+  const int k = r - 1 - GT_SH, hw = GT_TOP + 2 * (k / 2);
+  return a > hw ? '.' : a <= 2 ? ((k & 1) ? 't' : 'T') : dx == hw ? 'E' : dx < 0 ? ((k & 1) ? 's' : 'S') : ((k & 1) ? 'l' : 'L');
+}
+static inline int gtColH(int c) {   // how tall the great temple stands in dot column c (px)
+  if (c < 0 || c >= GT_W) return 0;
+  for (int r = 0; r < GT_ROWS; r++) if (gtCell(r, c) != '.') return (GT_ROWS - r) * DOT;
   return 0;
 }
 static inline int zoneLen(int kind) { return kind == 2 ? JG_LEN : kind ? IZ_LEN : DZ_LEN; }
@@ -784,10 +807,10 @@ static inline int heightAt(const State& s, int x, int offset) {
   } else if (s.dz.ph && s.dz.kind == 2) {  // the jungle's pyramids, step by step
     for (int i = 0; i < JG_N; i++) {
       const JgItem& d = JG_LAYOUT[i];
-      if (d.kind != 0) continue;
+      if (d.kind == 1) continue;
       int cx = DOT * (int)lrintf((s.dz.x + d.ox) / DOT);
-      if (x < cx || x >= cx + PYR_W * DOT) continue;
-      int m = GROUND + pyrColH(d.tier, (x - cx) / DOT);
+      if (x < cx || x >= cx + (d.kind == 2 ? GT_W : PYR_W) * DOT) continue;
+      int m = GROUND + (d.kind == 2 ? gtColH((x - cx) / DOT) : pyrColH(d.tier, (x - cx) / DOT));
       if (m > h) h = m;
     }
   } else if (s.dz.ph) {  // the pyramids and the sphinx, so the fighter flies over them
@@ -1669,7 +1692,7 @@ static void updateCity(State& s, uint32_t nowMs, float dt, int sx, int sy) {
       int mid[IZ_N], ok[IZ_N], nok = 0, used = 0, nm = 0;   // the middles (px) of the places they come from
       if (s.dz.kind == 2) {
         for (int i = 0; i < JG_N; i++)
-          if (JG_LAYOUT[i].kind == 0) mid[nm++] = DOT * (int)lrintf((s.dz.x + JG_LAYOUT[i].ox) / DOT) + PYR_W * DOT / 2;
+          if (JG_LAYOUT[i].kind != 1) mid[nm++] = DOT * (int)lrintf((s.dz.x + JG_LAYOUT[i].ox) / DOT) + (JG_LAYOUT[i].kind == 2 ? GT_W : PYR_W) * DOT / 2;
       } else {
         for (int i = 0; i < IZ_N; i++) mid[nm++] = DOT * (int)lrintf((s.dz.x + IZ_OX[i]) / DOT) + MOAI_W * DOT / 2;
       }
@@ -2379,8 +2402,9 @@ static const char* const RUNNER[3][11] = {
   {"......b...", ".....www..", ".....www..", ".....ww...", "...wwwwbb.", "..wwowww..", ".....ww...", "....wwww..", "...ww..ww.", "..ww...ww.", "..ww......"}};
 static const uint8_t WAVE_SEQ[4] = {0, 1, 2, 1};
 // The figure with a black outline, as in SOUND TERRARIUM; hh rows of it.
-static void drawFigure(uint16_t* fb, const char* const* rows, int hh, int x, int y, bool mirror) {
-  static const uint16_t FW = swap(rgb(255, 255, 255)), FO = swap(rgb(255, 140, 32)), FB = swap(rgb(40, 168, 255));
+// dress: 0 as it is, 1 a waving figure, 2 a running one: in the jungle the people look dressed, a red headgear on the top of the head and a yellow tunic on the body (face, hands and legs stay white).
+static void drawFigure(uint16_t* fb, const char* const* rows, int hh, int x, int y, bool mirror, int dress = 0) {
+  static const uint16_t FW = swap(rgb(255, 255, 255)), FO = swap(rgb(255, 140, 32)), FB = swap(rgb(40, 168, 255)), FR = swap(rgb(230, 40, 40)), FY = swap(rgb(255, 214, 60));
   auto at = [&](int yy, int xx) -> char { return (yy < 0 || yy >= hh || xx < 0 || xx >= PERSON_W) ? '.' : rows[yy][mirror ? PERSON_W - 1 - xx : xx]; };
   for (int yy = -1; yy <= hh; yy++)
     for (int xx = -1; xx <= PERSON_W; xx++) {
@@ -2394,7 +2418,14 @@ static void drawFigure(uint16_t* fb, const char* const* rows, int hh, int x, int
   for (int yy = 0; yy < hh; yy++)
     for (int xx = 0; xx < PERSON_W; xx++) {
       char ch = at(yy, xx);
-      if (ch != '.') px(fb, x + xx, y + yy, ch == 'w' ? FW : ch == 'o' ? FO : FB);
+      if (ch == '.') continue;
+      uint16_t col = ch == 'w' ? FW : ch == 'o' ? FO : FB;
+      if (dress) {
+        const int sc = mirror ? PERSON_W - 1 - xx : xx, run = dress == 2;   // the column in the unmirrored frame
+        if (yy <= 1 && sc >= (run ? 5 : 3) && sc <= (run ? 7 : 6)) col = FR;
+        else if (ch == 'w' && (run ? (yy >= 3 && yy <= 7 && sc >= 4 && sc <= 6) : (yy >= 4 && yy <= 8 && sc >= 4 && sc <= 5))) col = FY;
+      }
+      px(fb, x + xx, y + yy, col);
     }
 }
 static void drawCity(const State& s, uint16_t* fb, uint32_t nowMs) {
@@ -2449,7 +2480,7 @@ static void drawCity(const State& s, uint16_t* fb, uint32_t nowMs) {
     if (!c.on || c.mode == 0) continue;
     bool run = c.mode == 1 || c.mode == 2;
     int gy = H - GROUND - PERSON_H;
-    drawFigure(fb, run ? RUNNER[(nowMs / 110) % 3] : WAVER[WAVE_SEQ[(nowMs / 230 + c.ph) % 4]], PERSON_H, (int)lrintf(c.x), gy, c.mode == 1);  // running left: mirrored
+    drawFigure(fb, run ? RUNNER[(nowMs / 110) % 3] : WAVER[WAVE_SEQ[(nowMs / 230 + c.ph) % 4]], PERSON_H, (int)lrintf(c.x), gy, c.mode == 1, s.dz.kind == 2 && s.dz.ph ? (run ? 2 : 1) : 0);  // running left: mirrored; dressed in the jungle
   }
   for (const auto& k : s.spark) {  // a small light where somebody was saved: a plus that opens, then fades
     if (!k.on) continue;
@@ -2633,27 +2664,73 @@ static void drawMoon(const State& s, uint16_t* fb) {
 }
 // The jungle's backmost layer: two ranges of sharp, uneven peaks, the far one deep green and the near one darker with a ragged canopy edge, each with a
 // lighter rim, drifting at different slow speeds (parallax). Under the moon, behind everything else.
-static float jgRidge(float wx, int cell, int hMin, int hMax, float slope, int seed) {   // the height (px) of a ridge of peaks at world x
+static float jgRidge(float wx, int cell, int hMin, int hMax, float slope, int seed, uint32_t* peak) {   // the height (px) of a ridge of peaks at world x; peak: which one it is
   int c0 = (int)floorf(wx / cell);
   float best = 0;
   for (int c = c0 - 1; c <= c0 + 1; c++) {
     uint32_t r = (uint32_t)(c + seed) * 2654435761u;
     float pk = (float)(c * cell + (int)((r >> 8) % (uint32_t)cell)), ph = (float)(hMin + (int)((r >> 16) % (uint32_t)(hMax - hMin))), v = ph - fabsf(wx - pk) * slope;
-    if (v > best) best = v;
+    if (v > best) best = v, *peak = r;
   }
   return best;
 }
-static void drawJgRanges(const State& s, uint16_t* fb) {
+// A volcano among the far peaks (after Popocatepetl, "the smoking mountain"): a truncated cone of dark rock lit from the right, a crater that glows with a red haze above it,
+// flickering streams of lava down the slopes, and puffs of ash that rise, drift right and fade. As tall as the tallest far peak; it drifts slowly left with the ranges.
+static void drawVolcano(const State& s, uint16_t* fb, uint32_t nowMs) {
+  const float u = s.dz.u;
+  const int cx = (int)lrintf(100 + s.dz.x * 0.2f), TOP = 74, HALF = 52, f = (int)(nowMs / 140) & 1;
+  const uint16_t rockS = mix565(0, swap(rgb(42, 26, 28)), u), rockL = mix565(0, swap(rgb(70, 42, 40)), u), rim = mix565(0, swap(rgb(150, 66, 52)), u);
+  static const int8_t LAVA[5][2] = {{-18, 9}, {-9, 14}, {5, 11}, {13, 16}, {22, 8}};   // lava streams: column, length
+  for (int dy = -14; dy <= 6; dy++)
+    for (int dx = -16; dx <= 16; dx++) {   // the red haze in the sky above the crater
+      float d = hypotf((float)dx, dy * 1.3f);
+      int x = cx + dx, y = H - 1 - TOP + dy;
+      if (d > 15 || x < 0 || x >= W || y < 0 || y >= H || fb[y * W + x] != 0) continue;
+      px(fb, x, y, mix565(0, swap(rgb(96, 24, 14)), u * (1 - d / 15) * 0.9f));
+    }
+  for (int dx = -HALF; dx <= HALF; dx++) {
+    const int x = cx + dx, a = dx < 0 ? -dx : dx;
+    if (x < 0 || x >= W) continue;
+    const int jag = (int)(((uint32_t)dx * 2654435761u) >> 29 & 1);
+    const int top = a <= 6 ? TOP : (int)lrintf(TOP - (a - 6) * ((float)TOP / (HALF - 6))) + jag;
+    if (top <= 0) continue;
+    float lava = 0;
+    for (const auto& l : LAVA) if (abs(dx - l[0]) <= 1 && a > 6) lava = l[1] + 3 * sinf(nowMs / 500.0f + l[0]);
+    for (int k = 0; k < top; k++) {
+      uint16_t c = k >= top - 1 ? rim : dx < 0 ? rockS : rockL;
+      if (a <= 6 && k >= top - 3) c = mix565(0, f ? swap(rgb(255, 120, 40)) : swap(rgb(220, 72, 26)), u);   // the crater's glow
+      else if (lava > 0 && k >= top - 1 - lava) c = mix565(0, ((k + f) % 4 < 2) ? swap(rgb(176, 36, 20)) : swap(rgb(226, 66, 28)), u);
+      fb[(H - 1 - k) * W + x] = c;
+    }
+  }
+  for (int i = 0; i < 6; i++) {   // the ash: warm red-grey just above the crater, then grey
+    float ph = fmodf(nowMs / 2600.0f + i / 6.0f, 1.0f);
+    if (ph > 0.8f) continue;   // before it fades into the sky's black (a dark blob on black looks like a hole)
+    float al = (1 - ph) * 1.1f;
+    if (al > 1) al = 1;
+    const float px0 = cx + ph * 16 + 2 * sinf(nowMs / 500.0f + i), py0 = H - 1 - TOP - 4 - ph * 40, r = 1.5f + ph * 3;
+    const uint16_t c = mix565(0, ph < 0.25f ? swap(rgb(200, 90, 56)) : swap(rgb(150, 136, 138)), al * u);
+    for (int y = (int)floorf(py0 - r); y <= (int)ceilf(py0 + r); y++)
+      for (int x = (int)floorf(px0 - r); x <= (int)ceilf(px0 + r); x++)
+        if ((x - px0) * (x - px0) + (y - py0) * (y - py0) <= r * r) px(fb, x, y, c);
+  }
+}
+static void drawJgRanges(const State& s, uint16_t* fb, uint32_t nowMs) {
   const float u = s.dz.u, z = s.dz.x;
-  struct Layer { float sc; int cell, lo, hi; float sl; int seed; uint8_t body[3], rim[3]; bool rag; };
-  const Layer layers[2] = {{z * 0.2f, 44, 40, 74, 1.15f, 7, {10, 62, 42}, {60, 142, 98}, false}, {z * 0.45f, 30, 26, 52, 1.45f, 31, {5, 38, 30}, {84, 190, 120}, true}};
+  struct Layer { float sc; int cell, lo, hi; float sl; int seed; uint8_t body[3], rim[3], eBody[3], eRim[3]; bool rag; };   // eBody, eRim: the colours of a bare-earth peak
+  const Layer layers[2] = {{z * 0.2f, 44, 40, 74, 1.15f, 7, {10, 62, 42}, {60, 142, 98}, {84, 60, 38}, {166, 124, 82}, false},
+                           {z * 0.45f, 30, 26, 52, 1.45f, 31, {5, 38, 30}, {84, 190, 120}, {52, 36, 26}, {128, 94, 62}, true}};
   for (const auto& L : layers) {
-    uint16_t body = mix565(0, swap(rgb(L.body[0], L.body[1], L.body[2])), u), rim = mix565(0, swap(rgb(L.rim[0], L.rim[1], L.rim[2])), u);
+    if (L.rag) drawVolcano(s, fb, nowMs);   // the volcano stands between the far range and the near one
+    uint16_t body = mix565(0, swap(rgb(L.body[0], L.body[1], L.body[2])), u), rim = mix565(0, swap(rgb(L.rim[0], L.rim[1], L.rim[2])), u),
+             eBody = mix565(0, swap(rgb(L.eBody[0], L.eBody[1], L.eBody[2])), u), eRim = mix565(0, swap(rgb(L.eRim[0], L.eRim[1], L.eRim[2])), u);
     for (int x = 0; x < W; x++) {
-      int top = (int)lrintf(jgRidge(x - L.sc, L.cell, L.lo, L.hi, L.sl, L.seed));
+      uint32_t pk = 0;
+      int top = (int)lrintf(jgRidge(x - L.sc, L.cell, L.lo, L.hi, L.sl, L.seed, &pk));
+      const bool earth = ((pk >> 27) % 3) == 0;   // about one peak in three is bare earth, not forest
       if (L.rag) top += (int)(((uint32_t)x * 2654435761u) >> 30 & 1);   // a ragged canopy edge, one or two px
       if (top > H) top = H;
-      for (int k = 0; k < top; k++) fb[(H - 1 - k) * W + x] = k >= top - 1 ? rim : body;
+      for (int k = 0; k < top; k++) fb[(H - 1 - k) * W + x] = k >= top - 1 ? (earth ? eRim : rim) : (earth ? eBody : body);
     }
   }
 }
@@ -2762,7 +2839,7 @@ static void drawJungle(const State& s, uint16_t* fb, uint32_t nowMs) {
   static const uint16_t L = swap(rgb(156, 168, 188)), l = swap(rgb(144, 156, 176)), S = swap(rgb(102, 114, 136)), s2 = swap(rgb(94, 106, 128)),
                         T = swap(rgb(192, 202, 218)), t2 = swap(rgb(154, 166, 186)), E = swap(rgb(210, 218, 232)), R0 = swap(rgb(124, 136, 158)),
                         D0 = swap(rgb(20, 24, 34)), GLOWR = swap(rgb(170, 255, 210)), GLOWD = swap(rgb(60, 200, 150)), POST = swap(rgb(120, 84, 48)),
-                        FL1 = swap(rgb(255, 170, 40)), FL2 = swap(rgb(255, 226, 110)), FF1 = swap(rgb(200, 255, 100)), FF2 = swap(rgb(120, 200, 60));
+                        FL1 = swap(rgb(255, 170, 40)), FL2 = swap(rgb(255, 226, 110)), FF1 = swap(rgb(200, 255, 100)), FF2 = swap(rgb(120, 200, 60)), BOWL = swap(rgb(70, 60, 56)), FL3 = swap(rgb(255, 150, 40)), FL4 = swap(rgb(255, 226, 110));
   const uint16_t R = mix565(R0, GLOWR, g * 0.85f), D = mix565(D0, GLOWD, g * 0.7f);
   for (int i = 0; i < JG_N; i++) {
     const JgItem& d = JG_LAYOUT[i];
@@ -2777,6 +2854,20 @@ static void drawJungle(const State& s, uint16_t* fb, uint32_t nowMs) {
           uint16_t col = ch == 'L' ? L : ch == 'l' ? l : ch == 'S' ? S : ch == 's' ? s2 : ch == 'T' ? T : ch == 't' ? t2 : ch == 'E' ? E : ch == 'D' ? D : R;
           dot(fb, cx + c * DOT, gy - (rows - r) * DOT, col);
         }
+    } else if (d.kind == 2) {   // the great temple: two shrines and a brazier between them whose flame leaps on a beat
+      if (cx > W || cx < -GT_W * DOT) continue;
+      for (int r = 0; r < GT_ROWS; r++)
+        for (int c = 0; c < GT_W; c++) {
+          char ch = gtCell(r, c);
+          if (ch == '.') continue;
+          uint16_t col = ch == 'L' ? L : ch == 'l' ? l : ch == 'S' ? S : ch == 's' ? s2 : ch == 'T' ? T : ch == 't' ? t2 : ch == 'E' ? E : ch == 'D' ? D : ch == 'B' ? BOWL : R;
+          dot(fb, cx + c * DOT, gy - (GT_ROWS - r) * DOT, col);
+        }
+      const int bx = cx + (GT_W - 1) / 2 * DOT, f = (int)(nowMs / 110 + cx) & 1, ty0 = gy - (GT_ROWS - (GT_SH - 3)) * DOT;
+      dot(fb, bx, gy - (GT_ROWS - (GT_SH - 1)) * DOT, f ? FL3 : FL4);
+      dot(fb, bx, gy - (GT_ROWS - (GT_SH - 2)) * DOT, f ? FL2 : FL3);
+      if (g > 0.15f) dot(fb, bx, ty0, swap(rgb(255, 250, 190)));
+      addDot(fb, bx, ty0, (int)lrintf(70 + 90 * g), (int)lrintf(36 + 50 * g), 0);
     } else {
       if (cx > W || cx < -DOT) continue;
       int f = (int)(nowMs / 110 + cx) & 1;
@@ -2845,7 +2936,7 @@ static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
 
   drawMoon(s, fb);             // the desert's moon (white in the jungle)
   if (s.dz.kind == 1 && s.dz.u > 0) drawSunset(s, fb, nowMs);   // or the island's evening
-  if (s.dz.kind == 2 && s.dz.u > 0) drawJgRanges(s, fb);        // or the jungle's far mountain ranges, under the moon
+  if (s.dz.kind == 2 && s.dz.u > 0) drawJgRanges(s, fb, nowMs);  // or the jungle's far mountain ranges, under the moon
   drawCruiser(s, fb, nowMs);   // the cruiser: in the sky, behind everything but the stars
   drawKongBody(s, fb, nowMs);  // behind the terrain
   drawPyramids(s, fb);         // behind the dunes
