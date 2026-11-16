@@ -66,6 +66,12 @@
   and wave, as in the city. No big monster, no city, no bombs. The moai is the first simple design made with the author in the web demo
   (three-quarter and more carved versions were tried and dropped).
 
+  S17-3: the slot's third face, jungle ruins: the volume mountains keep their full height but are brown at the foot, then deep green, green
+  and yellow-green at the tops; the equalizer turns teal. A white moon over two ranges of sharp deep-green peaks drifting slowly, four
+  stepped Maya pyramids (two to six tiers, a temple on top whose roof and doorway glow on a beat) drawn from rules by pyrCell(), torches
+  and fireflies. People come out from behind a pyramid and wave, as on the island. Designed in the web demo (the statues tried there were
+  dropped: nobody would have named them).
+
   Plain C++ on a 240 x 135 RGB565 frame buffer laid out like M5Canvas's (16-bit pixels, high byte first), so the same
   code also runs on a computer for previews.
 */
@@ -367,9 +373,32 @@ constexpr int MOAI_GUN_C = 5, MOAI_GUN_R = 11;                       // where th
 constexpr float MOAI_OPEN_S = 0.7f, IZ_BEAM_V = 150.0f;              // how long the mouth stays open; the beams' speed (px/s)
 constexpr uint32_t MOAI_FIRE_MS = 220, IZ_BEAM_GAP_MS = 700;          // from the eyes lighting to the shot; the least time between two moai shooting
 constexpr int HORIZON = H - 38;                                       // the sea's horizon (px from the top)
+// The jungle ruins (S17-3), the slot's third face: stepped Maya pyramids, a torch between them. A pyramid is 29 dots wide in every size (so it keeps its
+// middle) and has n tiers of two rows (n = 2 to 6, fixed in the layout like the Egyptian ones), a temple of three rows on top and a roof row: made by
+// pyrCell() instead of a table. R roof, D the doorway, L/l lit stone, S/s shade (l and s the odd rows), T/t the stair in the middle, E the lit edge.
+constexpr int PYR_W = 29, PYR_MIN = 2, PYR_MAX = 6, JG_N = 7;
+struct JgItem { int16_t ox; uint8_t kind, tier; };   // kind 0 a pyramid (tier: its size), 1 a torch
+static const JgItem JG_LAYOUT[JG_N] = {{0, 0, 5}, {124, 1, 0}, {160, 0, 3}, {284, 1, 0}, {320, 0, 6}, {444, 1, 0}, {480, 0, 2}};   // ox px from where the first enters
+constexpr int JG_LEN = 480 + PYR_W * DOT + 10;
+static inline int pyrRows(int n) { return 4 + 2 * n; }
+static inline char pyrCell(int n, int r, int c) {
+  (void)n;
+  const int dx = c - (PYR_W - 1) / 2, a = dx < 0 ? -dx : dx;
+  if (r == 0) return a <= 3 ? 'R' : '.';
+  if (r <= 3) return a > 2 ? '.' : (r > 1 && a == 0) ? 'D' : dx < 0 ? 'S' : 'L';
+  const int k = r - 4, hw = 4 + 2 * (k / 2);
+  return a > hw ? '.' : a <= 1 ? ((k & 1) ? 't' : 'T') : dx == hw ? 'E' : dx < 0 ? ((k & 1) ? 's' : 'S') : ((k & 1) ? 'l' : 'L');
+}
+static inline int pyrColH(int n, int c) {   // how tall the pyramid stands in dot column c (px)
+  if (c < 0 || c >= PYR_W) return 0;
+  const int rows = pyrRows(n);
+  for (int r = 0; r < rows; r++) if (pyrCell(n, r, c) != '.') return (rows - r) * DOT;
+  return 0;
+}
+static inline int zoneLen(int kind) { return kind == 2 ? JG_LEN : kind ? IZ_LEN : DZ_LEN; }
 struct DesertZone {
   uint8_t ph = 0;                       // 0 none, 1 coming in, 2 running, 3 going out
-  uint8_t kind = 0;                     // 0 the desert, 1 the moai island
+  uint8_t kind = 0;                     // 0 the desert, 1 the moai island, 2 the jungle ruins
   bool beatNow = false;                 // a beat in this frame (the moai read it after the targets have taken s.beat)
   uint32_t nextBeam = 0;
   float mglow[IZ_N] = {}, mopen[IZ_N] = {};   // each moai's eyes after it was chosen to shoot; how long its mouth stays open
@@ -556,8 +585,11 @@ struct State {
   DesertZone dz;
   bool desertForce = false;  // for previews on a computer: one soon after the start, then every 30 s
   bool islandForce = false;  // the same for the moai island
+  bool jungleForce = false;  // the same for the jungle ruins (then one every 4 s)
   uint16_t sand[MAX_BAR];    // the dunes' colours by height (swapped), like lit
   uint16_t grass[MAX_BAR];   // the island's grass, the same way
+  uint16_t jungle[MAX_BAR];  // the jungle's earth and leaves, the same way
+  uint16_t jgEq[MAX_BAR];    // the jungle's equalizer: teal
   Meteor met[MZ_MAX];
   Dust dust[MZ_DUST_MAX];
   Cruiser cr;
@@ -655,12 +687,22 @@ static void init(State& s, uint32_t nowMs) {
   s.mz = MeteorZone();
   s.mz.nextMs = nowMs + MZ_FIRST_MS;
   s.dz = DesertZone();
-  s.dz.nextMs = nowMs + (s.desertForce || s.islandForce ? 1500 : DZ_FIRST_MS);
+  s.dz.nextMs = nowMs + (s.desertForce || s.islandForce || s.jungleForce ? 1500 : DZ_FIRST_MS);
   for (int y = 0; y < MAX_BAR; y++) {  // dark sand at the bottom, pale moonlit sand on top
     float t = (float)(y / SEG_PITCH) * SEG_PITCH / ((DZ_SEG - 1) * SEG_PITCH);
     if (t > 1) t = 1;
     s.sand[y] = y % SEG_PITCH >= SEG_H ? 0 : swap(rgb((int)lrintf(150 + 96 * t), (int)lrintf(100 + 110 * t), (int)lrintf(52 + 96 * t)));
     s.grass[y] = y % SEG_PITCH >= SEG_H ? 0 : swap(rgb((int)lrintf(36 + 104 * t), (int)lrintf(86 + 110 * t), (int)lrintf(40 + 40 * t)));  // dark at the bottom, sunlit on top
+    {  // the jungle: brown earth at the foot, then deep green, green, and yellow-green at the tops (the volume mountains keep their full height there)
+      int sg = y / SEG_PITCH;
+      s.jungle[y] = y % SEG_PITCH >= SEG_H ? 0 : sg == 0 ? swap(rgb(112, 76, 44)) : sg <= 5 ? swap(rgb(14, 92, 48)) : sg <= 11 ? swap(rgb(40, 156, 58)) : swap(rgb(158, 218, 72));
+      static const uint8_t EQS[4][3] = {{8, 72, 88}, {22, 170, 172}, {110, 238, 218}, {212, 255, 246}};   // deep teal, turquoise, mint, near white
+      float q = (y / 44.0f > 1 ? 1.0f : y / 44.0f) * 3;
+      int i = q >= 2 ? 2 : (int)q;
+      float u2 = q - i;
+      s.jgEq[y] = swap(rgb((int)lrintf(EQS[i][0] + (EQS[i + 1][0] - EQS[i][0]) * u2), (int)lrintf(EQS[i][1] + (EQS[i + 1][1] - EQS[i][1]) * u2),
+                           (int)lrintf(EQS[i][2] + (EQS[i + 1][2] - EQS[i][2]) * u2)));
+    }
   }
   s.cr = Cruiser();
   for (auto& q : s.crb) q = CrBolt();
@@ -712,7 +754,10 @@ static inline int colAt(int x, int offset) {
 // In the desert zone: the dunes (eq: the equalizer, as tall as the dunes at most).
 static inline int mzHeight(const State& s, int h, bool eq = false) {
   float u = s.mz.u, seg = MZ_SEG;
-  if (s.dz.u > u) u = s.dz.u, seg = eq ? (float)DZ_SEG * NSEG / EQ_NSEG : DZ_SEG;
+  if (s.dz.u > u) {
+    u = s.dz.u, seg = eq ? (float)DZ_SEG * NSEG / EQ_NSEG : DZ_SEG;
+    if (s.dz.kind == 2) seg = NSEG;  // in the jungle the mountains keep their full height (no squashing)
+  }
   if (u <= 0) return h;
   int n = (int)lrintf(h * (1.0f - u * (1.0f - seg / NSEG)) / SEG_PITCH) * SEG_PITCH;
   return n < GROUND ? GROUND : n;
@@ -736,6 +781,15 @@ static inline int heightAt(const State& s, int x, int offset) {
     }
     for (const auto& a : IZ_AHU)
       if (x >= s.dz.x + a[0] && x < s.dz.x + a[1] && GROUND + AHU_H * DOT > h) h = GROUND + AHU_H * DOT;
+  } else if (s.dz.ph && s.dz.kind == 2) {  // the jungle's pyramids, step by step
+    for (int i = 0; i < JG_N; i++) {
+      const JgItem& d = JG_LAYOUT[i];
+      if (d.kind != 0) continue;
+      int cx = DOT * (int)lrintf((s.dz.x + d.ox) / DOT);
+      if (x < cx || x >= cx + PYR_W * DOT) continue;
+      int m = GROUND + pyrColH(d.tier, (x - cx) / DOT);
+      if (m > h) h = m;
+    }
   } else if (s.dz.ph) {  // the pyramids and the sphinx, so the fighter flies over them
     for (int i = 0; i < DZ_N; i++) {
       const DzItem& d = DZ_LAYOUT[i];
@@ -1286,12 +1340,12 @@ static void updateDesert(State& s, uint32_t nowMs, float dt) {
   Kong& k = s.k;
   if (z.ph == 0) {
     if ((int32_t)(nowMs - z.nextMs) < 0 || s.mz.ph || k.ph != K_IDLE || s.city.on || s.cr.on) return;
-    if (!s.desertForce && !s.islandForce && (!k.musicOn || nowMs - k.musicSince < KONG_MUSIC_MS)) return;
+    if (!s.desertForce && !s.islandForce && !s.jungleForce && (!k.musicOn || nowMs - k.musicSince < KONG_MUSIC_MS)) return;
     z.ph = 1, z.t = 0, z.x = (float)(W + 40), z.glow = 0, z.walked = 0, z.nextBeam = 0;
-    z.kind = s.desertForce ? 0 : s.islandForce ? 1 : (uint8_t)(nextRandom(s) & 1);   // the desert or the moai island, by lot
+    z.kind = s.desertForce ? 0 : s.islandForce ? 1 : s.jungleForce ? 2 : (uint8_t)(nextRandom(s) % 3);   // the desert, the moai island or the jungle ruins, by lot
     for (int i = 0; i < IZ_N; i++) z.mglow[i] = 0, z.mopen[i] = 0, z.fireAt[i] = 0;
     for (int i = 0; i < DZ_N; i++) z.hd[i] = DZ_LAYOUT[i].max;  // the pyramids stand still (a pyramid that grows and shrinks looked wrong)
-    uint32_t dur = (uint32_t)((DZ_IN_S + DZ_OUT_S) * 1000 + (W + 40 + (z.kind ? IZ_LEN : DZ_LEN)) / SCROLL_PX_S * 1000);
+    uint32_t dur = (uint32_t)((DZ_IN_S + DZ_OUT_S) * 1000 + (W + 40 + zoneLen(z.kind)) / SCROLL_PX_S * 1000);
     uint32_t a = nowMs + dur + 8000, b = nowMs + dur + 30000;
     if ((int32_t)(a - k.nextMs) > 0) k.nextMs = a;              // no monster while it lasts
     if ((int32_t)(b - s.mz.nextMs) > 0) s.mz.nextMs = b;         // nor a meteor zone right after it
@@ -1307,13 +1361,13 @@ static void updateDesert(State& s, uint32_t nowMs, float dt) {
     z.u = z.t / DZ_IN_S;
     if (z.u >= 1) z.u = 1, z.ph = 2, z.t = 0;
   } else if (z.ph == 2) {
-    if (z.x + (z.kind ? IZ_LEN : DZ_LEN) < 0) z.ph = 3, z.t = 0;
+    if (z.x + zoneLen(z.kind) < 0) z.ph = 3, z.t = 0;
   } else {
     z.u = 1.0f - z.t / DZ_OUT_S;
     if (z.u < 0) z.u = 0;
     if (z.t >= DZ_OUT_S) {
       z.ph = 0, z.u = 0;
-      z.nextMs = nowMs + (s.desertForce || s.islandForce ? 30000 : DZ_MS_MIN + nextRandom(s) % (DZ_MS_MAX - DZ_MS_MIN));
+      z.nextMs = nowMs + (s.jungleForce ? 4000 : s.desertForce || s.islandForce ? 30000 : DZ_MS_MIN + nextRandom(s) % (DZ_MS_MAX - DZ_MS_MIN));
       return;
     }
   }
@@ -1609,18 +1663,22 @@ static void updateCity(State& s, uint32_t nowMs, float dt, int sx, int sy) {
       }
       s.citAcc = 5.0f + (nextRandom(s) % 50) / 10.0f;
     }
-  } else if (s.dz.ph == 2 && s.dz.kind == 1) {  // on the moai island, three or four islanders at a time come out from behind a moai the same way
+  } else if (s.dz.ph == 2 && s.dz.kind >= 1) {  // on the moai island, three or four islanders at a time come out from behind a moai the same way; in the jungle, from behind a pyramid
     s.citAcc -= dt;
     if (s.citAcc <= 0) {
-      int ok[IZ_N], nok = 0, used = 0;
-      for (int i = 0; i < IZ_N; i++) {
-        int dx = DOT * (int)lrintf((s.dz.x + IZ_OX[i]) / DOT) + MOAI_W * DOT / 2;
-        if (dx > 110 && dx < W - 20) ok[nok++] = i;
+      int mid[IZ_N], ok[IZ_N], nok = 0, used = 0, nm = 0;   // the middles (px) of the places they come from
+      if (s.dz.kind == 2) {
+        for (int i = 0; i < JG_N; i++)
+          if (JG_LAYOUT[i].kind == 0) mid[nm++] = DOT * (int)lrintf((s.dz.x + JG_LAYOUT[i].ox) / DOT) + PYR_W * DOT / 2;
+      } else {
+        for (int i = 0; i < IZ_N; i++) mid[nm++] = DOT * (int)lrintf((s.dz.x + IZ_OX[i]) / DOT) + MOAI_W * DOT / 2;
       }
+      for (int i = 0; i < nm; i++)
+        if (mid[i] > 110 && mid[i] < W - 20) ok[nok++] = i;
       for (const auto& c : s.cit) used += c.on;
       if (nok && used < 3) {
         int i = ok[nextRandom(s) % nok], n = 3 + (int)(nextRandom(s) % 2);
-        float x0 = (float)(DOT * (int)lrintf((s.dz.x + IZ_OX[i]) / DOT) + MOAI_W * DOT / 2 - PERSON_W / 2);
+        float x0 = (float)(mid[i] - PERSON_W / 2);
         for (int k = 0; k < n; k++) {
           Citizen* c = nullptr;
           for (auto& q : s.cit) if (!q.on) { c = &q; break; }
@@ -2552,8 +2610,10 @@ static void drawMoon(const State& s, uint16_t* fb) {
   float u = s.dz.u;
   if (u <= 0 || s.dz.kind == 1) return;
   static const uint8_t TONE[4][3] = {{252, 246, 218}, {234, 222, 180}, {200, 184, 140}, {150, 134, 100}};
+  static const uint8_t WTONE[4][3] = {{255, 255, 255}, {238, 242, 248}, {210, 218, 230}, {168, 178, 196}};   // the jungle's moon is white
+  const uint8_t(*tn)[3] = s.dz.kind == 2 ? WTONE : TONE;
   uint16_t tone[4];
-  for (int i = 0; i < 4; i++) tone[i] = mix565(0, swap(rgb(TONE[i][0], TONE[i][1], TONE[i][2])), u);
+  for (int i = 0; i < 4; i++) tone[i] = mix565(0, swap(rgb(tn[i][0], tn[i][1], tn[i][2])), u);
   const int cx = 192, cy = 30 - (int)lrintf(8 * (1 - u)), R = MOON_R;
   const float L0 = 0.55f, L1 = -0.55f, L2 = 0.63f;  // toward the light: right, up, toward us
   for (int dy = -R; dy < R; dy++)
@@ -2571,10 +2631,36 @@ static void drawMoon(const State& s, uint16_t* fb) {
       px(fb, cx + dx, cy + dy, tone[t]);
     }
 }
+// The jungle's backmost layer: two ranges of sharp, uneven peaks, the far one deep green and the near one darker with a ragged canopy edge, each with a
+// lighter rim, drifting at different slow speeds (parallax). Under the moon, behind everything else.
+static float jgRidge(float wx, int cell, int hMin, int hMax, float slope, int seed) {   // the height (px) of a ridge of peaks at world x
+  int c0 = (int)floorf(wx / cell);
+  float best = 0;
+  for (int c = c0 - 1; c <= c0 + 1; c++) {
+    uint32_t r = (uint32_t)(c + seed) * 2654435761u;
+    float pk = (float)(c * cell + (int)((r >> 8) % (uint32_t)cell)), ph = (float)(hMin + (int)((r >> 16) % (uint32_t)(hMax - hMin))), v = ph - fabsf(wx - pk) * slope;
+    if (v > best) best = v;
+  }
+  return best;
+}
+static void drawJgRanges(const State& s, uint16_t* fb) {
+  const float u = s.dz.u, z = s.dz.x;
+  struct Layer { float sc; int cell, lo, hi; float sl; int seed; uint8_t body[3], rim[3]; bool rag; };
+  const Layer layers[2] = {{z * 0.2f, 44, 40, 74, 1.15f, 7, {10, 62, 42}, {60, 142, 98}, false}, {z * 0.45f, 30, 26, 52, 1.45f, 31, {5, 38, 30}, {84, 190, 120}, true}};
+  for (const auto& L : layers) {
+    uint16_t body = mix565(0, swap(rgb(L.body[0], L.body[1], L.body[2])), u), rim = mix565(0, swap(rgb(L.rim[0], L.rim[1], L.rim[2])), u);
+    for (int x = 0; x < W; x++) {
+      int top = (int)lrintf(jgRidge(x - L.sc, L.cell, L.lo, L.hi, L.sl, L.seed));
+      if (L.rag) top += (int)(((uint32_t)x * 2654435761u) >> 30 & 1);   // a ragged canopy edge, one or two px
+      if (top > H) top = H;
+      for (int k = 0; k < top; k++) fb[(H - 1 - k) * W + x] = k >= top - 1 ? rim : body;
+    }
+  }
+}
 // The pyramids, behind the dunes: lit on the moon's side (the right), in courses of stone, with a golden capstone that a beat lights up.
 static void drawPyramids(const State& s, uint16_t* fb) {
   const DesertZone& z = s.dz;
-  if (!z.ph || z.kind == 1) return;
+  if (!z.ph || z.kind != 0) return;
   static const uint16_t LIT = swap(rgb(232, 194, 124)), LIT2 = swap(rgb(214, 174, 106)), SHADE = swap(rgb(132, 94, 54)),
                         SHADE2 = swap(rgb(116, 82, 46)), EDGE = swap(rgb(252, 226, 168));
   uint16_t cap = mix565(swap(rgb(220, 170, 40)), swap(rgb(255, 250, 190)), z.glow);
@@ -2667,10 +2753,52 @@ static void drawMoai(const State& s, uint16_t* fb, uint32_t nowMs) {
     }
   }
 }
+// The jungle ruins, in front of the mountains: the stepped pyramids (on a beat the temple's roof and doorway glow a little), torches with a flickering
+// flame and a small warm light, and a few slow, blinking fireflies.
+static void drawJungle(const State& s, uint16_t* fb, uint32_t nowMs) {
+  const DesertZone& z = s.dz;
+  const int gy = H - GROUND;
+  const float g = z.glow > 1 ? 1.0f : z.glow;
+  static const uint16_t L = swap(rgb(156, 168, 188)), l = swap(rgb(144, 156, 176)), S = swap(rgb(102, 114, 136)), s2 = swap(rgb(94, 106, 128)),
+                        T = swap(rgb(192, 202, 218)), t2 = swap(rgb(154, 166, 186)), E = swap(rgb(210, 218, 232)), R0 = swap(rgb(124, 136, 158)),
+                        D0 = swap(rgb(20, 24, 34)), GLOWR = swap(rgb(170, 255, 210)), GLOWD = swap(rgb(60, 200, 150)), POST = swap(rgb(120, 84, 48)),
+                        FL1 = swap(rgb(255, 170, 40)), FL2 = swap(rgb(255, 226, 110)), FF1 = swap(rgb(200, 255, 100)), FF2 = swap(rgb(120, 200, 60));
+  const uint16_t R = mix565(R0, GLOWR, g * 0.85f), D = mix565(D0, GLOWD, g * 0.7f);
+  for (int i = 0; i < JG_N; i++) {
+    const JgItem& d = JG_LAYOUT[i];
+    int cx = DOT * (int)lrintf((z.x + d.ox) / DOT);
+    if (d.kind == 0) {
+      if (cx > W || cx < -PYR_W * DOT) continue;
+      const int n = d.tier, rows = pyrRows(n);
+      for (int r = 0; r < rows; r++)
+        for (int c = 0; c < PYR_W; c++) {
+          char ch = pyrCell(n, r, c);
+          if (ch == '.') continue;
+          uint16_t col = ch == 'L' ? L : ch == 'l' ? l : ch == 'S' ? S : ch == 's' ? s2 : ch == 'T' ? T : ch == 't' ? t2 : ch == 'E' ? E : ch == 'D' ? D : R;
+          dot(fb, cx + c * DOT, gy - (rows - r) * DOT, col);
+        }
+    } else {
+      if (cx > W || cx < -DOT) continue;
+      int f = (int)(nowMs / 110 + cx) & 1;
+      for (int r = 0; r < 3; r++) dot(fb, cx, gy - (r + 1) * DOT, POST);
+      dot(fb, cx, gy - 4 * DOT, f ? FL1 : FL2);
+      addDot(fb, cx, gy - 5 * DOT, f ? 60 : 36, f ? 30 : 20, 0);
+    }
+  }
+  for (int i = 0; i < 7; i++) {   // fireflies
+    if ((((int)(nowMs / 330) + i * 3) & 3) == 0) continue;
+    float m = fmodf(i * 61 - z.x * 0.5f, (float)W);
+    if (m < 0) m += W;
+    int fx = (int)lrintf(m + 6 * sinf(nowMs / 900.0f + i * 2.1f)), fy = (int)lrintf(44 + ((i * 17) % 46) + 5 * sinf(nowMs / 700.0f + i));
+    px(fb, fx, fy, FF1);
+    px(fb, fx + 1, fy, FF2);
+  }
+}
 // In front of the dunes: the sphinx (its eyes glow on a beat), somebody waving to the fighter, and the caravan.
 static void drawSphinx(const State& s, uint16_t* fb, uint32_t nowMs) {
   const DesertZone& z = s.dz;
   if (!z.ph) return;
+  if (z.kind == 2) { drawJungle(s, fb, nowMs); return; }
   if (z.kind == 1) { drawMoai(s, fb, nowMs); return; }
   static const uint16_t L = swap(rgb(232, 194, 124)), S = swap(rgb(132, 94, 54)), D = swap(rgb(70, 48, 30)),
                         GOLD = swap(rgb(226, 182, 60)), BLUE = swap(rgb(52, 84, 170));
@@ -2715,15 +2843,16 @@ static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
     for (int t = (int)lrintf(s.mz.u * (st.near ? 10 : 4)); t > 0; t--) px(fb, x + 1 + t, y, STAR_C[st.kind]);  // streaks in the zone
   }
 
-  drawMoon(s, fb);             // the desert's moon
+  drawMoon(s, fb);             // the desert's moon (white in the jungle)
   if (s.dz.kind == 1 && s.dz.u > 0) drawSunset(s, fb, nowMs);   // or the island's evening
+  if (s.dz.kind == 2 && s.dz.u > 0) drawJgRanges(s, fb);        // or the jungle's far mountain ranges, under the moon
   drawCruiser(s, fb, nowMs);   // the cruiser: in the sky, behind everything but the stars
   drawKongBody(s, fb, nowMs);  // behind the terrain
   drawPyramids(s, fb);         // behind the dunes
 
   // In the desert the terrain (and the equalizer) turns to sand; on the island, to grass.
   float du = s.dz.u;
-  const uint16_t* gnd = s.dz.kind == 1 ? s.grass : s.sand;
+  const uint16_t* gnd = s.dz.kind == 2 ? s.jungle : s.dz.kind == 1 ? s.grass : s.sand;
   uint16_t litNow[MAX_BAR];
   const uint16_t* lit = s.lit;
   if (du > 0) {
@@ -2783,7 +2912,7 @@ static void render(const State& s, uint16_t* fb, uint32_t nowMs) {
         int x = x0 + dx;
         static const uint16_t WHITE = swap(rgb(255, 255, 255));
         for (int k = 0; k < h; k++)  // in the desert the equalizer turns to sand too, paler than the dunes
-          fb[(H - 1 - k) * W + x] = k % SEG_PITCH < SEG_H ? (du > 0 ? mix565(s.eqCol[s.pattern - 1][j], mix565(gnd[k], WHITE, 0.45f), du) : s.eqCol[s.pattern - 1][j]) : 0;
+          fb[(H - 1 - k) * W + x] = k % SEG_PITCH < SEG_H ? (du > 0 ? (s.dz.kind == 2 ? mix565(s.eqCol[s.pattern - 1][j], s.jgEq[k], du) : mix565(s.eqCol[s.pattern - 1][j], mix565(gnd[k], WHITE, 0.45f), du)) : s.eqCol[s.pattern - 1][j]) : 0;
         if (peak >= 0)
           for (int k = peak; k < peak + SEG_H; k++) fb[(H - 1 - k) * W + x] = PEAK;
       }
