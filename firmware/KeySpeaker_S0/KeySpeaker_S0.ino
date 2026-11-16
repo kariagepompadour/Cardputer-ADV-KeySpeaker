@@ -146,6 +146,12 @@
       the author). On a beat a moai's eyes light up in cyan; now and then one drops its jaw and shoots two thin beams from its mouth at the
       fighter (a hit only lights the shield; the fighter slips up away from them). Three or four islanders at a time come out from behind
       a moai, run after the fighter and wave, as in the city. No big monster during either zone. About 0.2 KB of RAM more.
+    - (S17-3) Jungle ruins, from the web demo: the same rare slot now brings the desert, the moai island or the jungle, a third each by
+      lot. The volume mountains keep their full height but turn brown at the foot, then deep green, green and yellow-green at the tops;
+      the equalizer (when it is on) turns teal. A white moon over two ranges of sharp deep-green peaks that drift slowly (parallax);
+      four stepped Maya pyramids (two to six tiers, sizes fixed in the layout like the Egyptian ones, drawn from rules, no big tables)
+      with a temple on top whose roof and doorway glow on a beat; torches with a flickering flame, a few fireflies. People come out from
+      behind a pyramid, run after the fighter and wave, as on the island. No monster, no city, no bombs. About 0.3 KB of RAM more.
     - (S11-2) Searchlights on the game screen (FlightViz.h): a city on alert. Up to three stand on the ground, each with a small base (a
       3 x 3 dot light grey square with a blue window), flow from right to left with the terrain and sweep the sky with a slim beam that
       widens and fades toward the top, in a cool blue-white added to the stars' light. A new one comes every 10 to 35 s, only while
@@ -234,9 +240,9 @@
 #define KS_DIAG 0  // (MP3 stage 0) 1: heap / task diagnostics on the serial port (KsDiag.h), nothing else changes
 #if KS_DIAG
 #include "KsDiag.h"
-#define BUILD_TAG "S17-2+D"
+#define BUILD_TAG "S17-3+D"
 #else
-#define BUILD_TAG "S17-2"
+#define BUILD_TAG "S17-3"
 #endif
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
