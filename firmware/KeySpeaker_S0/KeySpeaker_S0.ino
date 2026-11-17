@@ -164,7 +164,7 @@
       RESTART with USB too (it used to try, and fail as NO SD, for lack of memory).
     - (S17-6) One more from the review: RateAdjust.h no longer casts a negative number to an unsigned one when the correction is
       negative (undefined in C++; the result on the device was right or one sample more, never out of the buffer). The READMEs
-      say that the SD card must be FAT32 (this core has no exFAT). Tried on the device 2026-11-17 (the author, no problem); which of the single cases was tried is not on record.
+      say that the SD card must be FAT32 (this core has no exFAT). Tried on the device 2026-11-17 (the author, no problem), also with the card pulled out for 10 s while MP3 played.
     - (S11-2) Searchlights on the game screen (FlightViz.h): a city on alert. Up to three stand on the ground, each with a small base (a
       3 x 3 dot light grey square with a blue window), flow from right to left with the terrain and sweep the sky with a slim beam that
       widens and fades toward the top, in a cool blue-white added to the stars' light. A new one comes every 10 to 35 s, only while
