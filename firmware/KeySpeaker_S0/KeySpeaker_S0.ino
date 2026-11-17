@@ -157,6 +157,11 @@
       grey stone); the people in the jungle look dressed (a red headgear, a yellow tunic, white face, hands and legs); a volcano stands among the
       far peaks (dark rock, a glowing crater, flickering lava, drifting ash; after Popocatepetl); and about one far peak in three is bare earth.
       Statues, a quetzal and a blue/red colour coding were tried in the web demo and dropped.
+    - (S17-5) Three fixes from the code review before release, none tried on the device yet. The MP3 task rests when a track gives
+      no sound (the card pulled out, files that cannot be played) and passes over data that is not MP3 with short rests; a file below
+      16 kHz ends at once (Mp3Source.h). Before, the task never slept then and the task watchdog would restart the Cardputer after 5 s.
+      The AUX unit, found while MP3 plays, no longer switches itself on over it. And once the BLE stack has been started, MP3 answers
+      RESTART with USB too (it used to try, and fail as NO SD, for lack of memory).
     - (S11-2) Searchlights on the game screen (FlightViz.h): a city on alert. Up to three stand on the ground, each with a small base (a
       3 x 3 dot light grey square with a blue window), flow from right to left with the terrain and sweep the sky with a slim beam that
       widens and fades toward the top, in a cool blue-white added to the stars' light. A new one comes every 10 to 35 s, only while
@@ -245,9 +250,9 @@
 #define KS_DIAG 0  // (MP3 stage 0) 1: heap / task diagnostics on the serial port (KsDiag.h), nothing else changes
 #if KS_DIAG
 #include "KsDiag.h"
-#define BUILD_TAG "S17-4+D"
+#define BUILD_TAG "S17-5+D"
 #else
-#define BUILD_TAG "S17-4"
+#define BUILD_TAG "S17-5"
 #endif
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
@@ -788,6 +793,7 @@ static void mp3Process(int16_t* out, size_t n, int fade = 0) {  // fade: 1 = ram
 
 static void mp3Task(void*) {
   char path[MP3_NAME_MAX];
+  int silentTracks = 0;  // (S17-5) tracks in a row that gave no sound (card pulled out, or files that cannot be played)
   while (mp3Run) {
     int idx = mp3Index;
     int cnt = mp3Count;
@@ -802,6 +808,7 @@ static void mp3Task(void*) {
     mp3Jump = 0;
     mp3Started = millis();
     mp3PauseAt = mp3Started.load();  // a track change while paused: the display shows 0:00 until play
+    bool sounded = false;
     if (mp3Src.open(SD.open(path))) {
       int16_t* pcm;
       size_t n;
@@ -812,10 +819,16 @@ static void mp3Task(void*) {
         bool leaving = mp3Jump != 0;  // a track change was asked for: this is the last block, faded out
         mp3Process(pcm, n, leaving ? 2 : (first ? 1 : 0));
         first = false;
+        sounded = true;
         if (leaving) break;
       }
       mp3Src.close();
     }
+    // (S17-5) A track that gave no sound: rest before the next one, longer once every track has failed. Without the rest this
+    // task never slept (it sleeps only while the ring is full), core 0's idle task starved and the task watchdog restarted
+    // the Cardputer after 5 s.
+    if (sounded) silentTracks = 0;
+    else vTaskDelay(++silentTracks >= cnt ? 500 : 20);
     if (!mp3Run) break;
     int j = mp3Jump.exchange(0);
     mp3Index = j ? idx + j : idx + 1;  // asked for one (-1 / +1), or the file ended: the next, and round again
@@ -1544,7 +1557,9 @@ static void setAux(bool on, bool save = true) {
 static int setMp3(bool on) {
   if (on == mp3On) return 0;
   if (on) {
-    if (!usbUp() && BleHid::started) return 5;  // (S16-8) no USB is fine while the BLE stack was never started (it takes 72 KB and cannot be released)
+    // (S16-8) No USB is fine while the BLE stack was never started (it takes 72 KB and cannot be released). (S17-5) Once it was
+    // started, MP3 is refused with USB too: BLE starts when the computer sleeps, and the card then failed for lack of memory (NO SD).
+    if (BleHid::started) return 5;
 #if KS_DIAG
     ksdiag::heapLine("mp3 before SD");
 #endif
@@ -1970,7 +1985,7 @@ static void auxService(uint32_t now) {
     if (last) {
       auxUp = true;
       Serial.println("[AUX] unit found");
-      if (prefs.getBool("aux", false) && !micOn) setAux(true, false);
+      if (prefs.getBool("aux", false) && !micOn && !mp3On) setAux(true, false);  // (S17-5) not over MP3: two inputs would write to one ring
       auxSend();
       auxSendMs = now;
       return;
