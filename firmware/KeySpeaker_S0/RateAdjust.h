@@ -65,7 +65,10 @@ struct Resampler {
   // Input samples the next run() needs beyond what hist already holds.
   size_t need(float ppm) const {
     float d = ppm * 1e-6f;
-    size_t last = pos + (OUT - 1) + (size_t)floorf(frac + (OUT - 1) * d) + 2;  // highest index run() reads
+    // (S17-6) The floor is -1 when a negative correction carries the last sample back by one: kept signed (it was cast to
+    // size_t while negative, which C++ leaves undefined).
+    int k = (int)floorf(frac + (OUT - 1) * d);
+    size_t last = (size_t)((int)pos + (int)(OUT - 1) + k + 2);  // highest index run() reads
     return last + 1 > have ? last + 1 - have : 0;
   }
   // Where to copy n more input samples (n from need(), at most OUT + 4).

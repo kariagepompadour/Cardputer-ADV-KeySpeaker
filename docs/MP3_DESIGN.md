@@ -5,7 +5,7 @@ MP3 files on the microSD card as a fourth audio input. Work in progress on branc
 ## Behaviour
 
 - Fn+I cycles **USB -> MIC -> AUX (only when the unit answers) -> MP3 -> USB**.
-- MP3 needs a card with `.mp3` files (in `/music`, else in `/`) and either **USB** or a power-up in which the **BLE stack has not been started yet** (see "BLE and memory"). Otherwise it shows a red word and stays where it is: `NO SD`, `NO MP3`, `NO MEM`, or `RESTART` (BLE is already up: switch the power off and on).
+- MP3 needs a card with `.mp3` files (in `/music`, else in `/`) and a power-up in which the **BLE stack has not been started yet**, with or without USB (see "BLE and memory"; since S17-5 this holds with USB too: BLE also starts when the computer sleeps for more than 3 s). Otherwise it shows a red word and stays where it is: `NO SD`, `NO MP3`, `NO MEM`, or `RESTART` (BLE is already up: switch the power off and on).
 - The three screens stay. FlightViz / the equalizer follow the MP3's own PCM. There is no MP3-specific screen: the measure screen shows `MP3 n/N m:ss`, the flight screen `MP3 n/N`.
 - On the measure and flight screens: space = pause / play (the time display stands still while paused), `,` = previous, `/` = next (on the keyboard screen every key goes to the computer, as always). Tracks play in directory order and loop.
 - The computer's volume does not reach MP3: a fixed gain of 0.3 (about -10 dB) is applied, and the boost / bass cut / limiter of the speaker path apply as usual.
@@ -17,7 +17,7 @@ MP3 files on the microSD card as a fourth audio input. Work in progress on branc
 
 The BLE stack (NimBLE) takes **71.8 KB** of the internal heap in `BLEDevice::init` alone (83.3 KB free before, 11.6 KB after; then 1.0 KB for the server, 1.0 KB for the services, 0.5 KB for advertising: 9.0 KB free). That is fixed by the SDK build and cannot be returned: `BLEDevice::deinit(false)` and `deinit(true)` both end in a PANIC reset (measured, 2026-11-13). So MP3 and a started BLE stack cannot share the heap.
 
-The way out is not to start BLE while MP3 plays: BLE starts only after USB has been gone for 3 s (10 s before USB was ever seen), and not while MP3 is on or for 10 s after an Fn+I press without USB. Once BLE has been started in a power-up, MP3 is refused without USB (`RESTART`).
+The way out is not to start BLE while MP3 plays: BLE starts only after USB has been gone for 3 s (10 s before USB was ever seen), and not while MP3 is on or for 10 s after an Fn+I press without USB. Once BLE has been started in a power-up, MP3 is refused (`RESTART`), since S17-5 with USB too: it used to try with USB and fail as `NO SD` for lack of memory.
 
 ## Memory (measured on the device, USB input, no BLE)
 
@@ -63,3 +63,5 @@ RateAdjust.h's Hermite is made for +-200 ppm. For the fixed 44.1 -> 48 kHz step,
 - MP3 after the BLE keyboard has started needs a power cycle (see "BLE and memory").
 - License: settled by replacing Helix with minimp3 (CC0), see `MP3_LICENSE.md`. The sound and the speed of minimp3 against Helix are checked by ear only.
 - Reading the serial port resets nothing on KeySpeaker, but it does on `mp3_spike`.
+- S17-5 (from the code review before release, not yet tried on the device): a track that gives no sound (the card pulled out, a file that cannot be played) is followed by a short rest, data that is not MP3 is passed over with a rest every 16 KB, and a file below 16 kHz ends at once. Before, the MP3 task never slept in these cases and the task watchdog (5 s, core 0's idle task) would restart the Cardputer. To try: pull the card out while a track plays and wait 10 s.
+- The card must be FAT32: this core's FAT driver is built without exFAT, so an exFAT card (the usual format from 64 GB up) gives `NO SD` (read from the SDK configuration, 2026-11-17; not tried with such a card).

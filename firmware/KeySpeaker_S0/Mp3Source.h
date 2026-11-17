@@ -82,7 +82,10 @@ class Source {
   }
 
   // Decodes the next frame. Returns the number of 48 kHz mono samples (in *out), 0 at the end of the file. Bad frames are skipped.
+  // (S17-5) Bytes that give no sound (not MP3 data) are passed with a short rest every 16 KB, and a file at a rate that cannot be
+  // played ends at once: the caller's task never ran dry of rests before, and the watchdog would restart the Cardputer.
   size_t next(int16_t** out) {
+    size_t skipped = 0;
     while (!eof_ || have_ > 0) {
       if (have_ < (int)INBUF - 512 && !eof_) {
         int n = f_.read(in_ + have_, INBUF - have_);
@@ -100,8 +103,19 @@ class Source {
         memmove(in_, in_ + used, have_ - used);
         have_ -= used;
       }
-      if (ns <= 0) continue;
-      if (fi.hz < 16000 || fi.hz > 48000 || fi.channels < 1 || fi.channels > 2 || ns > 1152) continue;
+      if (ns <= 0) {
+        skipped += used > 0 ? (size_t)used : 0;
+        if (skipped >= 16384) {
+          skipped = 0;
+          vTaskDelay(1);
+        }
+        continue;
+      }
+      if (fi.hz < 16000 || fi.hz > 48000 || fi.channels < 1 || fi.channels > 2 || ns > 1152) {  // (S17-5) not a file for this player
+        eof_ = true;
+        have_ = 0;
+        break;
+      }
       if (fi.hz != rate_) {
         rs_->begin(fi.hz);
         rate_ = fi.hz;
