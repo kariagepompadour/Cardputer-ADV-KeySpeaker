@@ -135,7 +135,7 @@ charger): choose it with `Fn+I` within 10 seconds of switching on, before the Bl
 begins with MP3 again (with USB it always starts with USB). While MP3 plays the Bluetooth keyboard is off. Once the Bluetooth keyboard has started,
 MP3 needs the power switched off and on (the Bluetooth stack takes most of the memory and cannot be released), and the screen says `RESTART`.
 On battery alone, MP3 played for 10 hours without a break and was still playing when the test was stopped (2026-11-14, S16-10, 10 tracks on repeat, screen on: underrun 0, overrun 0, no restart). On the measure and flight screens, `Space` pauses or plays, `,` goes to the previous track and
-`/` to the next; the tracks loop. MP3 layer 3, 32 / 44.1 / 48 kHz, stereo or mono, up to 320 kbps. Details: [docs/MP3_DESIGN.md](docs/MP3_DESIGN.md).
+`/` to the next; the tracks loop. MP3 layer 3, 32 / 44.1 / 48 kHz, stereo or mono, up to 320 kbps. The card must be formatted as FAT32: exFAT, the usual format of cards of 64 GB and more, is not read (the screen says `NO SD`). Details: [docs/MP3_DESIGN.md](docs/MP3_DESIGN.md).
 The decoder is [minimp3](https://github.com/lieff/minimp3) (CC0, public domain; see [docs/MP3_LICENSE.md](docs/MP3_LICENSE.md)).
 
 Each press of `Fn+I` moves on to the next input: USB, MIC, then AUX when the unit is there, then MP3. The fighter crosses the screen and

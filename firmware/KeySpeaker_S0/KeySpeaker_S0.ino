@@ -162,6 +162,9 @@
       16 kHz ends at once (Mp3Source.h). Before, the task never slept then and the task watchdog would restart the Cardputer after 5 s.
       The AUX unit, found while MP3 plays, no longer switches itself on over it. And once the BLE stack has been started, MP3 answers
       RESTART with USB too (it used to try, and fail as NO SD, for lack of memory).
+    - (S17-6) One more from the review: RateAdjust.h no longer casts a negative number to an unsigned one when the correction is
+      negative (undefined in C++; the result on the device was right or one sample more, never out of the buffer). The READMEs
+      say that the SD card must be FAT32 (this core has no exFAT). Not tried on the device yet.
     - (S11-2) Searchlights on the game screen (FlightViz.h): a city on alert. Up to three stand on the ground, each with a small base (a
       3 x 3 dot light grey square with a blue window), flow from right to left with the terrain and sweep the sky with a slim beam that
       widens and fades toward the top, in a cool blue-white added to the stars' light. A new one comes every 10 to 35 s, only while
@@ -250,9 +253,9 @@
 #define KS_DIAG 0  // (MP3 stage 0) 1: heap / task diagnostics on the serial port (KsDiag.h), nothing else changes
 #if KS_DIAG
 #include "KsDiag.h"
-#define BUILD_TAG "S17-5+D"
+#define BUILD_TAG "S17-6+D"
 #else
-#define BUILD_TAG "S17-5"
+#define BUILD_TAG "S17-6"
 #endif
 
 #if !defined(ARDUINO_USB_MODE) || ARDUINO_USB_MODE != 0
