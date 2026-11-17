@@ -123,13 +123,13 @@
       to the nearest and saves it by overlapping (a small light, no score); a few run out of the doorways, chase the fighter and wave.
       Layers: the buildings in front of the monsters' arms, the fighter in front of the buildings, the arms in front of the fighter, all
       behind the equalizer. The searchlight base is a T of four cells with a yellow lamp, and one monster visit in twenty is flat
-      shocking pink (the user's ideas). Frame time and heap not yet measured on the device.
+      shocking pink (the user's ideas). Frame time and heap measured on the device with S15-2 (docs/S0_TEST.md).
     - (S15-1) Three more things on the game screen (FlightViz.h), from the web demo: a third monster, an octopus (a tall egg of a head, two small
       slanted eyes low on it, eight tentacles that lie far out along the ground), so each visit is the ape, the squid or the octopus, a third each;
       a building with somebody at a window has nobody on its roof, and one to three people run out at once (it was three to five); and a rare
       boss of the meteor zone, a wedge-shaped capital ship as long as the screen is wide, about one zone in five: it crosses slowly during the
       whole zone, fires volleys of green bolts at the fighter (which slips away; a hit only lights its shield), and when big meteors strike it
-      it smokes, then burns, but flies on (the author's ideas and drawings). About 1 KB of RAM more. Not yet tried on the device.
+      it smokes, then burns, but flies on (the author's ideas and drawings). About 1 KB of RAM more. Tried on the device 2026-11-11.
     - (S15-2) The cruiser's barrage (FlightViz.h), from the web demo: once in a pass, about halfway across, its underside glows red for a moment,
       then twelve missiles leave it a moment apart in a fan from down-left to up-left; they speed up, curve toward the fighter and wobble a
       little, trailing smoke and a flame, and burst on the ground, on the fighter (its shield flashes) or when they burn out. The fighter slips
@@ -157,21 +157,21 @@
       grey stone); the people in the jungle look dressed (a red headgear, a yellow tunic, white face, hands and legs); a volcano stands among the
       far peaks (dark rock, a glowing crater, flickering lava, drifting ash; after Popocatepetl); and about one far peak in three is bare earth.
       Statues, a quetzal and a blue/red colour coding were tried in the web demo and dropped.
-    - (S17-5) Three fixes from the code review before release, none tried on the device yet. The MP3 task rests when a track gives
+    - (S17-5) Three fixes from the code review before release (tried on the device with S17-6, see there). The MP3 task rests when a track gives
       no sound (the card pulled out, files that cannot be played) and passes over data that is not MP3 with short rests; a file below
       16 kHz ends at once (Mp3Source.h). Before, the task never slept then and the task watchdog would restart the Cardputer after 5 s.
       The AUX unit, found while MP3 plays, no longer switches itself on over it. And once the BLE stack has been started, MP3 answers
       RESTART with USB too (it used to try, and fail as NO SD, for lack of memory).
     - (S17-6) One more from the review: RateAdjust.h no longer casts a negative number to an unsigned one when the correction is
       negative (undefined in C++; the result on the device was right or one sample more, never out of the buffer). The READMEs
-      say that the SD card must be FAT32 (this core has no exFAT). Not tried on the device yet.
+      say that the SD card must be FAT32 (this core has no exFAT). Tried on the device 2026-11-17 (the author, no problem), also with the card pulled out for 10 s while MP3 played.
     - (S11-2) Searchlights on the game screen (FlightViz.h): a city on alert. Up to three stand on the ground, each with a small base (a
       3 x 3 dot light grey square with a blue window), flow from right to left with the terrain and sweep the sky with a slim beam that
       widens and fades toward the top, in a cool blue-white added to the stars' light. A new one comes every 10 to 35 s, only while
       music plays (those already out carry on); on screen about 60 % of the time, two at once only now and then. The beams are drawn in
       front of the monsters' bodies and the terrain and behind the equalizer; a beam stops at the monster's centre line (it runs on over
       the body up to it) and on the fighter, with no lock-on and no bright spot. The squid's tentacles let light through. Designed with
-      the user in the web demo first (KeySpeaker-WEB-DEMO, feature/searchlights); not yet tried on the device.
+      the user in the web demo first (KeySpeaker-WEB-DEMO, feature/searchlights); tried on the device 2026-11-06.
     - (S11-1) A second big monster on the game screen (FlightViz.h), a Space Invaders squid, 23 x 30 dots like the ape: a pointed
       bell of a head with slanted eyes and a small grumpy mouth, over seven tentacles that hang side by side from a narrow base,
       flare out like a trumpet and lie along the ground. Each visit is the ape or the squid, by lot, half and half; the timing
@@ -180,7 +180,7 @@
       has passed (5 in 10) the two tentacles on the fighter's side stretch out for it (half of the reaches also the two on
       the other side), up to about 100 px away, and the fighter slips away. Resting tentacles are drawn with the body behind
       the terrain, stretching ones in front. Designed with the user in the web demo (KeySpeaker-WEB-DEMO, feature/tentacle-invader)
-      and run on a computer with the same FlightViz.h before building; not yet tried on the device.
+      and run on a computer with the same FlightViz.h before building; tried on the device 2026-11-06.
     - (S9-1) A space monster on the game screen (FlightViz.h), the beast from the Space Invaders cabinet art, 69 x 90 px,
       feet on the bottom edge, only while music plays (after 3 s of sound; a gap of up to 2 s is not silence). It walks in
       from the right with the terrain, reaches for the fighter with a clawed hand, misses as the fighter slips away, draws
