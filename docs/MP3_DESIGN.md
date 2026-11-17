@@ -19,6 +19,21 @@ The BLE stack (NimBLE) takes **71.8 KB** of the internal heap in `BLEDevice::ini
 
 The way out is not to start BLE while MP3 plays: BLE starts only after USB has been gone for 3 s (10 s before USB was ever seen), and not while MP3 is on or for 10 s after an Fn+I press without USB. Once BLE has been started in a power-up, MP3 is refused (`RESTART`), since S17-5 with USB too: it used to try with USB and fail as `NO SD` for lack of memory.
 
+### Free heap with BLE running (S17-6, measured on the device 2026-11-17)
+
+Measured with a diagnostic build of S17-6 (`KS_DIAG 1`, which shows the free heap on the keyboard screen: F now, m lowest since start, B largest free block, and the BLE reports sent and refused). That build has about 2.6 KB more static RAM than the normal one, so the normal build should have a little more room (an estimate). The AUX unit was on the Grove port; no USB cable, a Mac paired.
+
+| Step | F (free now) | m (lowest) | B (largest block) |
+|---|---|---|---|
+| Before BLE starts | 83.0 KB | 82.7 KB | 43.0 KB |
+| BLE paired and connected | 8.0 KB | 7.6 KB | 7.7 KB |
+| After 30 min of typing and the air mouse (2,580 reports sent, 0 refused) | 8.0 KB | 7.5 KB | 7.7 KB |
+| Then `Fn+I` to the microphone (BLE still on), several minutes | 5.1 KB | 3.2 KB | 3.1 KB |
+
+- No restart, no loss of the BLE link, and the lowest value did not move over the 30 minutes: no sign of a leak. The microphone takes about 3 KB; with BLE on it is the tightest case, and 3.2 KB is a small margin.
+- Not measured: the Grove port with nothing on it. There the firmware opens the UART for the AUX search (about 4 KB of buffer) every 3 seconds and gives it back 100 ms later; with the unit found the buffer stays open, which is the case measured here. Judged by reasoning, not by measurement, nothing-on-the-port is not tighter.
+- One time that day the Mac showed KeySpeaker as a connected keyboard (the Cardputer's screen showed a green BLE, the Mac listed its keyboard and mouse as HID devices) but no key and no mouse movement arrived. It did not come back after the diagnostic build was flashed again and the link made anew (reports then went out with 0 refused), and the cause is **not known**. Nothing in the BLE code changed since S5. If it comes back, read `k m ok ng rc e` on the diagnostic build's keyboard screen at once.
+
 ## Memory (measured on the device, USB input, no BLE)
 
 | Step | Free heap |
